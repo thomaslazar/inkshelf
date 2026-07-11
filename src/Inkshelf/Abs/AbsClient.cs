@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
 using Inkshelf.Auth;
 
 namespace Inkshelf.Abs;
@@ -41,5 +40,41 @@ public class AbsClient
         if (string.IsNullOrEmpty(u.AccessToken) || string.IsNullOrEmpty(u.RefreshToken))
             throw new InvalidOperationException("Auth response missing tokens.");
         return new Tokens(u.AccessToken, u.RefreshToken!);
+    }
+
+    public async Task<List<AbsLibrary>> GetLibrariesAsync(string accessToken, CancellationToken ct = default)
+    {
+        using var res = await SendAuthedAsync(HttpMethod.Get, "/api/libraries", accessToken, ct);
+        var body = await res.Content.ReadFromJsonAsync<AbsLibrariesResponse>(ct);
+        return body?.Libraries ?? new();
+    }
+
+    public async Task<AbsItemsPage> GetItemsAsync(string accessToken, string libraryId,
+        int page, int limit, CancellationToken ct = default)
+    {
+        var url = $"/api/libraries/{Uri.EscapeDataString(libraryId)}/items?limit={limit}&page={page}&minified=1";
+        using var res = await SendAuthedAsync(HttpMethod.Get, url, accessToken, ct);
+        return await res.Content.ReadFromJsonAsync<AbsItemsPage>(ct)
+            ?? new AbsItemsPage(new(), 0, limit, page);
+    }
+
+    public async Task<(Stream Content, string ContentType)> GetCoverAsync(string accessToken,
+        string itemId, int width, CancellationToken ct = default)
+    {
+        var url = $"/api/items/{Uri.EscapeDataString(itemId)}/cover?width={width}";
+        var res = await SendAuthedAsync(HttpMethod.Get, url, accessToken, ct); // caller disposes via stream
+        var type = res.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
+        return (await res.Content.ReadAsStreamAsync(ct), type);
+    }
+
+    private async Task<HttpResponseMessage> SendAuthedAsync(HttpMethod method, string url,
+        string accessToken, CancellationToken ct)
+    {
+        var req = new HttpRequestMessage(method, url);
+        req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        var res = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (res.StatusCode == HttpStatusCode.Unauthorized) { res.Dispose(); throw new AbsUnauthorizedException(); }
+        res.EnsureSuccessStatusCode();
+        return res;
     }
 }

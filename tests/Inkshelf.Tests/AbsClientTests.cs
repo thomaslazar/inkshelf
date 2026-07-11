@@ -38,4 +38,38 @@ public class AbsClientTests
         Assert.Equal("/auth/refresh", h.Last!.RequestUri!.AbsolutePath);
         Assert.Equal("ref", h.Last!.Headers.GetValues("x-refresh-token").Single());
     }
+
+    [Fact]
+    public async Task GetItemsAsync_builds_query_and_parses()
+    {
+        var h = new StubHandler(_ => StubHandler.Json(
+            """{"results":[{"id":"i1","media":{"metadata":{"title":"Dune","authorName":"Herbert","seriesName":"Dune #1"}}}],"total":42,"limit":24,"page":1}"""));
+        var page = await Client(h).GetItemsAsync("acc", "lib1", page: 1, limit: 24);
+
+        Assert.Equal(42, page.Total);
+        Assert.Equal("Dune", page.Results[0].Media!.Metadata!.Title);
+        Assert.Equal("/api/libraries/lib1/items", h.Last!.RequestUri!.AbsolutePath);
+        var q = System.Web.HttpUtility.ParseQueryString(h.Last!.RequestUri!.Query);
+        Assert.Equal("24", q["limit"]);
+        Assert.Equal("1", q["page"]);
+        Assert.Equal("1", q["minified"]);
+        Assert.Equal("Bearer acc", h.Last!.Headers.Authorization!.ToString());
+    }
+
+    [Fact]
+    public async Task GetItemsAsync_throws_unauthorized_on_401()
+    {
+        var h = new StubHandler(_ => new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized));
+        await Assert.ThrowsAsync<AbsUnauthorizedException>(
+            () => Client(h).GetItemsAsync("acc", "lib1", 0, 24));
+    }
+
+    [Fact]
+    public async Task GetLibrariesAsync_parses()
+    {
+        var h = new StubHandler(_ => StubHandler.Json(
+            """{"libraries":[{"id":"l1","name":"Books","mediaType":"book"}]}"""));
+        var libs = await Client(h).GetLibrariesAsync("acc");
+        Assert.Equal("Books", libs.Single().Name);
+    }
 }
