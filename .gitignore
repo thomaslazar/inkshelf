@@ -36,3 +36,6 @@ node_modules/
 
 # ABS source checkout (API reference only, cloned by devcontainer)
 temp/
+
+# devcontainer build artifact
+.devcontainer/devcontainer-lock.json
