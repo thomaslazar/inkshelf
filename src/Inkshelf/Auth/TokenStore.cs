@@ -27,7 +27,8 @@ public class TokenStore
             SameSite = SameSiteMode.Lax,
             Secure = Ctx.Request.IsHttps,
             IsEssential = true,
-            MaxAge = TimeSpan.FromDays(30)
+            MaxAge = TimeSpan.FromDays(30),
+            Path = "/"
         });
     }
 

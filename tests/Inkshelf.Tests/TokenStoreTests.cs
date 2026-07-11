@@ -40,4 +40,13 @@ public class TokenStoreTests
         ctx.Request.Headers.Cookie = "inkshelf_session=not-a-valid-token";
         Assert.Null(Make(ctx).Read());
     }
+
+    [Fact]
+    public void Save_emits_root_path_cookie()
+    {
+        var ctx = new DefaultHttpContext();
+        Make(ctx).Save(new Tokens("acc", "ref"));
+        var setCookie = ctx.Response.Headers.SetCookie.ToString();
+        Assert.Contains("path=/", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
 }
