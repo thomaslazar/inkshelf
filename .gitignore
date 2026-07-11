@@ -1,0 +1,38 @@
+# IDE
+.idea/
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+bin/
+obj/
+out/
+build/
+dist/
+publish/
+
+# Packages
+*.nupkg
+node_modules/
+
+# User-specific files
+*.user
+*.suo
+*.log
+
+# Environment
+.env
+.env.*
+
+# Claude Code (machine-specific settings)
+.claude/settings.local.json
+
+# ABS source checkout (API reference only, cloned by devcontainer)
+temp/

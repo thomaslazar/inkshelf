@@ -1,0 +1,33 @@
+{
+  "name": "inkshelf",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+
+  // Mount sessions so they're visible inside and outside the container.
+  // Mount sound packs so the relay can resolve the same file paths.
+  "mounts": [
+    "source=${localEnv:HOME}/.claude/projects,target=/home/vscode/.claude/projects,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.openpeon/packs,target=/home/vscode/.claude/hooks/peon-ping/packs,type=bind,consistency=cached"
+  ],
+
+  // Docker outside of Docker: run docker against the host daemon from inside
+  // the container. GitHub CLI: `gh` is not bundled in the dotnet:10.0 image.
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "remoteUser": "vscode",
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "ms-dotnettools.csharp"
+      ]
+    }
+  }
+}

@@ -1,0 +1,48 @@
+#!/bin/bash
+# Post-create setup for the inkshelf devcontainer.
+set -euo pipefail
+
+# --- Claude Code session path symlink ---
+# Claude Code indexes sessions by project path. The host path differs from
+# the container path (/workspaces/inkshelf), so we symlink so sessions are
+# shared in and out of the container.
+CONTAINER_KEY=$(pwd | sed 's|/|-|g')
+ln -sfn ~/.claude/projects/-Users-ibn-Development-inkshelf \
+  ~/.claude/projects/"$CONTAINER_KEY" 2>/dev/null || true
+
+# Ensure directories Claude Code expects exist
+mkdir -p ~/.claude/plugins/cache
+
+# Set peon-ping to use the frieren pack (matching the Mac's config)
+python3 -c "
+import json, os
+cfg_path = os.path.expanduser('~/.claude/hooks/peon-ping/config.json')
+with open(cfg_path) as f:
+    cfg = json.load(f)
+cfg['default_pack'] = 'frieren'
+cfg['desktop_notifications'] = False
+with open(cfg_path, 'w') as f:
+    json.dump(cfg, f, indent=2)
+" 2>/dev/null || true
+
+# --- Claude Code statusline ---
+# Install the statusline script and register it in settings.json.
+install -m 755 .devcontainer/statusline.sh ~/.claude/statusline.sh
+SETTINGS=~/.claude/settings.json
+[ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
+tmp=$(mktemp)
+jq '. + {statusLine: {type: "command", command: "/home/vscode/.claude/statusline.sh"}}' \
+  "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
+
+# --- Superpowers setup ---
+# Structured development workflow (brainstorming, planning, TDD, debugging, code review).
+claude plugin marketplace add obra/superpowers 2>/dev/null || true
+claude plugin install superpowers@superpowers-dev 2>/dev/null || true
+
+# --- ABS source checkout (API reference only, gitignored) ---
+# Used by the coding agent to verify endpoints, response shapes, and
+# permission checks. Keep the tag in sync with CLAUDE.md.
+if [ ! -d temp/audiobookshelf ]; then
+  git clone --depth 1 --branch v2.35.1 \
+    https://github.com/advplyr/audiobookshelf.git temp/audiobookshelf 2>/dev/null || true
+fi
