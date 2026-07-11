@@ -30,5 +30,10 @@ public class LoginModel : PageModel
             Error = "Invalid username or password.";
             return Page();
         }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
+        {
+            Error = "Could not reach the server. Please try again.";
+            return Page();
+        }
     }
 }

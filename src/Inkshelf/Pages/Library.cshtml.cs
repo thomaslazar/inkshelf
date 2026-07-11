@@ -15,12 +15,15 @@ public class LibraryModel : PageModel
     public List<AbsItem> Items { get; private set; } = new();
     public Pager Pager { get; private set; } = new(0, PageSize, 0);
 
-    public async Task OnGetAsync([FromQuery] int page = 1, CancellationToken ct = default)
+    public async Task<IActionResult> OnGetAsync([FromQuery] int page = 1, CancellationToken ct = default)
     {
+        if (string.IsNullOrEmpty(Id)) return NotFound();
+
         var zeroPage = Math.Max(0, page - 1);
         var result = await _session.ExecuteAsync(
             (tok, c) => _client.GetItemsAsync(tok, Id, zeroPage, PageSize, c), ct);
         Items = result.Results;
         Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
+        return Page();
     }
 }

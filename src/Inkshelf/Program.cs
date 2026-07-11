@@ -1,6 +1,8 @@
 using Inkshelf.Abs;
 using Inkshelf.Auth;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +27,14 @@ builder.Services.AddRazorPages(options =>
 });
 
 var app = builder.Build();
+
+var fho = new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor };
+// Sidecar sits behind the operator's own reverse proxy; the proxy isn't on a known
+// network/loopback, so trust forwarded headers from it. Deploy on a trusted network only.
+fho.KnownIPNetworks.Clear();
+fho.KnownProxies.Clear();
+app.UseForwardedHeaders(fho);
+
 app.UseStaticFiles();
 
 // Any page/handler that hits an unauthenticated/expired session throws
@@ -49,8 +59,17 @@ app.MapGet("/cover/{id}", async (string id, int? w, AbsSession session, AbsClien
     return Results.Stream(stream, contentType);
 });
 
-app.MapPost("/logout", (TokenStore store) =>
+app.MapPost("/logout", async (HttpContext httpContext, IAntiforgery antiforgery, TokenStore store) =>
 {
+    try
+    {
+        await antiforgery.ValidateRequestAsync(httpContext);
+    }
+    catch (AntiforgeryValidationException)
+    {
+        return Results.BadRequest();
+    }
+
     store.Clear();
     return Results.Redirect("/login");
 });
