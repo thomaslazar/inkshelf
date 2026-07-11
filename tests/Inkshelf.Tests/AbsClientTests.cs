@@ -72,4 +72,12 @@ public class AbsClientTests
         var libs = await Client(h).GetLibrariesAsync("acc");
         Assert.Equal("Books", libs.Single().Name);
     }
+
+    [Fact]
+    public async Task GetLibrariesAsync_throws_on_500()
+    {
+        var h = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => Client(h).GetLibrariesAsync("acc"));
+    }
 }

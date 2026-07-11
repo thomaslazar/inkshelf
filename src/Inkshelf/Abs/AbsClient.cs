@@ -74,7 +74,8 @@ public class AbsClient
         req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
         var res = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
         if (res.StatusCode == HttpStatusCode.Unauthorized) { res.Dispose(); throw new AbsUnauthorizedException(); }
-        res.EnsureSuccessStatusCode();
+        try { res.EnsureSuccessStatusCode(); }
+        catch { res.Dispose(); throw; }
         return res;
     }
 }
