@@ -27,9 +27,10 @@ reference live in `CLAUDE.md`.
 
 ### Configuration
 
-| Env var   | Required | Description                        |
-|-----------|----------|------------------------------------|
-| `ABS_URL` | yes      | Base URL of the ABS server         |
+| Env var                 | Required | Description                        |
+|-------------------------|----------|-------------------------------------|
+| `ABS_URL`               | yes      | Base URL of the ABS server         |
+| `DataProtectionKeysPath`| no       | Filesystem path for persisted Data Protection keys. Default `<ContentRoot>/.keys`. Mount a volume here to keep users logged in across restarts. |
 
 ## Running
 
