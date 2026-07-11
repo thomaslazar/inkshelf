@@ -1,0 +1,12 @@
+services:
+  inkshelf:
+    build: .
+    environment:
+      ABS_URL: "http://audiobookshelf:80"
+      DataProtectionKeysPath: "/keys"
+    volumes:
+      - inkshelf-keys:/keys
+    ports:
+      - "8080:8080"
+volumes:
+  inkshelf-keys:

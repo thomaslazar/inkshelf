@@ -40,6 +40,21 @@ app.Use(async (ctx, next) =>
 });
 
 app.MapRazorPages();
+
+app.MapGet("/cover/{id}", async (string id, int? w, AbsSession session, AbsClient client, CancellationToken ct) =>
+{
+    var width = w is > 0 and <= 400 ? w.Value : 120;
+    var (stream, contentType) = await session.ExecuteAsync(
+        (tok, c) => client.GetCoverAsync(tok, id, width, c), ct);
+    return Results.Stream(stream, contentType);
+});
+
+app.MapPost("/logout", (TokenStore store) =>
+{
+    store.Clear();
+    return Results.Redirect("/login");
+});
+
 app.Run();
 
 public partial class Program { }

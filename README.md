@@ -30,3 +30,22 @@ reference live in `CLAUDE.md`.
 | Env var   | Required | Description                        |
 |-----------|----------|------------------------------------|
 | `ABS_URL` | yes      | Base URL of the ABS server         |
+
+## Running
+
+Locally, inside the devcontainer:
+
+```bash
+ABS_URL=http://<abs-host>:13378 dotnet run --project src/Inkshelf
+```
+
+As a sidecar container next to ABS, using the example compose file (copy it
+and adjust `ABS_URL` to point at your ABS service first):
+
+```bash
+docker compose -f docker-compose.example.yml up
+```
+
+This builds the image from the repo `Dockerfile`, exposes Inkshelf on port
+8080, and persists Data Protection keys (so login cookies survive restarts)
+in a named volume mounted at `/keys`.
