@@ -19,7 +19,10 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<TokenStore>();
 builder.Services.AddScoped<AbsSession>();
 builder.Services.AddHttpClient<AbsClient>(c => c.BaseAddress = new Uri(absUrl));
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(options =>
+{
+    options.Conventions.AddPageRoute("/Library", "library/{id}");
+});
 
 var app = builder.Build();
 app.UseStaticFiles();
