@@ -39,3 +39,7 @@ temp/
 
 # devcontainer build artifact
 .devcontainer/devcontainer-lock.json
+
+# ASP.NET Data Protection keys (runtime)
+.keys/
+**/.keys/
