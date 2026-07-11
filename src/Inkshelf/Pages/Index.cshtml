@@ -1,7 +1,10 @@
 @page
-@model IndexModel
-@{
-    ViewData["Title"] = "Home";
+@model Inkshelf.Pages.IndexModel
+<h1>Libraries</h1>
+<form method="post" action="/logout"><button type="submit">Log out</button></form>
+<ul>
+@foreach (var lib in Model.Libraries)
+{
+    <li><a href="/library/@lib.Id">@lib.Name</a> <small>(@lib.MediaType)</small></li>
 }
-
-<h1>Inkshelf</h1>
+</ul>
