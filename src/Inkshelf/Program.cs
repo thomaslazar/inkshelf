@@ -20,7 +20,13 @@ builder.Services.AddDataProtection()
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<TokenStore>();
 builder.Services.AddScoped<AbsSession>();
-builder.Services.AddHttpClient<AbsClient>(c => c.BaseAddress = new Uri(absUrl));
+builder.Services.AddHttpClient<AbsClient>(c =>
+{
+    c.BaseAddress = new Uri(absUrl);
+    // Identify the client. Some reverse proxies fronting ABS (e.g. Cosmos)
+    // reject requests with no User-Agent with a 403 before they reach ABS.
+    c.DefaultRequestHeaders.UserAgent.ParseAdd("Inkshelf/1.0");
+});
 builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AddPageRoute("/Library", "library/{id}");
