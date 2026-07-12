@@ -1,0 +1,5 @@
+body { font-family: serif; margin: 1rem; line-height: 1.5; color: #000; background: #fff; }
+a { color: #000; }
+img { max-width: 100%; height: auto; }
+.item { display: flex; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid #ccc; }
+nav.pager a { margin-right: 1rem; }

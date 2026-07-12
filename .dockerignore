@@ -1,0 +1,13 @@
+bin/
+obj/
+.git/
+.git
+**/bin/
+**/obj/
+.keys/
+**/.keys/
+tests/
+.superpowers/
+temp/
+**/.vs/
+**/.vscode/

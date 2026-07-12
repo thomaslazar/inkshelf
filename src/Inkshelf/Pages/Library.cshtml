@@ -1,0 +1,22 @@
+@page
+@model Inkshelf.Pages.LibraryModel
+<p><a href="/">&larr; Libraries</a></p>
+<h1>Items</h1>
+@if (Model.Items.Count == 0) { <p>No items.</p> }
+@foreach (var item in Model.Items)
+{
+    var m = item.Media?.Metadata;
+    <div class="item">
+        <img src="/cover/@item.Id?w=120" alt="" width="60" />
+        <div>
+            <strong>@(m?.Title ?? "(untitled)")</strong><br />
+            @if (!string.IsNullOrEmpty(m?.AuthorName)) { <span>@m!.AuthorName</span> }
+            @if (!string.IsNullOrEmpty(m?.SeriesName)) { <span> &middot; @m!.SeriesName</span> }
+        </div>
+    </div>
+}
+<nav class="pager">
+    @if (Model.Pager.HasPrev) { <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage - 1)">&larr; Prev</a> }
+    <span>Page @Model.Pager.DisplayPage of @Math.Max(1, Model.Pager.TotalPages)</span>
+    @if (Model.Pager.HasNext) { <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage + 1)">Next &rarr;</a> }
+</nav>
