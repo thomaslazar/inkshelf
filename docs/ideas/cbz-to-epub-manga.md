@@ -66,9 +66,18 @@ pass through otherwise.
   to KCC for quality, but it's a Python dep that weighs down the light sidecar;
   only if hand-rolled isn't good enough.
 
-## Open item to verify before building the download UX
+## Download UX — verified working (2026-07-12)
 
-Confirm on the actual Tolino that a browser-initiated EPUB download (a)
-completes and (b) auto-appears in the native reading library vs. needing a
-manual import. Firmware/model-dependent. **Test with any EPUB on a web server
-before designing this part.**
+Confirmed on the actual Tolino via a throwaway Inkshelf build: a
+browser-initiated download of an EPUB/PDF **completes and the ebook is usable
+in the native reader**. The download was served through a proxy endpoint
+(`GET /download/{id}` → ABS `GET /api/items/{id}/ebook`) with the real ABS
+filename and `Content-Disposition: attachment`. So the delivery model holds:
+Inkshelf serves the file, the Tolino downloads it, reading happens offline in
+the native reader.
+
+The throwaway was reverted; the proper download feature (ebook button +
+filename scheme) is to be built for real. That build should re-confirm the
+finer point — whether the download **auto-appears** in the reading library vs.
+needs a manual import step (firmware/model-dependent) — but the core path is
+proven.
