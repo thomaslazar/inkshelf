@@ -82,6 +82,19 @@ public class AbsClientTests
     }
 
     [Fact]
+    public async Task SearchAsync_parses_ebookFile_format()
+    {
+        // Search results use the expanded shape: format lives in ebookFile, not
+        // at media.ebookFormat — the row falls back to it to show ebook links.
+        var h = new StubHandler(_ => StubHandler.Json(
+            """{"book":[{"libraryItem":{"id":"i1","media":{"metadata":{"title":"Tanya"},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"t.cbz","size":1,"mtimeMs":2}}}}}],"series":[],"authors":[]}"""));
+        var r = await Client(h).SearchAsync("acc", "lib1", "tanya", 25);
+        var media = r.Book[0].LibraryItem.Media!;
+        Assert.Null(media.EbookFormat);                       // top-level absent in search
+        Assert.Equal("cbz", media.EbookFile!.EbookFormat);    // available via ebookFile
+    }
+
+    [Fact]
     public async Task GetItemsAsync_throws_unauthorized_on_401()
     {
         var h = new StubHandler(_ => new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized));

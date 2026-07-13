@@ -28,7 +28,10 @@ public record AbsItem(
 public record AbsMedia(
     [property: JsonPropertyName("metadata")] AbsMetadata? Metadata,
     [property: JsonPropertyName("coverPath")] string? CoverPath = null,
-    [property: JsonPropertyName("ebookFormat")] string? EbookFormat = null);
+    // The listing exposes the format at top level; search results only carry the
+    // expanded ebookFile (with the format inside), so keep both.
+    [property: JsonPropertyName("ebookFormat")] string? EbookFormat = null,
+    [property: JsonPropertyName("ebookFile")] AbsEbookFile? EbookFile = null);
 public record AbsMetadata(
     [property: JsonPropertyName("title")] string? Title,
     [property: JsonPropertyName("authorName")] string? AuthorName,

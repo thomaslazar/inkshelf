@@ -50,7 +50,7 @@
             <a href="@SeriesHref(m!.SeriesName!)">@m!.SeriesName!</a>
         }
     </div>
-    @{ var fmt = item.Media?.EbookFormat; }
+    @{ var fmt = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat; }
     @if (!string.IsNullOrEmpty(fmt))
     {
         <div class="actions">
@@ -64,7 +64,7 @@
                     }
                     else
                     {
-                        <a href="/convert/@item.Id">Convert</a>
+                        <a href="/convert/@item.Id" data-warm>Convert</a>
                     }
                     <a class="regen" href="/convert/@item.Id?fresh=1" title="Regenerate">&#8635;</a>
                 </span>

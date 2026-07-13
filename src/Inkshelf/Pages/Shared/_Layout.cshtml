@@ -29,6 +29,35 @@
             }
         } catch (e) {}
     })();
+    /* Convert-in-place: the first tap converts+caches via XHR (showing progress
+       in the link text); the next tap downloads the now-cached EPUB. Falls back
+       to a plain download link if JS/XHR is unavailable. ES5 for old e-readers. */
+    (function () {
+        try {
+            var links = document.querySelectorAll('a[data-warm]');
+            for (var i = 0; i < links.length; i++) {
+                (function (a) {
+                    a.addEventListener('click', function (e) {
+                        if (a.getAttribute('data-ready') === '1') { return; } // let it download
+                        e.preventDefault();
+                        a.firstChild.nodeValue = 'Converting…';
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('GET', a.href + (a.href.indexOf('?') < 0 ? '?' : '&') + 'warm=1');
+                        xhr.onreadystatechange = function () {
+                            if (xhr.readyState !== 4) { return; }
+                            if (xhr.status === 200) {
+                                a.firstChild.nodeValue = 'EPUB ↓';
+                                a.setAttribute('data-ready', '1');
+                            } else {
+                                a.firstChild.nodeValue = 'Convert (retry)';
+                            }
+                        };
+                        xhr.send();
+                    });
+                })(links[i]);
+            }
+        } catch (e) {}
+    })();
     </script>
 </body>
 </html>

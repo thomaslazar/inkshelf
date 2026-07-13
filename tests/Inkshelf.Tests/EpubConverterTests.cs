@@ -41,17 +41,20 @@ public class EpubConverterTests
         // mimetype first and stored uncompressed
         Assert.Equal("mimetype", epub.Entries[0].FullName);
         Assert.Equal(epub.Entries[0].Length, epub.Entries[0].CompressedLength);
-        // three page images + xhtml, container + opf + nav
+        // three page images + xhtml, container + opf + nav + ncx
         Assert.Contains("META-INF/container.xml", names);
         Assert.Contains(names, n => n.EndsWith("content.opf"));
+        Assert.Contains(names, n => n.EndsWith("toc.ncx"));
         Assert.Equal(3, names.Count(n => n.EndsWith(".xhtml") && n.Contains("page")));
         // webp transcoded away
         Assert.DoesNotContain(names, n => n.EndsWith(".webp"));
-        // opf references title/author and is fixed-layout (full-bleed).
+        // opf references title/author, is fixed-layout, and is EPUB3-valid.
         var opf = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("content.opf")).Open()).ReadToEnd();
         Assert.Contains("Vol 1", opf);
         Assert.Contains("Artist", opf);
         Assert.Contains("pre-paginated", opf);
+        Assert.Contains("dcterms:modified", opf);  // required by EPUB3
+        Assert.Contains("toc=\"ncx\"", opf);        // EPUB2 nav for older readers
 
         // Pages set the viewport to the page size and fill it with the image.
         var page = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("page-0001.xhtml")).Open()).ReadToEnd();

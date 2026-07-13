@@ -96,7 +96,7 @@ app.MapGet("/download/{id}", async (string id, AbsSession session, AbsClient cli
     catch (HttpRequestException) { return Results.NotFound(); }
 });
 
-app.MapGet("/convert/{id}", async (string id, string? fresh, HttpContext httpContext, AbsSession session, AbsClient client,
+app.MapGet("/convert/{id}", async (string id, string? fresh, string? warm, HttpContext httpContext, AbsSession session, AbsClient client,
     Inkshelf.Convert.EpubCache cache, Inkshelf.Convert.EpubConverter converter, CancellationToken ct) =>
 {
     Inkshelf.Abs.AbsItemDetail detail;
@@ -133,13 +133,17 @@ app.MapGet("/convert/{id}", async (string id, string? fresh, HttpContext httpCon
         using var buffered = new MemoryStream();
         await using (archive) await archive.CopyToAsync(buffered, ct);   // SharpCompress needs a seekable stream
         buffered.Position = 0;
-        await converter.ConvertAsync(buffered, new Inkshelf.Convert.EbookMeta(title, author, seriesName, seq), path, maxW, maxH, dpr, ct);
+        await converter.ConvertAsync(buffered, new Inkshelf.Convert.EbookMeta(title, author, seriesName, seq, id), path, maxW, maxH, dpr, ct);
         app.Logger.LogInformation("Converted {Id} in {Ms} ms → {OutBytes} bytes", id, sw.ElapsedMilliseconds, new FileInfo(path).Length);
     }
     else
     {
         app.Logger.LogInformation("Serving cached EPUB for {Id} ({OutBytes} bytes)", id, new FileInfo(path).Length);
     }
+
+    // warm=1 (the listing's XHR) just ensures the EPUB is built + cached, so the
+    // user's next tap downloads it instantly; it returns OK, not the file.
+    if (warm is "1") return Results.Text("ok");
 
     var fileName = Sanitize($"{author} - {title}") + ".epub";
     return Results.File(path, "application/epub+zip", fileDownloadName: fileName);

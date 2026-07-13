@@ -45,7 +45,9 @@ EPUB_ID=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=200" -H "Auth
   | python3 -c "import sys,json;print(next(r['id'] for r in json.load(sys.stdin)['results'] if (r.get('media') or {}).get('ebookFormat')=='epub'))")
 CBZ_ID=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=200" -H "Authorization: Bearer $TOKEN" \
   | python3 -c "import sys,json;print(next(r['id'] for r in json.load(sys.stdin)['results'] if (r.get('media') or {}).get('ebookFormat')=='cbz'))")
-for p in "/download/$EPUB_ID" "/convert/$CBZ_ID" "/convert/$CBZ_ID?fresh=1"; do
+# ?warm=1 builds + caches the EPUB and returns OK (the listing's XHR); a plain
+# /convert downloads it. Both 200.
+for p in "/download/$EPUB_ID" "/convert/$CBZ_ID?warm=1" "/convert/$CBZ_ID" "/convert/$CBZ_ID?fresh=1"; do
     code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$INKSHELF_URL$p")
     [ "$code" = "200" ] || fail "GET $p expected 200 got $code"
     echo "  ok: $p ($code)"
