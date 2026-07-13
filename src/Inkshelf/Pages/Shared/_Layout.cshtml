@@ -17,5 +17,18 @@
     <main>
         @RenderBody()
     </main>
+    <script>
+    /* Near-zero JS: report the device's physical screen size (CSS px × DPR) in a
+       cookie so /convert can downscale comic pages to this device (comics differ
+       per Tolino model). ES5 + try/catch so old e-reader browsers stay happy. */
+    (function () {
+        try {
+            var d = window.devicePixelRatio || 1;
+            if (screen.width && screen.height) {
+                document.cookie = "scr=" + screen.width + "x" + screen.height + "x" + d + ";path=/;max-age=31536000";
+            }
+        } catch (e) {}
+    })();
+    </script>
 </body>
 </html>

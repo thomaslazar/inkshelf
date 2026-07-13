@@ -12,8 +12,12 @@ img { max-width: 100%; height: auto; }
 .item .body { flex: 1 1 auto; min-width: 0; }
 nav.pager a { margin-right: 1rem; }
 .sortbar { margin: .5rem 0; }
-.actions { margin-top: .25rem; }
-.actions a { margin-right: .75rem; }
+/* Fixed-width right column so the middle (title/author) column does all the
+   line-wrapping and Download always sits at the same place. flex-basis + an
+   explicit width for the Tolino's older flex implementation. */
+.item .actions { flex: 0 0 6rem; width: 6rem; margin-left: .75rem; text-align: left; }
+.item .actions > a, .item .actions .convert { display: block; margin-bottom: .35rem; }
+.item .actions .regen { margin-left: .4rem; }
 /* Logo mark beside the page heading. The explicit height is needed because the
    global `img { height:auto }` rule would otherwise blow it up to full width.
    No flex `gap` on the Tolino — the icon is inline with a margin instead. */

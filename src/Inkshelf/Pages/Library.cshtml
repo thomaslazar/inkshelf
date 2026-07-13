@@ -40,7 +40,7 @@
         <h2 id="books">Books <a class="totop" href="#top">↑</a></h2>
         foreach (var b in books)
         {
-            <partial name="_ItemRow" model="b.LibraryItem" />
+            <partial name="_ItemRow" model="new Inkshelf.Pages.ItemRowModel(b.LibraryItem)" />
         }
     }
     if (series.Count > 0)
@@ -80,23 +80,17 @@ else
             <text> · </text><a href="@Model.SortHref("sequence")">Sequence@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.Sort, Model.Desc))</a>
         }
     </nav>
-    <nav class="pager">
-        @if (Model.Pager.HasPrev)
-        {
-            <a href="@Model.ListingHref(Model.Sort, Model.Desc, Model.Pager.DisplayPage - 1)">&larr; Prev</a>
-        }
-        <span>Page @Model.Pager.DisplayPage of @Math.Max(1, Model.Pager.TotalPages)</span>
-        @if (Model.Pager.HasNext)
-        {
-            <a href="@Model.ListingHref(Model.Sort, Model.Desc, Model.Pager.DisplayPage + 1)">Next &rarr;</a>
-        }
-    </nav>
+    <partial name="_Pager" model="Model" />
     @if (Model.Items.Count == 0)
     {
         <p>No items.</p>
     }
     @foreach (var item in Model.Items)
     {
-        <partial name="_ItemRow" model="item" />
+        <partial name="_ItemRow" model="Model.RowFor(item)" />
+    }
+    @if (Model.Items.Count > 0)
+    {
+        <partial name="_Pager" model="Model" />
     }
 }

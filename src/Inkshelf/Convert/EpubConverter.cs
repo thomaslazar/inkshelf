@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text;
 using SharpCompress.Archives;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 
 namespace Inkshelf.Convert;
 
@@ -11,9 +12,18 @@ public class EpubConverter
 {
     private static readonly string[] ImageExts = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
-    public async Task ConvertAsync(Stream archive, EbookMeta meta, string outPath, CancellationToken ct)
+    // maxWidth/maxHeight cap page image pixels (0 = no cap); dpr converts those
+    // pixels to the CSS viewport size (viewport = px / dpr). Pages are kept at
+    // physical resolution but declared at their CSS size so the reader shows them
+    // full-screen and crisp. dpr ≤ 0 falls back to 1 (viewport = image size).
+    public async Task ConvertAsync(Stream archive, EbookMeta meta, string outPath, int maxWidth, int maxHeight, double dpr, CancellationToken ct)
     {
-        // Collect + normalise pages (transcode webp -> jpeg) in archive order.
+        if (dpr <= 0) dpr = 1;
+        var cap = maxWidth > 0 && maxHeight > 0;
+        // Collect pages in archive order. Downscale anything larger than the cap
+        // and transcode WebP → JPEG (many e-readers can't decode WebP); other
+        // in-bounds images pass through untouched. Track each page's final pixel
+        // size — the fixed-layout viewport is set from it.
         var pages = new List<(string Name, byte[] Bytes, int W, int H)>();
         using (var arc = ArchiveFactory.OpenArchive(archive))
         {
@@ -29,19 +39,22 @@ public class EpubConverter
                 await es.CopyToAsync(mem, ct);
                 var bytes = mem.ToArray();
                 var ext = Path.GetExtension(e.Key ?? "").ToLowerInvariant();
-                int w, h;
-                if (ext == ".webp")
+                var info = Image.Identify(bytes);
+                var (w, h) = (info.Width, info.Height);
+                var oversized = cap && (w > maxWidth || h > maxHeight);
+                if (oversized || ext == ".webp")
                 {
                     using var img = Image.Load(bytes);
-                    w = img.Width; h = img.Height;
+                    if (oversized)
+                    {
+                        var scale = Math.Min((double)maxWidth / img.Width, (double)maxHeight / img.Height);
+                        img.Mutate(x => x.Resize(Math.Max(1, (int)Math.Round(img.Width * scale)),
+                                                 Math.Max(1, (int)Math.Round(img.Height * scale))));
+                    }
                     using var outMs = new MemoryStream();
                     await img.SaveAsJpegAsync(outMs, ct);
                     bytes = outMs.ToArray(); ext = ".jpg";
-                }
-                else
-                {
-                    var info = Image.Identify(bytes);
-                    w = info.Width; h = info.Height;
+                    w = img.Width; h = img.Height;
                 }
                 idx++;
                 pages.Add(($"page-{idx:D4}{ext}", bytes, w, h));
@@ -67,7 +80,11 @@ public class EpubConverter
             {
                 var p = pages[i];
                 using (var s = zip.CreateEntry($"OEBPS/img/{p.Name}").Open()) s.Write(p.Bytes);
-                Write($"OEBPS/page-{i + 1:D4}.xhtml", PageXhtml(p.Name, p.W, p.H));
+                // Viewport is the page's CSS size (image pixels ÷ dpr) so the
+                // reader lays it out to fill the screen; the image stays physical.
+                var vw = Math.Max(1, (int)Math.Round(p.W / dpr));
+                var vh = Math.Max(1, (int)Math.Round(p.H / dpr));
+                Write($"OEBPS/page-{i + 1:D4}.xhtml", PageXhtml(p.Name, vw, vh));
             }
             Write("OEBPS/content.opf", Opf(meta, pages));
             Write("OEBPS/nav.xhtml", Nav(pages.Count));
@@ -78,8 +95,11 @@ public class EpubConverter
 
     private static string Esc(string s) => System.Security.SecurityElement.Escape(s) ?? s;
 
+    // Fixed-layout page: the viewport is the page's pixel size and the image
+    // fills it. Full-bleed (no reader margins). Because pages are pre-sized to
+    // the device resolution, the reader shows them edge-to-edge without clipping.
     private static string PageXhtml(string img, int w, int h) =>
-        $"<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta name=\"viewport\" content=\"width={w}, height={h}\"/><style>html,body{{margin:0;padding:0}}img{{width:100%;height:100%}}</style></head><body><img src=\"img/{img}\" alt=\"\"/></body></html>";
+        $"<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width={w}, height={h}\"/><style>html,body{{margin:0;padding:0}}img{{width:100%;height:100%}}</style></head><body><img src=\"img/{img}\" alt=\"\"/></body></html>";
 
     private static string Nav(int n)
     {
@@ -94,7 +114,8 @@ public class EpubConverter
         var sb = new StringBuilder();
         sb.Append("<?xml version=\"1.0\" encoding=\"utf-8\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"bookid\" prefix=\"rendition: http://www.idpf.org/vocab/rendition/#\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">");
         sb.Append($"<dc:identifier id=\"bookid\">inkshelf</dc:identifier><dc:title>{Esc(m.Title)}</dc:title><dc:language>en</dc:language><dc:creator>{Esc(m.Author)}</dc:creator>");
-        sb.Append("<meta property=\"rendition:layout\">pre-paginated</meta>");
+        // Fixed-layout, single page per screen.
+        sb.Append("<meta property=\"rendition:layout\">pre-paginated</meta><meta property=\"rendition:spread\">none</meta>");
         if (!string.IsNullOrEmpty(m.Series)) sb.Append($"<meta name=\"calibre:series\" content=\"{Esc(m.Series)}\"/>");
         if (!string.IsNullOrEmpty(m.Sequence)) sb.Append($"<meta name=\"calibre:series_index\" content=\"{Esc(m.Sequence)}\"/>");
         sb.Append("</metadata><manifest><item id=\"nav\" href=\"nav.xhtml\" media-type=\"application/xhtml+xml\" properties=\"nav\"/>");

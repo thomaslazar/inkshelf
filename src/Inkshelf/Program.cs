@@ -96,7 +96,7 @@ app.MapGet("/download/{id}", async (string id, AbsSession session, AbsClient cli
     catch (HttpRequestException) { return Results.NotFound(); }
 });
 
-app.MapGet("/convert/{id}", async (string id, string? fresh, AbsSession session, AbsClient client,
+app.MapGet("/convert/{id}", async (string id, string? fresh, HttpContext httpContext, AbsSession session, AbsClient client,
     Inkshelf.Convert.EpubCache cache, Inkshelf.Convert.EpubConverter converter, CancellationToken ct) =>
 {
     Inkshelf.Abs.AbsItemDetail detail;
@@ -110,6 +110,11 @@ app.MapGet("/convert/{id}", async (string id, string? fresh, AbsSession session,
     var size = ef.Metadata.Size; var mtime = ef.Metadata.MtimeMs;
     if (fresh is "1" or "true") cache.RemoveForItem(id);
 
+    // Page-image cap + DPR from the device's screen (the layout script reports
+    // "cssW x cssH x dpr" in the "scr" cookie). No cookie (JS off) → 0×0 → no
+    // downscaling and viewport = image size.
+    var (maxW, maxH, dpr) = Inkshelf.ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"]);
+
     // authorName isn't always populated on uploaded ebooks; fall back to the
     // authors[] list. Used for both the embedded metadata and the file name.
     var md = detail.Media!.Metadata!;
@@ -119,14 +124,21 @@ app.MapGet("/convert/{id}", async (string id, string? fresh, AbsSession session,
     var seq = md.Series is { Count: > 0 } ? md.Series[0].Sequence : null;
     var seriesName = md.Series is { Count: > 0 } ? md.Series[0].Name : md.SeriesName;
 
-    var path = cache.PathFor(id, size, mtime);
+    var path = cache.PathFor(id, size, mtime, maxW, maxH);
     if (!File.Exists(path))
     {
+        app.Logger.LogInformation("Converting {Id} ({Fmt}, {Bytes} bytes, cap {W}x{H} @dpr {Dpr}) to EPUB…", id, fmt, size, maxW, maxH, dpr);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         var (archive, _) = await session.ExecuteAsync((tok, c) => client.GetEbookStreamAsync(tok, id, c), ct);
         using var buffered = new MemoryStream();
         await using (archive) await archive.CopyToAsync(buffered, ct);   // SharpCompress needs a seekable stream
         buffered.Position = 0;
-        await converter.ConvertAsync(buffered, new Inkshelf.Convert.EbookMeta(title, author, seriesName, seq), path, ct);
+        await converter.ConvertAsync(buffered, new Inkshelf.Convert.EbookMeta(title, author, seriesName, seq), path, maxW, maxH, dpr, ct);
+        app.Logger.LogInformation("Converted {Id} in {Ms} ms → {OutBytes} bytes", id, sw.ElapsedMilliseconds, new FileInfo(path).Length);
+    }
+    else
+    {
+        app.Logger.LogInformation("Serving cached EPUB for {Id} ({OutBytes} bytes)", id, new FileInfo(path).Length);
     }
 
     var fileName = Sanitize($"{author} - {title}") + ".epub";

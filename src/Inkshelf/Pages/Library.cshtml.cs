@@ -1,4 +1,5 @@
 using Inkshelf.Abs;
+using Inkshelf.Convert;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -10,7 +11,8 @@ public class LibraryModel : PageModel
     public const int SearchLimit = 25;
     private readonly AbsSession _session;
     private readonly AbsClient _client;
-    public LibraryModel(AbsSession session, AbsClient client) { _session = session; _client = client; }
+    private readonly EpubCache _cache;
+    public LibraryModel(AbsSession session, AbsClient client, EpubCache cache) { _session = session; _client = client; _cache = cache; }
 
     [FromRoute] public string Id { get; set; } = "";
     [FromQuery] public string? Q { get; set; }
@@ -55,8 +57,44 @@ public class LibraryModel : PageModel
         var result = await _session.ExecuteAsync(
             (tok, c) => _client.GetItemsAsync(tok, Id, zeroPage, PageSize, filter, Sort, Desc, c), ct);
         Items = result.Results;
+        _structured = await FetchStructuredAsync(Items, ct);
         Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
         return Page();
+    }
+
+    // Expanded media (structured authors/series + ebookFile) for the current
+    // page, keyed by item id, from one batch call. A batch failure leaves it
+    // empty and rows fall back to the comma-joined name strings.
+    private Dictionary<string, AbsBatchMedia> _structured = new();
+
+    private async Task<Dictionary<string, AbsBatchMedia>> FetchStructuredAsync(List<AbsItem> items, CancellationToken ct)
+    {
+        var ids = items.Select(i => i.Id).ToList();
+        if (ids.Count == 0) return new();
+        try { return await _session.ExecuteAsync((tok, c) => _client.GetItemsMetadataBatchAsync(tok, ids, c), ct); }
+        catch (HttpRequestException) { return new(); }
+    }
+
+    // Row view-model for a listing item: structured author/series links plus
+    // whether a converted EPUB is already cached for this device (so the row can
+    // show it downloads instantly).
+    public ItemRowModel RowFor(AbsItem item)
+    {
+        _structured.TryGetValue(item.Id, out var media);
+        return new ItemRowModel(item, media?.Metadata?.Authors, media?.Metadata?.Series, IsCached(item, media));
+    }
+
+    // A convert is cached only for the exact device size (the cache key includes
+    // it), so we need the screen cookie; on the first load (before the layout
+    // script has set it) this reports false, which self-corrects on next render.
+    private bool IsCached(AbsItem item, AbsBatchMedia? media)
+    {
+        var fmt = item.Media?.EbookFormat;
+        if (fmt != "cbz" && fmt != "cbr") return false;
+        var efm = media?.EbookFile?.Metadata;
+        if (efm is null) return false;
+        var (w, h, _) = ScreenTarget.FromCookie(Request.Cookies["scr"]);
+        return _cache.TryGet(item.Id, efm.Size, efm.MtimeMs, w, h, out _);
     }
 
     // Turn ?filter / ?author / ?series into an ABS filter string. Author/series

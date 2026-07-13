@@ -5,12 +5,14 @@ public class EpubCache
     private readonly string _dir;
     public EpubCache(string dir) { _dir = dir; Directory.CreateDirectory(_dir); }
 
-    public string PathFor(string itemId, long size, long mtimeMs) =>
-        Path.Combine(_dir, $"{itemId}-{size}-{mtimeMs}.epub");
+    // The downscale target (maxW×maxH) is part of the key: two devices with
+    // different screen resolutions must not be served each other's variant.
+    public string PathFor(string itemId, long size, long mtimeMs, int maxW, int maxH) =>
+        Path.Combine(_dir, $"{itemId}-{size}-{mtimeMs}-{maxW}x{maxH}.epub");
 
-    public bool TryGet(string itemId, long size, long mtimeMs, out string path)
+    public bool TryGet(string itemId, long size, long mtimeMs, int maxW, int maxH, out string path)
     {
-        path = PathFor(itemId, size, mtimeMs);
+        path = PathFor(itemId, size, mtimeMs, maxW, maxH);
         return File.Exists(path);
     }
 
