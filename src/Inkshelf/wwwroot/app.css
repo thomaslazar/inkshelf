@@ -1,10 +1,12 @@
 body { font-family: serif; margin: 1rem; line-height: 1.5; color: #000; background: #fff; }
 a { color: #000; }
 img { max-width: 100%; height: auto; }
-.item { display: flex; gap: 1rem; align-items: flex-start; padding: .5rem 0; border-bottom: 1px solid #ccc; }
-/* Fixed square cover box so every row's text starts at the same left offset,
-   regardless of the cover's aspect ratio (or whether it loaded at all). */
-.item .cover { flex: 0 0 72px; width: 72px; height: 72px; object-fit: contain; background: #f0f0f0; }
+/* No flex `gap` / `object-fit` — the Tolino's browser ignores both. Use a
+   fixed square cover slot (so text always starts at the same left offset) with
+   a margin for spacing; the image keeps its natural ratio via max-width/height. */
+.item { display: flex; align-items: flex-start; padding: .5rem 0; border-bottom: 1px solid #ccc; }
+.item .cover { flex: 0 0 72px; width: 72px; height: 72px; margin-right: 1rem; text-align: center; }
+.item .cover img { max-width: 72px; max-height: 72px; width: auto; height: auto; }
 .item .body { flex: 1 1 auto; min-width: 0; }
 nav.pager a { margin-right: 1rem; }
 .topbar { display: flex; align-items: center; gap: 1rem; padding-bottom: .5rem; border-bottom: 1px solid #ccc; margin-bottom: 1rem; flex-wrap: wrap; }

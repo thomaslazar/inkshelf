@@ -13,7 +13,7 @@
         : m!.SeriesName!.Split(", ", System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
 }
 <div class="item">
-    <img class="cover" src="/cover/@Model.Id?w=120" alt="" />
+    <span class="cover"><img src="/cover/@Model.Id?w=120" alt="" /></span>
     <div class="body">
         <strong>@(m?.Title ?? "(untitled)")</strong><br />
         @for (var i = 0; i < authors.Length; i++)
