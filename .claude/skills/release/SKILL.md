@@ -105,7 +105,20 @@ Format:
 **GATE: open `release-notes.md` for the human to review and approve.** Make any
 requested edits and show again.
 
-Prepend the notes to `CHANGELOG.md` (keep its top header block intact) and commit:
+Add the notes to `CHANGELOG.md`. If the file does not exist yet (the first
+release), create it with this header block, then the entry:
+
+```markdown
+# Changelog
+
+All notable changes to Inkshelf are documented here.
+Format follows [Keep a Changelog](https://keepachangelog.com/).
+
+{release-notes.md contents}
+```
+
+On later releases, prepend the new entry directly under the header block,
+above the previous entries. Then commit:
 
 ```bash
 git add CHANGELOG.md

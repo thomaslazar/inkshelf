@@ -133,34 +133,15 @@ git commit -m "chore: add .editorconfig and normalize formatting"
 
 ---
 
-## Task 3: CHANGELOG + release-notes gitignore
+## Task 3: release-notes gitignore
 
 **Files:**
-- Create: `CHANGELOG.md`
 - Modify: `.gitignore`
 
-- [ ] **Step 1: Create `CHANGELOG.md`**
+Do NOT create `CHANGELOG.md` here — the changelog is an output of the release
+skill only (it creates the file on the first release).
 
-```markdown
-# Changelog
-
-All notable changes to Inkshelf are documented here.
-Format follows [Keep a Changelog](https://keepachangelog.com/).
-
-## v0.1.0 — 2026-07-13
-
-### Highlights
-- Initial release: a thin, server-rendered Audiobookshelf web client for
-  e-reader browsers (near-zero JavaScript), deployable as a sidecar container.
-
-### Features
-- feat: log in with Audiobookshelf credentials (token stored in an encrypted cookie)
-- feat: list libraries and browse a library's items, paginated with cover thumbnails
-- feat: transparent access-token refresh on 401
-- feat: cover images proxied through the app
-```
-
-- [ ] **Step 2: Gitignore generated release notes**
+- [ ] **Step 1: Gitignore generated release notes**
 
 Append to `.gitignore`:
 
@@ -169,11 +150,11 @@ Append to `.gitignore`:
 release-notes.md
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 2: Commit**
 
 ```bash
-git add CHANGELOG.md .gitignore
-git commit -m "docs: add changelog seeded with v0.1.0"
+git add .gitignore
+git commit -m "chore: gitignore generated release notes"
 ```
 
 ---
@@ -422,7 +403,7 @@ In GitHub → the `inkshelf` package → Package settings → change visibility 
 
 ## Self-Review notes
 
-- **Spec coverage:** workflow triggers/jobs/tags (T4), release skill (T5), version+UA (T1), CHANGELOG (T3), .editorconfig+format (T2), README (T6), comment de-identification (T1), release-notes gitignore (T3), public-package step (T7). All covered.
+- **Spec coverage:** workflow triggers/jobs/tags (T4), release skill incl. CHANGELOG creation (T5), version+UA (T1), .editorconfig+format (T2), README (T6), comment de-identification (T1), release-notes gitignore (T3), public-package step (T7). CHANGELOG is created by the release skill, not pre-seeded. All covered.
 - **Format gate ordering:** `.editorconfig` (T2) lands before the workflow relies on `--verify-no-changes`; T2 normalizes existing code so CI is green on first PR.
 - **PR safety:** `image` job gated on `github.event_name != 'pull_request'`, so PRs never push.
 - **Known follow-up:** live smoke test in CI deferred (needs seeded-ABS harness); noted in the release skill preflight.

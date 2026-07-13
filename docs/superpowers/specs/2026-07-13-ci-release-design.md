@@ -87,8 +87,9 @@ artifact attach.
   pre-1.0). The `AbsClient` User-Agent becomes `Inkshelf/<version>` read from
   the assembly informational/version at startup instead of the hardcoded
   `Inkshelf/1.0`.
-- **`CHANGELOG.md`:** created, seeded with a `v0.1.0` entry summarizing the
-  shipped initial release (login, libraries, paginated items, covers).
+- **`CHANGELOG.md`:** NOT created here. The changelog is an output of the
+  release skill only — it creates the file (with its header block) on the first
+  release and prepends entries thereafter.
 - **`.editorconfig`:** minimal C# rules so `dotnet format --verify-no-changes`
   is deterministic in CI (avoid churn from default heuristics).
 - **`Program.cs`:** generalize the existing reverse-proxy comment (currently
