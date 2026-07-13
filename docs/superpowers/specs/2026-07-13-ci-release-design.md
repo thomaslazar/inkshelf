@@ -86,11 +86,12 @@ artifact attach.
 
 ## Supporting changes
 
-- **`Inkshelf.csproj`:** add `<Version>1.0.0</Version>` (seed). The
-  `AbsClient` User-Agent becomes `Inkshelf/<version>` read from the assembly
-  informational/version at startup instead of the hardcoded `Inkshelf/1.0`.
-- **`CHANGELOG.md`:** created, seeded with a `v1.0.0` entry summarizing the
-  shipped v1 (login, libraries, paginated items, covers).
+- **`Inkshelf.csproj`:** add `<Version>0.1.0</Version>` (seed; project is
+  pre-1.0). The `AbsClient` User-Agent becomes `Inkshelf/<version>` read from
+  the assembly informational/version at startup instead of the hardcoded
+  `Inkshelf/1.0`.
+- **`CHANGELOG.md`:** created, seeded with a `v0.1.0` entry summarizing the
+  shipped initial release (login, libraries, paginated items, covers).
 - **`.editorconfig`:** minimal C# rules so `dotnet format --verify-no-changes`
   is deterministic in CI (avoid churn from default heuristics).
 - **`Program.cs`:** generalize the existing reverse-proxy comment (currently
