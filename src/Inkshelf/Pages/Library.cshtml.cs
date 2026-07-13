@@ -48,7 +48,7 @@ public class LibraryModel : PageModel
         var filter = await ResolveFilterAsync(ct);
         var zeroPage = Math.Max(0, page - 1);
         var result = await _session.ExecuteAsync(
-            (tok, c) => _client.GetItemsAsync(tok, Id, zeroPage, PageSize, filter, c), ct);
+            (tok, c) => _client.GetItemsAsync(tok, Id, zeroPage, PageSize, filter, ct: c), ct);
         Items = result.Results;
         Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
         return Page();

@@ -50,15 +50,36 @@ public class AbsClient
     }
 
     public async Task<AbsItemsPage> GetItemsAsync(string accessToken, string libraryId,
-        int page, int limit, string? filter = null, CancellationToken ct = default)
+        int page, int limit, string? filter = null, string? sort = null, bool desc = false,
+        CancellationToken ct = default)
     {
         // Full item JSON (no minified) so author/series carry ids for filter links.
         var url = $"/api/libraries/{Uri.EscapeDataString(libraryId)}/items?limit={limit}&page={page}";
         if (!string.IsNullOrEmpty(filter))
             url += $"&filter={Uri.EscapeDataString(filter)}";
+        if (!string.IsNullOrEmpty(sort))
+        {
+            url += $"&sort={Uri.EscapeDataString(sort)}";
+            if (desc) url += "&desc=1";
+        }
         using var res = await SendAuthedAsync(HttpMethod.Get, url, accessToken, ct);
         return await res.Content.ReadFromJsonAsync<AbsItemsPage>(ct)
             ?? new AbsItemsPage(new(), 0, limit, page);
+    }
+
+    public async Task<AbsItemDetail> GetItemDetailAsync(string accessToken, string itemId, CancellationToken ct = default)
+    {
+        using var res = await SendAuthedAsync(HttpMethod.Get, $"/api/items/{Uri.EscapeDataString(itemId)}", accessToken, ct);
+        return await res.Content.ReadFromJsonAsync<AbsItemDetail>(ct)
+            ?? new AbsItemDetail(null);
+    }
+
+    public async Task<(Stream Content, string ContentType)> GetEbookStreamAsync(string accessToken, string itemId, CancellationToken ct = default)
+    {
+        var url = $"/api/items/{Uri.EscapeDataString(itemId)}/ebook";
+        var res = await SendAuthedAsync(HttpMethod.Get, url, accessToken, ct); // caller owns the stream
+        var type = res.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        return (await res.Content.ReadAsStreamAsync(ct), type);
     }
 
     public async Task<AbsSearchResults> SearchAsync(string accessToken, string libraryId,

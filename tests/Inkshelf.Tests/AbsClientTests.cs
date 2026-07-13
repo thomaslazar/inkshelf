@@ -90,6 +90,30 @@ public class AbsClientTests
     }
 
     [Fact]
+    public async Task GetItemsAsync_appends_sort_and_desc()
+    {
+        var h = new StubHandler(_ => StubHandler.Json("""{"results":[],"total":0,"limit":10,"page":0}"""));
+        await Client(h).GetItemsAsync("acc", "lib1", 0, 10, filter: null, sort: "addedAt", desc: true);
+        var q = System.Web.HttpUtility.ParseQueryString(h.Last!.RequestUri!.Query);
+        Assert.Equal("addedAt", q["sort"]);
+        Assert.Equal("1", q["desc"]);
+    }
+
+    [Fact]
+    public async Task GetItemDetailAsync_parses_ebook_and_metadata()
+    {
+        var h = new StubHandler(_ => StubHandler.Json(
+            """{"media":{"metadata":{"title":"Vol 1","authorName":"A Artist","authors":[{"id":"a1","name":"A Artist"}],"series":[{"id":"s1","name":"Saga","sequence":"1"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"Vol1.cbz","size":123,"mtimeMs":999}}}}"""));
+        var d = await Client(h).GetItemDetailAsync("acc", "i1");
+        Assert.Equal("Vol 1", d.Media!.Metadata!.Title);
+        Assert.Equal("cbz", d.Media!.EbookFile!.EbookFormat);
+        Assert.Equal(123, d.Media!.EbookFile!.Metadata!.Size);
+        Assert.Equal(999, d.Media!.EbookFile!.Metadata!.MtimeMs);
+        Assert.Equal("Vol1.cbz", d.Media!.EbookFile!.Metadata!.Filename);
+        Assert.Equal("/api/items/i1", h.Last!.RequestUri!.AbsolutePath);
+    }
+
+    [Fact]
     public async Task GetLibrariesAsync_parses()
     {
         var h = new StubHandler(_ => StubHandler.Json(
