@@ -9,16 +9,17 @@ img { max-width: 100%; height: auto; }
 .item .cover img { max-width: 72px; max-height: 72px; width: auto; height: auto; }
 .item .body { flex: 1 1 auto; min-width: 0; }
 nav.pager a { margin-right: 1rem; }
-.topbar { display: flex; align-items: center; gap: 1rem; padding-bottom: .5rem; border-bottom: 1px solid #ccc; margin-bottom: 1rem; flex-wrap: wrap; }
+.topbar { display: flex; align-items: center; padding-bottom: .5rem; border-bottom: 1px solid #ccc; margin-bottom: 1rem; flex-wrap: wrap; }
 .topbar .brand { font-weight: bold; text-decoration: none; }
 /* Logo mark beside the page heading. Sized relative to the heading; the
    explicit height is needed because the global `img { height:auto }` rule
    would otherwise blow it up to full width. */
-.page-title { display: flex; align-items: center; gap: .5rem; margin: 0; }
-.title-icon { height: 1.6em; width: auto; }
-.page-head { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin: 1rem 0; }
+/* No flex `gap` on the Tolino — the icon is inline with a margin instead. */
+.page-title { margin: 0; }
+.title-icon { height: 1.4em; width: auto; vertical-align: -0.25em; margin-right: .4rem; }
+.page-head { display: flex; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
 .crumb-sep { color: #666; }
-.fav-form { margin: 0; }
+.fav-form { margin: 0 0 0 .6rem; }
 .fav-star { border: none; background: none; cursor: pointer; font-size: 1.8rem; line-height: 1; padding: 0; }
 .logo { text-align: center; }
 .logo img { max-width: 320px; width: 60%; height: auto; }
