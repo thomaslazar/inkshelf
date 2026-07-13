@@ -1,22 +1,82 @@
 @page
 @model Inkshelf.Pages.LibraryModel
-<p><a href="/">&larr; Libraries</a></p>
-<h1>Items</h1>
-@if (Model.Items.Count == 0) { <p>No items.</p> }
-@foreach (var item in Model.Items)
-{
-    var m = item.Media?.Metadata;
-    <div class="item">
-        <img src="/cover/@item.Id?w=120" alt="" width="60" />
-        <div>
-            <strong>@(m?.Title ?? "(untitled)")</strong><br />
-            @if (!string.IsNullOrEmpty(m?.AuthorName)) { <span>@m!.AuthorName</span> }
-            @if (!string.IsNullOrEmpty(m?.SeriesName)) { <span> &middot; @m!.SeriesName</span> }
-        </div>
-    </div>
+@{ ViewData["LibraryId"] = Model.Id; }
+@section topbar {
+    <form class="searchbar" method="get" action="/library/@Model.Id">
+        <input type="search" name="q" value="@Model.Q" placeholder="Search…" />
+        <button type="submit">Search</button>
+    </form>
 }
-<nav class="pager">
-    @if (Model.Pager.HasPrev) { <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage - 1)">&larr; Prev</a> }
-    <span>Page @Model.Pager.DisplayPage of @Math.Max(1, Model.Pager.TotalPages)</span>
-    @if (Model.Pager.HasNext) { <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage + 1)">Next &rarr;</a> }
-</nav>
+
+<h1>Items</h1>
+
+@if (Model.IsSearch)
+{
+    <p>Results for "<strong>@Model.Q</strong>" · <a href="/library/@Model.Id">clear</a></p>
+    var books = Model.Search?.Book ?? new();
+    var series = Model.Search?.Series ?? new();
+    var authors = Model.Search?.Authors ?? new();
+    if (books.Count == 0 && series.Count == 0 && authors.Count == 0)
+    {
+        <p>No matches.</p>
+    }
+    if (books.Count > 0)
+    {
+        <h2>Books</h2>
+        foreach (var b in books)
+        {
+            <partial name="_ItemRow" model="b.LibraryItem" />
+        }
+    }
+    if (series.Count > 0)
+    {
+        <h2>Series</h2>
+        <ul>
+            @foreach (var s in series)
+            {
+                <li><a href="@Model.SeriesHref(s.Series.Id)">@s.Series.Name</a></li>
+            }
+        </ul>
+    }
+    if (authors.Count > 0)
+    {
+        <h2>Authors</h2>
+        <ul>
+            @foreach (var a in authors)
+            {
+                <li><a href="@Model.AuthorHref(a.Id)">@a.Name</a></li>
+            }
+        </ul>
+    }
+}
+else
+{
+    if (!string.IsNullOrEmpty(Model.Filter))
+    {
+        <p>Filtered · <a href="/library/@Model.Id">clear</a></p>
+    }
+    var filterQs = string.IsNullOrEmpty(Model.Filter) ? "" : $"&filter={System.Uri.EscapeDataString(Model.Filter)}";
+    <nav class="pager">
+        @if (Model.Pager.HasPrev)
+        {
+            <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage - 1)@filterQs">&larr; Prev</a>
+        }
+        <span>Page @Model.Pager.DisplayPage of @Math.Max(1, Model.Pager.TotalPages)</span>
+        @if (Model.Pager.HasNext)
+        {
+            <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage + 1)@filterQs">Next &rarr;</a>
+        }
+    </nav>
+    @if (Model.Items.Count == 0)
+    {
+        <p>No items.</p>
+    }
+    @foreach (var item in Model.Items)
+    {
+        <partial name="_ItemRow" model="item" />
+    }
+    <form method="post" action="/favorite">
+        <input type="hidden" name="libraryId" value="@Model.Id" />
+        <button type="submit">@(Model.IsFavorite ? "★ Favorited (unset)" : "☆ Set favorite")</button>
+    </form>
+}
