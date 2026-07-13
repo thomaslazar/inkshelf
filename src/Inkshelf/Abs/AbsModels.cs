@@ -26,7 +26,8 @@ public record AbsItem(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("media")] AbsMedia? Media);
 public record AbsMedia(
-    [property: JsonPropertyName("metadata")] AbsMetadata? Metadata);
+    [property: JsonPropertyName("metadata")] AbsMetadata? Metadata,
+    [property: JsonPropertyName("coverPath")] string? CoverPath = null);
 public record AbsMetadata(
     [property: JsonPropertyName("title")] string? Title,
     [property: JsonPropertyName("authorName")] string? AuthorName,

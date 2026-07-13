@@ -13,7 +13,14 @@
         : m!.SeriesName!.Split(", ", System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
 }
 <div class="item">
-    <span class="cover"><img src="/cover/@Model.Id?w=120" alt="" /></span>
+    @if (!string.IsNullOrEmpty(Model.Media?.CoverPath))
+    {
+        <span class="cover"><img src="/cover/@Model.Id?w=120" alt="" /></span>
+    }
+    else
+    {
+        <span class="cover placeholder">@(string.IsNullOrEmpty(m?.Title) ? "?" : m!.Title!.Substring(0, 1).ToUpperInvariant())</span>
+    }
     <div class="body">
         <strong>@(m?.Title ?? "(untitled)")</strong><br />
         @for (var i = 0; i < authors.Length; i++)
