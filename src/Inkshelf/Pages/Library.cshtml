@@ -2,7 +2,7 @@
 @model Inkshelf.Pages.LibraryModel
 @{ ViewData["LibraryId"] = Model.Id; }
 
-<div class="page-head">
+<div class="page-head" id="top">
     <h1 class="page-title">
         <img src="~/img/icon-black.png" alt="" class="title-icon" />
         <a href="/?all=1">Libraries</a> <span class="crumb-sep">›</span> @Model.LibraryName
@@ -23,7 +23,7 @@
     var books = Model.SearchResults?.Book ?? new();
     var series = Model.SearchResults?.Series ?? new();
     var authors = Model.SearchResults?.Authors ?? new();
-    <p id="results-top">Results for "<strong>@Model.Q</strong>" · <a href="/library/@Model.Id">clear</a></p>
+    <p>Results for "<strong>@Model.Q</strong>" · <a href="/library/@Model.Id">clear</a></p>
     <nav class="tabs">
         @if (books.Count > 0) { <a href="#books">Books (@books.Count)</a> } else { <span>Books (0)</span> }
         <span class="crumb-sep">·</span>
@@ -37,7 +37,7 @@
     }
     if (books.Count > 0)
     {
-        <h2 id="books">Books <a class="totop" href="#results-top">↑</a></h2>
+        <h2 id="books">Books <a class="totop" href="#top">↑</a></h2>
         foreach (var b in books)
         {
             <partial name="_ItemRow" model="b.LibraryItem" />
@@ -45,7 +45,7 @@
     }
     if (series.Count > 0)
     {
-        <h2 id="series">Series <a class="totop" href="#results-top">↑</a></h2>
+        <h2 id="series">Series <a class="totop" href="#top">↑</a></h2>
         <ul>
             @foreach (var s in series)
             {
@@ -55,7 +55,7 @@
     }
     if (authors.Count > 0)
     {
-        <h2 id="authors">Authors <a class="totop" href="#results-top">↑</a></h2>
+        <h2 id="authors">Authors <a class="totop" href="#top">↑</a></h2>
         <ul>
             @foreach (var a in authors)
             {
