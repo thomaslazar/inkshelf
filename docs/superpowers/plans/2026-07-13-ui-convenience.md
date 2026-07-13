@@ -14,7 +14,7 @@
 - Page size **10**; pager at the **top** only.
 - Search limit **25**, not paged; per-library (`GET /api/libraries/{id}/search?q=`).
 - Filter encoding: `<group>.<base64(id)>` where base64 = `Convert.ToBase64String(Encoding.UTF8.GetBytes(id))`; URL-encode the whole value when it goes into a link href or the ABS query.
-- Items list drops `minified=1` (to get author/series ids); ebook detection moves to `media.ebookFile.ebookFormat`.
+- Items list drops `minified=1` (to get author/series ids). No download/ebook features in this iteration (scrapped earlier; out of scope).
 - E-ink uses the **black** logo/icon; inverted variants only for GitHub dark mode.
 - No private-infra references. Conventional Commits; no attribution trailers.
 
@@ -23,8 +23,7 @@
 - Search `GET /api/libraries/{id}/search?q=&limit=` →
   `{ "book": [{ "libraryItem": <expanded item> }], "series": [{ "series": { "id","name" } }], "authors": [{ "id","name","numBooks" }], ... }`.
 - Full item (no `minified`): `media.metadata.authors: [{id,name}]`,
-  `media.metadata.series: [{id,name,sequence}]`, `media.ebookFile.ebookFormat`,
-  `media.ebookFile.metadata.filename`.
+  `media.metadata.series: [{id,name,sequence}]` (other full-item fields ignored).
 
 ---
 
@@ -36,8 +35,8 @@
 
 **Interfaces:**
 - Produces a disposable ABS at host port **13379** with a seeded book library
-  (13 ebook items across several authors/series + 2 audio-only items) and root
-  `root`/`root`; and `docker/smoke-test.sh` driving Inkshelf's routes.
+  (~15 items across several authors/series) and root `root`/`root`; and
+  `docker/smoke-test.sh` driving Inkshelf's routes.
 - **Isolation:** compose project `inkshelf-it`, port 13379, prefixed volumes —
   never touches abs-cli's stack (project `docker`, port 13378).
 
@@ -64,7 +63,7 @@ volumes:
   abs-metadata:
 ```
 
-- [ ] **Step 2: `docker/seed.sh`** (uploads ebooks; adapted from abs-cli's seed)
+- [ ] **Step 2: `docker/seed.sh`** (uploads items via EPUB media; adapted from abs-cli's seed)
 
 ```bash
 #!/usr/bin/env bash
@@ -109,34 +108,31 @@ z.write(b+'/mimetype','mimetype',compress_type=zipfile.ZIP_STORED)
 z.write(b+'/META-INF/container.xml','META-INF/container.xml')
 z.write(b+'/content.opf','content.opf'); z.write(b+'/c1.xhtml','c1.xhtml'); z.close()
 PY
-# Minimal PDF and a tiny silent MP3.
-printf '%%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>endobj\ntrailer<</Root 1 0 R>>\n%%%%EOF\n' > "$TMP/book.pdf"
-python3 -c "open('$TMP/a.mp3','wb').write((bytes([0xFF,0xFB,0x90,0x00])+b'\x00'*413)*38)"
 
-upload() { # title author series file ext
+upload() { # title author series
     curl -sf -X POST "$ABS_URL/api/upload" -H "$AUTH" \
         -F "title=$1" -F "author=$2" ${3:+-F "series=$3"} \
         -F "library=$LIBRARY_ID" -F "folder=$FOLDER_ID" \
-        -F "0=@$4;filename=book.$5" >/dev/null
-    echo "  + $2 — $1${3:+ ($3)} [$5]"
+        -F "0=@$TMP/book.epub;filename=book.epub" >/dev/null
+    echo "  + $2 — $1${3:+ ($3)}"
 }
 
-echo "Uploading ebooks + a couple audio-only items..."
-upload "The Final Empire"      "Brandon Sanderson" "Mistborn"           "$TMP/book.epub" epub
-upload "The Well of Ascension" "Brandon Sanderson" "Mistborn"           "$TMP/book.epub" epub
-upload "The Hero of Ages"      "Brandon Sanderson" "Mistborn"           "$TMP/book.epub" epub
-upload "Storm Front"           "Jim Butcher"       "The Dresden Files"  "$TMP/book.epub" epub
-upload "Fool Moon"             "Jim Butcher"       "The Dresden Files"  "$TMP/book.epub" epub
-upload "Grave Peril"           "Jim Butcher"       "The Dresden Files"  "$TMP/book.epub" epub
-upload "Rivers of London"      "Ben Aaronovitch"   "Rivers of London"   "$TMP/book.epub" epub
-upload "Moon Over Soho"        "Ben Aaronovitch"   "Rivers of London"   "$TMP/book.epub" epub
-upload "Uprooted"              "Naomi Novik"       ""                   "$TMP/book.epub" epub
-upload "Redshirts"             "John Scalzi"       ""                   "$TMP/book.epub" epub
-upload "Dune"                  "Frank Herbert"     "Dune"               "$TMP/book.pdf"  pdf
-upload "Dune Messiah"          "Frank Herbert"     "Dune"               "$TMP/book.pdf"  pdf
-upload "Little Brother"        "Cory Doctorow"     ""                   "$TMP/book.pdf"  pdf
-upload "Audio Only One"        "Studio Audio"      ""                   "$TMP/a.mp3"     mp3
-upload "Audio Only Two"        "Studio Audio"      ""                   "$TMP/a.mp3"     mp3
+echo "Uploading items (EPUB media; the file just makes ABS create a book item)..."
+upload "The Final Empire"      "Brandon Sanderson" "Mistborn"
+upload "The Well of Ascension" "Brandon Sanderson" "Mistborn"
+upload "The Hero of Ages"      "Brandon Sanderson" "Mistborn"
+upload "Storm Front"           "Jim Butcher"       "The Dresden Files"
+upload "Fool Moon"             "Jim Butcher"       "The Dresden Files"
+upload "Grave Peril"           "Jim Butcher"       "The Dresden Files"
+upload "Rivers of London"      "Ben Aaronovitch"   "Rivers of London"
+upload "Moon Over Soho"        "Ben Aaronovitch"   "Rivers of London"
+upload "Uprooted"              "Naomi Novik"       ""
+upload "Redshirts"             "John Scalzi"       ""
+upload "Dune"                  "Frank Herbert"     "Dune"
+upload "Dune Messiah"          "Frank Herbert"     "Dune"
+upload "Little Brother"        "Cory Doctorow"     ""
+upload "Old Man's War"         "John Scalzi"       ""
+upload "Spinning Silver"       "Naomi Novik"       ""
 rm -rf "$TMP"
 
 echo "Scanning..."
@@ -163,13 +159,13 @@ INKSHELF_URL="${INKSHELF_URL:-http://localhost:5099}"
 JAR=$(mktemp)
 fail() { echo "SMOKE FAIL: $1"; exit 1; }
 
-# Discover library id + an ebook item id via ABS (root token).
+# Discover library id + an item id via ABS (root token).
 TOKEN=$(curl -sf -X POST "$ABS_URL/login" -H 'Content-Type: application/json' -H 'X-Return-Tokens: true' \
     -d '{"username":"root","password":"root"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['user']['accessToken'])")
 LIBRARY_ID=$(curl -sf "$ABS_URL/api/libraries" -H "Authorization: Bearer $TOKEN" \
     | python3 -c "import sys,json;print(json.load(sys.stdin)['libraries'][0]['id'])")
-EBOOK_ID=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=100" -H "Authorization: Bearer $TOKEN" \
-    | python3 -c "import sys,json;print(next(r['id'] for r in json.load(sys.stdin)['results'] if r.get('media',{}).get('ebookFile')))")
+ITEM_ID=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=1" -H "Authorization: Bearer $TOKEN" \
+    | python3 -c "import sys,json;print(json.load(sys.stdin)['results'][0]['id'])")
 
 # Login through Inkshelf.
 curl -sf -c "$JAR" "$INKSHELF_URL/login" -o /tmp/s_login.html
@@ -184,7 +180,7 @@ check() { # path substring
     echo "  ok: $1"
 }
 check "/?all=1" "Test Library"
-check "/library/$LIBRARY_ID" "Download"
+check "/library/$LIBRARY_ID" "Items"
 check "/library/$LIBRARY_ID?q=Dune" "Dune"
 
 FILTER=$(python3 -c "import base64;print('series.'+base64.b64encode(b'x').decode())")  # placeholder; real id below
@@ -193,11 +189,9 @@ SERIES_FILTER=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/search?q=Mistborn&l
     | python3 -c "import sys,json,base64,urllib.parse;s=json.load(sys.stdin)['series'][0]['series']['id'];print(urllib.parse.quote('series.'+base64.b64encode(s.encode()).decode()))")
 check "/library/$LIBRARY_ID?filter=$SERIES_FILTER" "clear"
 
-for p in "/cover/$EBOOK_ID" "/download/$EBOOK_ID"; do
-    code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$INKSHELF_URL$p")
-    [ "$code" = "200" ] || fail "GET $p expected 200 got $code"
-    echo "  ok: $p ($code)"
-done
+code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$INKSHELF_URL/cover/$ITEM_ID")
+[ "$code" = "200" ] || fail "GET /cover/$ITEM_ID expected 200 got $code"
+echo "  ok: /cover/$ITEM_ID ($code)"
 rm -f "$JAR"
 echo "SMOKE PASS"
 ```
@@ -387,7 +381,6 @@ git commit -m "docs: add logo to the README"
 - Produces:
   - `AbsFilter.Encode(string group, string id)` → `"<group>.<base64>"`.
   - `AbsMetadata` gains `Authors: List<AbsRef>` and `Series: List<AbsSeriesRef>`.
-  - `AbsMedia` gains `EbookFile` (`{ EbookFormat, Metadata { Filename } }`); a computed `EbookFormat` convenience.
   - `AbsClient.GetItemsAsync(token, libId, page, limit, string? filter = null)`.
   - `AbsClient.SearchAsync(token, libId, q, limit)` → `AbsSearchResults`.
 - Consumes: existing `SendAuthedAsync`.
@@ -416,15 +409,14 @@ public class AbsFilterTests
 
 ```csharp
 [Fact]
-public async Task GetItemsAsync_full_metadata_parses_authors_series_ebook()
+public async Task GetItemsAsync_full_metadata_parses_authors_and_series()
 {
     var h = new StubHandler(_ => StubHandler.Json(
-        """{"results":[{"id":"i1","media":{"metadata":{"title":"Dune","authors":[{"id":"a1","name":"Herbert"}],"series":[{"id":"s1","name":"Dune","sequence":"1"}]},"ebookFile":{"ebookFormat":"epub","metadata":{"filename":"Dune.epub"}}}}],"total":1,"limit":10,"page":0}"""));
+        """{"results":[{"id":"i1","media":{"metadata":{"title":"Dune","authors":[{"id":"a1","name":"Herbert"}],"series":[{"id":"s1","name":"Dune","sequence":"1"}]}}}],"total":1,"limit":10,"page":0}"""));
     var page = await Client(h).GetItemsAsync("acc", "lib1", 0, 10);
-    var m = page.Results[0].Media!;
-    Assert.Equal("a1", m.Metadata!.Authors![0].Id);
-    Assert.Equal("s1", m.Metadata!.Series![0].Id);
-    Assert.Equal("epub", m.EbookFormat);
+    var m = page.Results[0].Media!.Metadata!;
+    Assert.Equal("a1", m.Authors![0].Id);
+    Assert.Equal("s1", m.Series![0].Id);
     // no minified param
     Assert.DoesNotContain("minified", h.Last!.RequestUri!.Query);
 }
@@ -484,11 +476,7 @@ public record AbsItem(
     [property: JsonPropertyName("media")] AbsMedia? Media);
 
 public record AbsMedia(
-    [property: JsonPropertyName("metadata")] AbsMetadata? Metadata,
-    [property: JsonPropertyName("ebookFile")] AbsEbookFile? EbookFile = null)
-{
-    public string? EbookFormat => EbookFile?.EbookFormat;
-}
+    [property: JsonPropertyName("metadata")] AbsMetadata? Metadata);
 
 public record AbsMetadata(
     [property: JsonPropertyName("title")] string? Title,
@@ -517,18 +505,9 @@ public record AbsSeriesMatch(
     [property: JsonPropertyName("series")] AbsSeriesRef Series);
 ```
 
-Update the existing `AbsEbookFile` record (added in the download work) to include the format:
-
-```csharp
-public record AbsEbookFile(
-    [property: JsonPropertyName("ebookFormat")] string? EbookFormat = null,
-    [property: JsonPropertyName("metadata")] AbsEbookFileMetadata? Metadata = null);
-```
-
-(Keep `AbsEbookFileMetadata { Filename }`. Remove the old separate detail
-`AbsItemDetail`/`AbsDetailMedia` records only if now unused — the download
-endpoint's `GetEbookFilenameAsync` can reuse `AbsItem.Media.EbookFile.Metadata.Filename`.
-If simpler, leave the detail records; verify build.)
+(No ebook/download DTOs — that feature is not part of this iteration. Unmapped
+full-item JSON fields like `ebookFile`/`audioFiles` are ignored by
+`System.Text.Json`.)
 
 - [ ] **Step 6: Extend `AbsClient.cs`**
 
@@ -558,7 +537,6 @@ public async Task<AbsSearchResults> SearchAsync(string accessToken, string libra
 
 Note: `GetItemsAsync`'s signature adds `filter` before `ct`. Update the existing
 call site in `Library.cshtml.cs` (Task 6 rewrites it anyway) and any test.
-The download endpoint's `GetEbookFilenameAsync` is unchanged.
 
 - [ ] **Step 7: Run tests, verify pass**
 
@@ -800,10 +778,6 @@ public class LibraryModel : PageModel
                         <text> · </text><a href="@Model.SeriesHref(s.Id)">@s.Name@(string.IsNullOrEmpty(s.Sequence) ? "" : $" #{s.Sequence}")</a>
                     }
                 }
-                @if (!string.IsNullOrEmpty(item.Media?.EbookFormat))
-                {
-                    <br /><a href="/download/@item.Id">Download (@item.Media!.EbookFormat)</a>
-                }
             </div>
         </div>
     }
@@ -895,9 +869,8 @@ ABS_URL="http://$ABS_IP:80" INKSHELF_URL=http://localhost:5099 bash docker/smoke
 
 Browser check (login root/root): favicon; login wordmark; header icon →
 libraries; set a favorite → `/` jumps into it → Libraries link escapes; rows
-show clickable authors/series that filter; audio-only items show NO download
-link, ebooks do; `?q=Dune` returns grouped Books/Series/Authors; download of an
-epub/pdf works; 10/page with a top pager. Expect **SMOKE PASS**.
+show clickable authors/series that filter; `?q=Dune` returns grouped
+Books/Series/Authors; 10/page with a top pager. Expect **SMOKE PASS**.
 
 - [ ] **Step 1: Push + PR**
 
@@ -936,6 +909,6 @@ docker compose -f docker/docker-compose.yml down -v   # removes the transient AB
 - **Isolation:** T0 uses compose project `inkshelf-it`, port 13379, prefixed volumes — abs-cli's stack (project `docker`, port 13378) is untouched, so both run simultaneously.
 - **Seeded ABS reachability:** resolve the container IP (`docker inspect`), not `host.docker.internal`, from the dev container.
 - **`minified` removal:** the existing `GetItemsAsync_builds_query_and_parses` test asserts `minified=1` — Task 4 Step 7 updates it. Flagged so it isn't missed.
-- **Ebook detection moved** to `media.ebookFile.ebookFormat`; `AbsMedia.EbookFormat` is now a computed property — the download button gate and the row both use it.
+- **No download/ebook features** in this iteration (scrapped earlier). Dropping `minified=1` is solely to obtain author/series ids for clickable filters; unmapped full-item fields are ignored by the deserializer.
 - **Razor row rendering:** if the local-function-with-markup form fights the compiler, fall back to a `_ItemRow.cshtml` partial (called out in T6).
 - **Filter link encoding:** `Uri.EscapeDataString` on the whole `group.<b64>` value in hrefs and when passing to ABS; pager links carry the filter forward.

@@ -92,7 +92,8 @@ form. Keep it small (constrained width) for e-ink.
   `ebookFile`) travel only on the Inkshelf↔ABS hop; the e-reader still receives
   the same small HTML. Title still falls back to `metadata.title`; if the
   author/series arrays are empty the row shows nothing clickable there.
-- Cover + download link (when the item has an ebook) unchanged.
+- Cover unchanged. (No download affordance — that feature was scrapped and is
+  out of scope for this iteration.)
 
 ## Search + filtered listing
 
@@ -102,9 +103,8 @@ The library page (`/library/{id}`) supports three modes, chosen by query params:
 2. **Search** (`?q=<text>`): grouped results from
    `GET /api/libraries/{id}/search?q=&limit=`:
    - **Books** — matched items rendered like list rows (cover/title/author/
-     series + download link when the item has an ebook). The book match's item
-     is the expanded form, so its author/series are clickable filter links too,
-     exactly like the normal listing.
+     series). The book match's item is the expanded form, so its author/series
+     are clickable filter links too, exactly like the normal listing.
    - **Series** — each links to `/library/{id}?filter=series.<base64(seriesId)>`.
    - **Authors** — each links to `/library/{id}?filter=authors.<base64(authorId)>`.
    Search results are not paged (ABS caps them; use `limit=25`).
@@ -124,13 +124,10 @@ URL-encode when placing in the link (`+`/`/`/`=` are not URL-safe).
 
 ## Client / data additions (`AbsClient`, `AbsModels`)
 
-- **Items list drops `minified=1`** to obtain author/series ids. This moves
-  ebook detection from `media.ebookFormat` (minified only) to
-  `media.ebookFile.ebookFormat` (full). `AbsMedia` gains an `EbookFile`
-  (`{ EbookFormat, Metadata { Filename } }`, reusing/extending the existing
-  `AbsEbookFile`); the download button shows when `media.ebookFile?.ebookFormat`
-  is set. `AbsMetadata` gains `Authors: [{ Id, Name }]` and
-  `Series: [{ Id, Name, Sequence? }]` (the name strings stay for fallback).
+- **Items list drops `minified=1`** to obtain author/series ids (minified only
+  carries the name strings). `AbsMetadata` gains `Authors: [{ Id, Name }]` and
+  `Series: [{ Id, Name, Sequence? }]` (the name strings stay for fallback). The
+  extra full-item fields are simply ignored by the deserializer.
 - `GetItemsAsync(..., string? filter = null)` — appends `&filter=<value>` when
   set (value already `group.<b64>`, URL-encoded).
 - `SearchAsync(accessToken, libraryId, q, limit)` →
@@ -138,7 +135,7 @@ URL-encode when placing in the link (`+`/`/`/`=` are not URL-safe).
 - New DTOs:
   - `AbsSearchResults { List<AbsBookMatch> Book; List<AbsSeriesMatch> Series; List<AbsAuthorMatch> Authors; }`
   - `AbsBookMatch { AbsItem LibraryItem; }` (item is expanded → has
-    `media.metadata` and `media.ebookFormat`)
+    `media.metadata` with author/series arrays)
   - `AbsSeriesMatch { AbsSeries Series; }` where `AbsSeries { Id, Name }`
   - `AbsAuthorMatch { Id, Name }`
   - Exact JSON keys confirmed against the ABS source during implementation.
@@ -163,16 +160,16 @@ at once**:
   uses 13378), own named volumes (prefixed by the project name),
   `RATE_LIMIT_AUTH_MAX=0` so repeated logins during testing don't rate-limit.
 - `docker/seed.sh` — initializes root (`root`/`root`), creates a book library,
-  and uploads a set of **ebook** items (minimal generated EPUB + PDF) across
-  several authors and multiple series, plus a couple of audio-only items (so
-  the "no download button" case is covered). Enough items for **2+ pages** at
-  10/page, with distinct titles/authors/series for search and filter links.
-  Then triggers a scan and waits for the items to index.
+  and uploads ~15 items (each created from a minimal generated EPUB, which is
+  just the media file ABS needs to make a book item) across several authors and
+  multiple series. Enough for **2+ pages** at 10/page, with distinct
+  titles/authors/series for search and filter links. Then triggers a scan and
+  waits for the items to index.
 - `docker/smoke-test.sh` — drives Inkshelf's own HTTP routes end to end
   (login → cookie, libraries, items page, `?q=` search, `?filter=` listing,
-  `/cover/{id}`, `/download/{id}`), asserting status codes and key content. It
-  discovers a library id and an ebook item id via the ABS API (root token).
-  Runs against a running Inkshelf pointed at any ABS.
+  `/cover/{id}`), asserting status codes and key content. It discovers a
+  library id via the ABS API (root token). Runs against a running Inkshelf
+  pointed at any ABS.
 
 **Reaching the seeded ABS from the devcontainer:** `host.docker.internal` is
 unreliable inside the dev container, so resolve the ABS container IP and use
@@ -191,9 +188,8 @@ volumes are transient and never committed.
 - `AbsClient.SearchAsync` parses book/series/authors from a fixture (StubHandler).
 - `GetItemsAsync` includes `filter=` when supplied; omits it otherwise.
 - `AbsFilter.Encode` produces `group.<base64>` for a known id.
-- `GetItemsAsync` parses `metadata.authors[]`/`series[]` ids and
-  `media.ebookFile.ebookFormat` from a full (non-minified) item fixture, and
-  no longer sends `minified=1`.
+- `GetItemsAsync` parses `metadata.authors[]`/`series[]` ids from a full
+  (non-minified) item fixture, and no longer sends `minified=1`.
 - Favorite toggle: setting/clearing the cookie and the `/` auto-redirect vs
   `?all=1` bypass (WebApplicationFactory, no live ABS).
 - `Pager` math unchanged (existing tests stay).
@@ -204,7 +200,9 @@ volumes are transient and never committed.
 
 ## Out of scope
 
-- Item detail / reading pages (still rows + download only).
+- Item detail / reading pages (rows only).
+- Ebook download (scrapped after the earlier test; a proper implementation is a
+  separate future effort).
 - Sorting controls, multi-facet filtering, saved searches.
 - Global (cross-library) search.
 - Image resizing of the provided PNGs (used as-is; revisit if e-ink load is slow).
