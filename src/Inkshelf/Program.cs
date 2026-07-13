@@ -19,6 +19,10 @@ builder.Services.AddDataProtection()
     .SetApplicationName("inkshelf")
     .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 
+var cachePath = builder.Configuration["CachePath"]
+    ?? Path.Combine(builder.Environment.ContentRootPath, ".cache", "epub");
+Directory.CreateDirectory(cachePath);
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<TokenStore>();
 builder.Services.AddScoped<AbsSession>();

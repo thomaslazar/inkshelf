@@ -38,6 +38,7 @@ reference live in `CLAUDE.md`.
 |-------------------------|----------|-------------------------------------|
 | `ABS_URL`               | yes      | Base URL of the ABS server         |
 | `DataProtectionKeysPath`| no       | Filesystem path for persisted Data Protection keys. Default `<ContentRoot>/.keys`. Mount a volume here to keep users logged in across restarts. |
+| `CachePath`             | no       | Where converted EPUBs are cached. Default `<ContentRoot>/.cache/epub`. Conversions are cached and survive restarts when a volume is mounted here. |
 
 ## Running
 
