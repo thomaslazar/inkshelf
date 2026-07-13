@@ -20,12 +20,13 @@ builder.Services.AddDataProtection()
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<TokenStore>();
 builder.Services.AddScoped<AbsSession>();
+var absUserAgent = $"Inkshelf/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "0"}";
 builder.Services.AddHttpClient<AbsClient>(c =>
 {
     c.BaseAddress = new Uri(absUrl);
-    // Identify the client. Some reverse proxies fronting ABS (e.g. Cosmos)
-    // reject requests with no User-Agent with a 403 before they reach ABS.
-    c.DefaultRequestHeaders.UserAgent.ParseAdd("Inkshelf/1.0");
+    // Identify the client: some reverse proxies / WAFs in front of ABS reject
+    // requests with no User-Agent (HTTP 403) before they reach the server.
+    c.DefaultRequestHeaders.UserAgent.ParseAdd(absUserAgent);
 });
 builder.Services.AddRazorPages(options =>
 {
