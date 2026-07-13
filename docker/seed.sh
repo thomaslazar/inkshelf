@@ -45,6 +45,28 @@ open(sys.argv[1],'wb').write(
     + chunk(b'IEND',b''))
 PY
 
+# --- Ebook fixtures (for the future download feature) ---
+# Minimal valid EPUB (its embedded metadata is a placeholder; the real
+# title/author/series are set via PATCH after the scan, below).
+python3 - "$TMP" <<'PY'
+import os,sys,zipfile
+t=sys.argv[1]; b=os.path.join(t,'e'); os.makedirs(b+'/META-INF',exist_ok=True)
+open(b+'/mimetype','w').write('application/epub+zip')
+open(b+'/META-INF/container.xml','w').write('<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>')
+open(b+'/content.opf','w').write('<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">x</dc:identifier><dc:title>Placeholder</dc:title><dc:language>en</dc:language></metadata><manifest><item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c1"/></spine></package>')
+open(b+'/c1.xhtml','w').write('<?xml version="1.0"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><title>c</title></head><body><p>c</p></body></html>')
+z=zipfile.ZipFile(t+'/sample.epub','w')
+z.write(b+'/mimetype','mimetype',compress_type=zipfile.ZIP_STORED)
+z.write(b+'/META-INF/container.xml','META-INF/container.xml')
+z.write(b+'/content.opf','content.opf'); z.write(b+'/c1.xhtml','c1.xhtml'); z.close()
+PY
+# Minimal PDF.
+printf '%%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>endobj\ntrailer<</Root 1 0 R>>\n%%%%EOF\n' > "$TMP/sample.pdf"
+# CBZ = zip of image(s). (CBR needs the proprietary `rar` tool, unavailable
+# here — drop a real .cbr into the library folder if you need to test cbr.)
+cp "$TMP/cover.png" "$TMP/page-01.png"
+(cd "$TMP" && zip -jq sample.cbz page-01.png)
+
 upload() { # title author series
     curl -sf -X POST "$ABS_URL/api/upload" -H "$AUTH" \
         -F "title=$1" -F "author=$2" ${3:+-F "series=$3"} \
@@ -70,14 +92,48 @@ upload "Little Brother"        "Cory Doctorow"     ""
 upload "Old Man's War"         "John Scalzi"       ""
 upload "Spinning Silver"       "Naomi Novik"       ""
 
+uploadf() { # title author series filepath
+    curl -sf -X POST "$ABS_URL/api/upload" -H "$AUTH" \
+        -F "title=$1" -F "author=$2" ${3:+-F "series=$3"} \
+        -F "library=$LIBRARY_ID" -F "folder=$FOLDER_ID" \
+        -F "0=@$4" >/dev/null
+    echo "  + $1 [ebook fixture]"
+}
+echo "Uploading ebook fixtures (epub / pdf / cbz)..."
+uploadf "The Silent Sea"    "Ada Ebook"  "Deep Space" "$TMP/sample.epub"
+uploadf "Field Manual"      "Pete PDF"   ""           "$TMP/sample.pdf"
+uploadf "Neon Blade Vol. 1" "Mika Manga" "Neon Blade" "$TMP/sample.cbz"
+
 echo "Scanning..."
 curl -sf -X POST "$ABS_URL/api/libraries/$LIBRARY_ID/scan" -H "$AUTH" >/dev/null
 for i in $(seq 1 40); do
     N=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=0" -H "$AUTH" \
         | python3 -c "import sys,json; print(json.load(sys.stdin).get('total',0))" 2>/dev/null || echo 0)
-    [ "${N:-0}" -ge 15 ] && { echo "Indexed $N items."; break; }
+    [ "${N:-0}" -ge 18 ] && { echo "Indexed $N items."; break; }
     sleep 1
 done
+
+# The scan reads each ebook's embedded metadata (e.g. the EPUB's placeholder
+# title), so set the intended title/author/series per format via PATCH.
+TOKEN="$TOKEN" ABS_URL="$ABS_URL" LIBRARY_ID="$LIBRARY_ID" python3 <<'PY'
+import os, json, urllib.request
+absu, tok, lib = os.environ['ABS_URL'], os.environ['TOKEN'], os.environ['LIBRARY_ID']
+def req(method, path, data=None):
+    body = json.dumps(data).encode() if data is not None else None
+    r = urllib.request.Request(absu + path, data=body, method=method,
+        headers={'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json'})
+    return json.load(urllib.request.urlopen(r))
+meta = {
+    'epub': {'title': 'The Silent Sea', 'authors': [{'name': 'Ada Ebook'}], 'series': [{'name': 'Deep Space', 'sequence': '1'}]},
+    'pdf':  {'title': 'Field Manual', 'authors': [{'name': 'Pete PDF'}]},
+    'cbz':  {'title': 'Neon Blade Vol. 1', 'authors': [{'name': 'Mika Manga'}], 'series': [{'name': 'Neon Blade', 'sequence': '1'}]},
+}
+for it in req('GET', '/api/libraries/%s/items?limit=200' % lib)['results']:
+    fmt = (it.get('media') or {}).get('ebookFormat')
+    if fmt in meta:
+        req('PATCH', '/api/items/%s/media' % it['id'], {'metadata': meta[fmt]})
+        print('  patched %s ebook -> %s' % (fmt, meta[fmt]['title']))
+PY
 
 # Give exactly one item a cover so both the cover-present and cover-absent
 # paths are exercised. The rest stay coverless.
@@ -91,3 +147,4 @@ rm -rf "$TMP"
 echo ""
 echo "Seed complete. ABS_URL=$ABS_URL  LIBRARY_ID=$LIBRARY_ID  root/root"
 echo "One item has a cover ($COVER_ITEM); the rest are coverless."
+echo "Ebook fixtures: epub (The Silent Sea), pdf (Field Manual), cbz (Neon Blade Vol. 1). cbr not seeded (no rar tool)."
