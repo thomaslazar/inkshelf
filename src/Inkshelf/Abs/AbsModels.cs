@@ -30,4 +30,24 @@ public record AbsMedia(
 public record AbsMetadata(
     [property: JsonPropertyName("title")] string? Title,
     [property: JsonPropertyName("authorName")] string? AuthorName,
-    [property: JsonPropertyName("seriesName")] string? SeriesName);
+    [property: JsonPropertyName("seriesName")] string? SeriesName,
+    [property: JsonPropertyName("authors")] List<AbsRef>? Authors = null,
+    [property: JsonPropertyName("series")] List<AbsSeriesRef>? Series = null);
+
+public record AbsRef(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("name")] string Name);
+public record AbsSeriesRef(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("sequence")] string? Sequence = null);
+
+// Library search
+public record AbsSearchResults(
+    [property: JsonPropertyName("book")] List<AbsBookMatch> Book,
+    [property: JsonPropertyName("series")] List<AbsSeriesMatch> Series,
+    [property: JsonPropertyName("authors")] List<AbsRef> Authors);
+public record AbsBookMatch(
+    [property: JsonPropertyName("libraryItem")] AbsItem LibraryItem);
+public record AbsSeriesMatch(
+    [property: JsonPropertyName("series")] AbsSeriesRef Series);
