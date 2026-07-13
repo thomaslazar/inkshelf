@@ -30,9 +30,7 @@ public record AbsMedia(
 public record AbsMetadata(
     [property: JsonPropertyName("title")] string? Title,
     [property: JsonPropertyName("authorName")] string? AuthorName,
-    [property: JsonPropertyName("seriesName")] string? SeriesName,
-    [property: JsonPropertyName("authors")] List<AbsRef>? Authors = null,
-    [property: JsonPropertyName("series")] List<AbsSeriesRef>? Series = null);
+    [property: JsonPropertyName("seriesName")] string? SeriesName);
 
 public record AbsRef(
     [property: JsonPropertyName("id")] string Id,

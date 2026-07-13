@@ -2,28 +2,29 @@
 @{
     var libId = ViewData["LibraryId"] as string ?? "";
     var m = Model.Media?.Metadata;
-    string AuthorHref(string id) => $"/library/{libId}?filter={System.Uri.EscapeDataString(Inkshelf.Abs.AbsFilter.Encode("authors", id))}";
-    string SeriesHref(string id) => $"/library/{libId}?filter={System.Uri.EscapeDataString(Inkshelf.Abs.AbsFilter.Encode("series", id))}";
+    string AuthorHref(string name) => $"/library/{libId}?author={System.Uri.EscapeDataString(name)}";
+    // Series display can be "Name #seq"; link by the bare name.
+    string SeriesHref(string display) => $"/library/{libId}?series={System.Uri.EscapeDataString(display.Split(" #")[0])}";
+    var authors = string.IsNullOrWhiteSpace(m?.AuthorName)
+        ? System.Array.Empty<string>()
+        : m!.AuthorName!.Split(", ", System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
+    var seriesList = string.IsNullOrWhiteSpace(m?.SeriesName)
+        ? System.Array.Empty<string>()
+        : m!.SeriesName!.Split(", ", System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
 }
 <div class="item">
     <img src="/cover/@Model.Id?w=120" alt="" width="60" />
     <div>
         <strong>@(m?.Title ?? "(untitled)")</strong><br />
-        @if (m?.Authors is { Count: > 0 })
+        @for (var i = 0; i < authors.Length; i++)
         {
-            @for (var i = 0; i < m.Authors.Count; i++)
-            {
-                if (i > 0) { <text>, </text> }
-                <a href="@AuthorHref(m.Authors[i].Id)">@m.Authors[i].Name</a>
-            }
+            if (i > 0) { <text>, </text> }
+            <a href="@AuthorHref(authors[i])">@authors[i]</a>
         }
-        @if (m?.Series is { Count: > 0 })
+        @foreach (var s in seriesList)
         {
-            foreach (var s in m.Series)
-            {
-                <text> · </text>
-                <a href="@SeriesHref(s.Id)">@s.Name@(string.IsNullOrEmpty(s.Sequence) ? "" : $" #{s.Sequence}")</a>
-            }
+            <text> · </text>
+            <a href="@SeriesHref(s)">@s</a>
         }
     </div>
 </div>

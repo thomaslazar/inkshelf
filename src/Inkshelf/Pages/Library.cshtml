@@ -13,9 +13,9 @@
 @if (Model.IsSearch)
 {
     <p>Results for "<strong>@Model.Q</strong>" · <a href="/library/@Model.Id">clear</a></p>
-    var books = Model.Search?.Book ?? new();
-    var series = Model.Search?.Series ?? new();
-    var authors = Model.Search?.Authors ?? new();
+    var books = Model.SearchResults?.Book ?? new();
+    var series = Model.SearchResults?.Series ?? new();
+    var authors = Model.SearchResults?.Authors ?? new();
     if (books.Count == 0 && series.Count == 0 && authors.Count == 0)
     {
         <p>No matches.</p>
@@ -34,7 +34,7 @@
         <ul>
             @foreach (var s in series)
             {
-                <li><a href="@Model.SeriesHref(s.Series.Id)">@s.Series.Name</a></li>
+                <li><a href="@Model.SeriesFilterHref(s.Series.Id)">@s.Series.Name</a></li>
             }
         </ul>
     }
@@ -44,18 +44,19 @@
         <ul>
             @foreach (var a in authors)
             {
-                <li><a href="@Model.AuthorHref(a.Id)">@a.Name</a></li>
+                <li><a href="@Model.AuthorFilterHref(a.Id)">@a.Name</a></li>
             }
         </ul>
     }
 }
 else
 {
-    if (!string.IsNullOrEmpty(Model.Filter))
+    if (Model.IsFiltered)
     {
-        <p>Filtered · <a href="/library/@Model.Id">clear</a></p>
+        <p>Filtered by <strong>@Model.FilterLabel</strong> · <a href="/library/@Model.Id">clear</a></p>
     }
-    var filterQs = string.IsNullOrEmpty(Model.Filter) ? "" : $"&filter={System.Uri.EscapeDataString(Model.Filter)}";
+    string carry(string k, string? v) => string.IsNullOrEmpty(v) ? "" : $"&{k}={System.Uri.EscapeDataString(v)}";
+    var filterQs = carry("filter", Model.Filter) + carry("author", Model.Author) + carry("series", Model.Series);
     <nav class="pager">
         @if (Model.Pager.HasPrev)
         {

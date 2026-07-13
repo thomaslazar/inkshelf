@@ -14,14 +14,20 @@ public class LibraryModel : PageModel
 
     [FromRoute] public string Id { get; set; } = "";
     [FromQuery] public string? Q { get; set; }
+    // Filter by a facet. Either a ready-made ABS filter (from search groups,
+    // which carry ids), or an author/series NAME the row links carry — the
+    // list is always minified so rows only have names; we resolve name→id here.
     [FromQuery] public string? Filter { get; set; }
+    [FromQuery] public string? Author { get; set; }
+    [FromQuery] public string? Series { get; set; }
 
     public bool IsFavorite { get; private set; }
     public bool IsSearch => !string.IsNullOrWhiteSpace(Q);
+    public string? FilterLabel { get; private set; }
 
     public List<AbsItem> Items { get; private set; } = new();
     public Pager Pager { get; private set; } = new(0, PageSize, 0);
-    public AbsSearchResults? Search { get; private set; }
+    public AbsSearchResults? SearchResults { get; private set; }
 
     public async Task<IActionResult> OnGetAsync([FromQuery] int page = 1, CancellationToken ct = default)
     {
@@ -30,22 +36,51 @@ public class LibraryModel : PageModel
 
         if (IsSearch)
         {
-            Search = await _session.ExecuteAsync(
+            SearchResults = await _session.ExecuteAsync(
                 (tok, c) => _client.SearchAsync(tok, Id, Q!.Trim(), SearchLimit, c), ct);
+            return Page();
         }
-        else
-        {
-            var zeroPage = Math.Max(0, page - 1);
-            var result = await _session.ExecuteAsync(
-                (tok, c) => _client.GetItemsAsync(tok, Id, zeroPage, PageSize, Filter, c), ct);
-            Items = result.Results;
-            Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
-        }
+
+        var filter = await ResolveFilterAsync(ct);
+        var zeroPage = Math.Max(0, page - 1);
+        var result = await _session.ExecuteAsync(
+            (tok, c) => _client.GetItemsAsync(tok, Id, zeroPage, PageSize, filter, c), ct);
+        Items = result.Results;
+        Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
         return Page();
     }
 
-    public string AuthorHref(string authorId) =>
-        $"/library/{Id}?filter={Uri.EscapeDataString(AbsFilter.Encode("authors", authorId))}";
-    public string SeriesHref(string seriesId) =>
-        $"/library/{Id}?filter={Uri.EscapeDataString(AbsFilter.Encode("series", seriesId))}";
+    // Turn ?filter / ?author / ?series into an ABS filter string. Author/series
+    // names are resolved to ids via one search call (the row links only carry
+    // names). Returns null when nothing matches (→ empty listing).
+    private async Task<string?> ResolveFilterAsync(CancellationToken ct)
+    {
+        if (!string.IsNullOrEmpty(Filter)) { FilterLabel = "filter"; return Filter; }
+
+        if (!string.IsNullOrWhiteSpace(Author))
+        {
+            var r = await _session.ExecuteAsync((tok, c) => _client.SearchAsync(tok, Id, Author!.Trim(), SearchLimit, c), ct);
+            var a = r.Authors.FirstOrDefault(x => string.Equals(x.Name, Author!.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (a is not null) { FilterLabel = a.Name; return AbsFilter.Encode("authors", a.Id); }
+            FilterLabel = Author; return "authors.__none__";
+        }
+        if (!string.IsNullOrWhiteSpace(Series))
+        {
+            var name = Series!.Trim();
+            var r = await _session.ExecuteAsync((tok, c) => _client.SearchAsync(tok, Id, name, SearchLimit, c), ct);
+            var s = r.Series.FirstOrDefault(x => string.Equals(x.Series.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (s is not null) { FilterLabel = s.Series.Name; return AbsFilter.Encode("series", s.Series.Id); }
+            FilterLabel = name; return "series.__none__";
+        }
+        return null;
+    }
+
+    public bool IsFiltered => FilterLabel is not null;
+
+    // Row link helpers (names — resolved at click time).
+    public string AuthorHref(string name) => $"/library/{Id}?author={Uri.EscapeDataString(name)}";
+    public string SeriesHref(string name) => $"/library/{Id}?series={Uri.EscapeDataString(name)}";
+    // Search-group link helpers (ids — direct filter).
+    public string AuthorFilterHref(string authorId) => $"/library/{Id}?filter={Uri.EscapeDataString(AbsFilter.Encode("authors", authorId))}";
+    public string SeriesFilterHref(string seriesId) => $"/library/{Id}?filter={Uri.EscapeDataString(AbsFilter.Encode("series", seriesId))}";
 }

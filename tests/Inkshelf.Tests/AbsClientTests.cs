@@ -58,18 +58,6 @@ public class AbsClientTests
     }
 
     [Fact]
-    public async Task GetItemsAsync_full_metadata_parses_authors_and_series()
-    {
-        var h = new StubHandler(_ => StubHandler.Json(
-            """{"results":[{"id":"i1","media":{"metadata":{"title":"Dune","authors":[{"id":"a1","name":"Herbert"}],"series":[{"id":"s1","name":"Dune","sequence":"1"}]}}}],"total":1,"limit":10,"page":0}"""));
-        var page = await Client(h).GetItemsAsync("acc", "lib1", 0, 10);
-        var m = page.Results[0].Media!.Metadata!;
-        Assert.Equal("a1", m.Authors![0].Id);
-        Assert.Equal("s1", m.Series![0].Id);
-        Assert.Equal("1", m.Series![0].Sequence);
-    }
-
-    [Fact]
     public async Task GetItemsAsync_appends_filter_when_set()
     {
         var h = new StubHandler(_ => StubHandler.Json("""{"results":[],"total":0,"limit":10,"page":0}"""));
