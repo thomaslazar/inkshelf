@@ -34,4 +34,16 @@
             <a href="@SeriesHref(s)">@s</a>
         }
     </div>
+    @{ var fmt = Model.Media?.EbookFormat; }
+    @if (!string.IsNullOrEmpty(fmt))
+    {
+        <div class="actions">
+            <a href="/download/@Model.Id">Download</a>
+            @if (fmt == "cbz" || fmt == "cbr")
+            {
+                <a href="/convert/@Model.Id">Convert to epub</a>
+                <a class="regen" href="/convert/@Model.Id?fresh=1" title="Regenerate">&#8635;</a>
+            }
+        </div>
+    }
 </div>

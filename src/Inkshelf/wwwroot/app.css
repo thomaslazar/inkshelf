@@ -12,6 +12,8 @@ img { max-width: 100%; height: auto; }
 .item .body { flex: 1 1 auto; min-width: 0; }
 nav.pager a { margin-right: 1rem; }
 .sortbar { margin: .5rem 0; }
+.actions { margin-top: .25rem; }
+.actions a { margin-right: .75rem; }
 /* Logo mark beside the page heading. The explicit height is needed because the
    global `img { height:auto }` rule would otherwise blow it up to full width.
    No flex `gap` on the Tolino — the icon is inline with a margin instead. */
