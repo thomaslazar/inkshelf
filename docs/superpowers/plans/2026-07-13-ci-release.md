@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- **No private-infra references** anywhere in the repo (workflow, README, skill, code comments). Generalize the existing reverse-proxy comment in `Program.cs`.
+- Generalize the existing reverse-proxy comment in `Program.cs` so it doesn't name a specific proxy.
 - Image: `ghcr.io/thomaslazar/inkshelf`, **public** package, platforms `linux/amd64,linux/arm64`.
 - Tags: push→main = `:main` + `:main-<short-sha>`; release `vX.Y.Z` = `:X.Y.Z` + `:latest` (latest tracks releases, not main).
 - Seed version **0.1.0** (pre-1.0).
@@ -330,7 +330,7 @@ Body — the steps (each gate is mandatory; never skip):
 Rules section (copy intent from abs-cli): never skip a gate; never proceed past
 a failed check; clean up `release-notes.md`; CHANGELOG is the source of truth;
 this skill may commit as part of its defined steps (overrides CLAUDE.md's
-ask-before-commit rule). No private-infra references.
+ask-before-commit rule).
 
 - [ ] **Step 2: Sanity-check the frontmatter parses**
 
@@ -373,8 +373,6 @@ Run it (see `docker-compose.example.yml` for a full example):
     docker run -e ABS_URL=https://your-abs.example -p 8080:8080 \
       ghcr.io/thomaslazar/inkshelf:latest
 ```
-
-Do not mention any specific deployment environment.
 
 - [ ] **Step 2: Commit**
 

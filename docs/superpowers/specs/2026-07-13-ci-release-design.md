@@ -11,9 +11,6 @@ human-gated release procedure (mirroring abs-cli's `release` skill) that cuts
 versioned releases. This lets the image be deployed and updated as features
 land.
 
-No references to any private/self-hosted deployment environment appear
-anywhere in the repo (workflow, README, skill, or code comments).
-
 ## Image & tags
 
 Image: `ghcr.io/thomaslazar/inkshelf`. Package visibility: **public** (no auth
@@ -96,10 +93,10 @@ artifact attach.
   is deterministic in CI (avoid churn from default heuristics).
 - **`Program.cs`:** generalize the existing reverse-proxy comment (currently
   names a specific proxy) to "some reverse proxies / WAFs reject requests with
-  no User-Agent" — no private-infra names in the repo.
+  no User-Agent".
 - **`README.md`:** add a short "Container image" section — image name, tag
   meanings (`:main`, `:X.Y.Z`, `:latest`), and a `docker pull` / compose
-  example. No deployment-environment specifics.
+  example.
 - **`.gitignore`:** ignore `release-notes.md` (generated, per abs-cli).
 
 ## Testing / verification
@@ -116,4 +113,3 @@ artifact attach.
 
 - Live smoke test against a seeded ABS in CI (needs the deferred seed harness).
 - Signing/SBOM/provenance attestation.
-- Any private deployment configuration.

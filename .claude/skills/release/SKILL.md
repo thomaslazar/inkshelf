@@ -187,6 +187,5 @@ committed to `main`.
 - If anything unexpected happens, stop and ask.
 - Clean up `release-notes.md` at the end (it is gitignored, never committed).
 - `CHANGELOG.md` is the source of truth; the GitHub Release notes mirror it.
-- No private/self-hosted deployment details anywhere.
 - This skill may commit as part of its defined steps (overrides the
   ask-before-commit rule in CLAUDE.md).
