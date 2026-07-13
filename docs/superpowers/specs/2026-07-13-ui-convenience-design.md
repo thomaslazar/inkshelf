@@ -83,7 +83,16 @@ form. Keep it small (constrained width) for e-ink.
 - Page size **10** (was 24) — `LibraryModel.PageSize = 10`.
 - Move the Prev/Next pager to the **top** of the list (above the rows). No
   bottom pager (save e-ink space).
-- Rows unchanged (cover, title, author, series, download link when ebook).
+- **Clickable author/series.** Each author links to
+  `/library/{id}?filter=authors.<base64(authorId)>` and each series to
+  `/library/{id}?filter=series.<base64(seriesId)>` (a book can have several of
+  each; render one link per entry, series with its sequence when present).
+- To get the author/series **ids** the list must request full item JSON
+  (**drop `minified=1`**). The extra fields (`audioFiles`/`chapters`/
+  `ebookFile`) travel only on the Inkshelf↔ABS hop; the e-reader still receives
+  the same small HTML. Title still falls back to `metadata.title`; if the
+  author/series arrays are empty the row shows nothing clickable there.
+- Cover + download link (when the item has an ebook) unchanged.
 
 ## Search + filtered listing
 
@@ -93,7 +102,9 @@ The library page (`/library/{id}`) supports three modes, chosen by query params:
 2. **Search** (`?q=<text>`): grouped results from
    `GET /api/libraries/{id}/search?q=&limit=`:
    - **Books** — matched items rendered like list rows (cover/title/author/
-     series + download link when the item has an ebook).
+     series + download link when the item has an ebook). The book match's item
+     is the expanded form, so its author/series are clickable filter links too,
+     exactly like the normal listing.
    - **Series** — each links to `/library/{id}?filter=series.<base64(seriesId)>`.
    - **Authors** — each links to `/library/{id}?filter=authors.<base64(authorId)>`.
    Search results are not paged (ABS caps them; use `limit=25`).
@@ -113,6 +124,13 @@ URL-encode when placing in the link (`+`/`/`/`=` are not URL-safe).
 
 ## Client / data additions (`AbsClient`, `AbsModels`)
 
+- **Items list drops `minified=1`** to obtain author/series ids. This moves
+  ebook detection from `media.ebookFormat` (minified only) to
+  `media.ebookFile.ebookFormat` (full). `AbsMedia` gains an `EbookFile`
+  (`{ EbookFormat, Metadata { Filename } }`, reusing/extending the existing
+  `AbsEbookFile`); the download button shows when `media.ebookFile?.ebookFormat`
+  is set. `AbsMetadata` gains `Authors: [{ Id, Name }]` and
+  `Series: [{ Id, Name, Sequence? }]` (the name strings stay for fallback).
 - `GetItemsAsync(..., string? filter = null)` — appends `&filter=<value>` when
   set (value already `group.<b64>`, URL-encoded).
 - `SearchAsync(accessToken, libraryId, q, limit)` →
@@ -138,6 +156,9 @@ URL-encode when placing in the link (`+`/`/`/`=` are not URL-safe).
 - `AbsClient.SearchAsync` parses book/series/authors from a fixture (StubHandler).
 - `GetItemsAsync` includes `filter=` when supplied; omits it otherwise.
 - `AbsFilter.Encode` produces `group.<base64>` for a known id.
+- `GetItemsAsync` parses `metadata.authors[]`/`series[]` ids and
+  `media.ebookFile.ebookFormat` from a full (non-minified) item fixture, and
+  no longer sends `minified=1`.
 - Favorite toggle: setting/clearing the cookie and the `/` auto-redirect vs
   `?all=1` bypass (WebApplicationFactory, no live ABS).
 - `Pager` math unchanged (existing tests stay).
