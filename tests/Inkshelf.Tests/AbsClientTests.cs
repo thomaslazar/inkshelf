@@ -52,8 +52,33 @@ public class AbsClientTests
         var q = System.Web.HttpUtility.ParseQueryString(h.Last!.RequestUri!.Query);
         Assert.Equal("24", q["limit"]);
         Assert.Equal("1", q["page"]);
-        Assert.Equal("1", q["minified"]);
+        Assert.Null(q["minified"]); // full item JSON so author/series carry ids
+        Assert.Null(q["filter"]);
         Assert.Equal("Bearer acc", h.Last!.Headers.Authorization!.ToString());
+    }
+
+    [Fact]
+    public async Task GetItemsAsync_appends_filter_when_set()
+    {
+        var h = new StubHandler(_ => StubHandler.Json("""{"results":[],"total":0,"limit":10,"page":0}"""));
+        await Client(h).GetItemsAsync("acc", "lib1", 0, 10, filter: "series.czE=");
+        var q = System.Web.HttpUtility.ParseQueryString(h.Last!.RequestUri!.Query);
+        Assert.Equal("series.czE=", q["filter"]);
+    }
+
+    [Fact]
+    public async Task SearchAsync_parses_groups()
+    {
+        var h = new StubHandler(_ => StubHandler.Json(
+            """{"book":[{"libraryItem":{"id":"i1","media":{"metadata":{"title":"Dune"}}}}],"series":[{"series":{"id":"s1","name":"Dune"}}],"authors":[{"id":"a1","name":"Herbert","numBooks":6}]}"""));
+        var r = await Client(h).SearchAsync("acc", "lib1", "dune", 25);
+        Assert.Equal("Dune", r.Book[0].LibraryItem.Media!.Metadata!.Title);
+        Assert.Equal("s1", r.Series[0].Series.Id);
+        Assert.Equal("Herbert", r.Authors[0].Name);
+        Assert.Equal("/api/libraries/lib1/search", h.Last!.RequestUri!.AbsolutePath);
+        var q = System.Web.HttpUtility.ParseQueryString(h.Last!.RequestUri!.Query);
+        Assert.Equal("dune", q["q"]);
+        Assert.Equal("25", q["limit"]);
     }
 
     [Fact]

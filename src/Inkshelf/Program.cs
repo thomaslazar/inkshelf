@@ -1,8 +1,10 @@
+using Inkshelf;
 using Inkshelf.Abs;
 using Inkshelf.Auth;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,9 +63,18 @@ app.MapRazorPages();
 app.MapGet("/cover/{id}", async (string id, int? w, AbsSession session, AbsClient client, CancellationToken ct) =>
 {
     var width = w is > 0 and <= 400 ? w.Value : 120;
-    var (stream, contentType) = await session.ExecuteAsync(
-        (tok, c) => client.GetCoverAsync(tok, id, width, c), ct);
-    return Results.Stream(stream, contentType);
+    try
+    {
+        var (stream, contentType) = await session.ExecuteAsync(
+            (tok, c) => client.GetCoverAsync(tok, id, width, c), ct);
+        return Results.Stream(stream, contentType);
+    }
+    catch (HttpRequestException)
+    {
+        // Item has no cover (ABS 404) or a transient fetch error — the <img>
+        // just shows nothing rather than the page 500ing.
+        return Results.NotFound();
+    }
 });
 
 app.MapPost("/logout", async (HttpContext httpContext, IAntiforgery antiforgery, TokenStore store) =>
@@ -79,6 +90,25 @@ app.MapPost("/logout", async (HttpContext httpContext, IAntiforgery antiforgery,
 
     store.Clear();
     return Results.Redirect("/login");
+});
+
+app.MapPost("/favorite", async (HttpContext ctx, IAntiforgery antiforgery, [FromForm] string libraryId) =>
+{
+    try { await antiforgery.ValidateRequestAsync(ctx); }
+    catch (AntiforgeryValidationException) { return Results.BadRequest(); }
+    if (Favorites.Read(ctx.Request) == libraryId) Favorites.Clear(ctx.Response);
+    else Favorites.Set(ctx.Response, libraryId);
+    return Results.Redirect($"/library/{libraryId}");
+}).DisableAntiforgery();
+
+// Receives the /diag.html browser capability probe and logs it, so device
+// limitations can be collected without a screenshot. No auth (pre-login tool).
+app.MapPost("/diag", async (HttpContext ctx) =>
+{
+    using var reader = new StreamReader(ctx.Request.Body);
+    var body = await reader.ReadToEndAsync();
+    app.Logger.LogInformation("Browser probe: {Probe}", body);
+    return Results.Ok();
 });
 
 app.Run();

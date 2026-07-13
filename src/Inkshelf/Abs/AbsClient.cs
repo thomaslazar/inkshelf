@@ -50,12 +50,24 @@ public class AbsClient
     }
 
     public async Task<AbsItemsPage> GetItemsAsync(string accessToken, string libraryId,
-        int page, int limit, CancellationToken ct = default)
+        int page, int limit, string? filter = null, CancellationToken ct = default)
     {
-        var url = $"/api/libraries/{Uri.EscapeDataString(libraryId)}/items?limit={limit}&page={page}&minified=1";
+        // Full item JSON (no minified) so author/series carry ids for filter links.
+        var url = $"/api/libraries/{Uri.EscapeDataString(libraryId)}/items?limit={limit}&page={page}";
+        if (!string.IsNullOrEmpty(filter))
+            url += $"&filter={Uri.EscapeDataString(filter)}";
         using var res = await SendAuthedAsync(HttpMethod.Get, url, accessToken, ct);
         return await res.Content.ReadFromJsonAsync<AbsItemsPage>(ct)
             ?? new AbsItemsPage(new(), 0, limit, page);
+    }
+
+    public async Task<AbsSearchResults> SearchAsync(string accessToken, string libraryId,
+        string query, int limit, CancellationToken ct = default)
+    {
+        var url = $"/api/libraries/{Uri.EscapeDataString(libraryId)}/search?q={Uri.EscapeDataString(query)}&limit={limit}";
+        using var res = await SendAuthedAsync(HttpMethod.Get, url, accessToken, ct);
+        return await res.Content.ReadFromJsonAsync<AbsSearchResults>(ct)
+            ?? new AbsSearchResults(new(), new(), new());
     }
 
     public async Task<(Stream Content, string ContentType)> GetCoverAsync(string accessToken,

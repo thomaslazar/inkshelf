@@ -1,22 +1,94 @@
 @page
 @model Inkshelf.Pages.LibraryModel
-<p><a href="/">&larr; Libraries</a></p>
-<h1>Items</h1>
-@if (Model.Items.Count == 0) { <p>No items.</p> }
-@foreach (var item in Model.Items)
+@{ ViewData["LibraryId"] = Model.Id; }
+
+<div class="page-head" id="top">
+    <h1 class="page-title">
+        <img src="~/img/icon-black.png" alt="" class="title-icon" />
+        <a href="/?all=1">Libraries</a> <span class="crumb-sep">›</span> @Model.LibraryName
+    </h1>
+    <form class="fav-form" method="post" action="/favorite">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="libraryId" value="@Model.Id" />
+        <button type="submit" class="fav-star" title="@(Model.IsFavorite ? "Unset favorite" : "Set favorite")">@(Model.IsFavorite ? "★" : "☆")</button>
+    </form>
+    <form class="searchbar" method="get" action="/library/@Model.Id">
+        <input type="search" name="q" value="@Model.Q" placeholder="Search…" />
+        <button type="submit">Search</button>
+    </form>
+</div>
+
+@if (Model.IsSearch)
 {
-    var m = item.Media?.Metadata;
-    <div class="item">
-        <img src="/cover/@item.Id?w=120" alt="" width="60" />
-        <div>
-            <strong>@(m?.Title ?? "(untitled)")</strong><br />
-            @if (!string.IsNullOrEmpty(m?.AuthorName)) { <span>@m!.AuthorName</span> }
-            @if (!string.IsNullOrEmpty(m?.SeriesName)) { <span> &middot; @m!.SeriesName</span> }
-        </div>
-    </div>
+    var books = Model.SearchResults?.Book ?? new();
+    var series = Model.SearchResults?.Series ?? new();
+    var authors = Model.SearchResults?.Authors ?? new();
+    <p>Results for "<strong>@Model.Q</strong>" · <a href="/library/@Model.Id">clear</a></p>
+    <nav class="tabs">
+        @if (books.Count > 0) { <a href="#books">Books (@books.Count)</a> } else { <span>Books (0)</span> }
+        <span class="crumb-sep">·</span>
+        @if (series.Count > 0) { <a href="#series">Series (@series.Count)</a> } else { <span>Series (0)</span> }
+        <span class="crumb-sep">·</span>
+        @if (authors.Count > 0) { <a href="#authors">Authors (@authors.Count)</a> } else { <span>Authors (0)</span> }
+    </nav>
+    if (books.Count == 0 && series.Count == 0 && authors.Count == 0)
+    {
+        <p>No matches.</p>
+    }
+    if (books.Count > 0)
+    {
+        <h2 id="books">Books <a class="totop" href="#top">↑</a></h2>
+        foreach (var b in books)
+        {
+            <partial name="_ItemRow" model="b.LibraryItem" />
+        }
+    }
+    if (series.Count > 0)
+    {
+        <h2 id="series">Series <a class="totop" href="#top">↑</a></h2>
+        <ul>
+            @foreach (var s in series)
+            {
+                <li><a href="@Model.SeriesFilterHref(s.Series.Id)">@s.Series.Name</a></li>
+            }
+        </ul>
+    }
+    if (authors.Count > 0)
+    {
+        <h2 id="authors">Authors <a class="totop" href="#top">↑</a></h2>
+        <ul>
+            @foreach (var a in authors)
+            {
+                <li><a href="@Model.AuthorFilterHref(a.Id)">@a.Name</a></li>
+            }
+        </ul>
+    }
 }
-<nav class="pager">
-    @if (Model.Pager.HasPrev) { <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage - 1)">&larr; Prev</a> }
-    <span>Page @Model.Pager.DisplayPage of @Math.Max(1, Model.Pager.TotalPages)</span>
-    @if (Model.Pager.HasNext) { <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage + 1)">Next &rarr;</a> }
-</nav>
+else
+{
+    if (Model.IsFiltered)
+    {
+        <p>Filtered by <strong>@Model.FilterLabel</strong> · <a href="/library/@Model.Id">clear</a></p>
+    }
+    string carry(string k, string? v) => string.IsNullOrEmpty(v) ? "" : $"&{k}={System.Uri.EscapeDataString(v)}";
+    var filterQs = carry("filter", Model.Filter) + carry("author", Model.Author) + carry("series", Model.Series);
+    <nav class="pager">
+        @if (Model.Pager.HasPrev)
+        {
+            <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage - 1)@filterQs">&larr; Prev</a>
+        }
+        <span>Page @Model.Pager.DisplayPage of @Math.Max(1, Model.Pager.TotalPages)</span>
+        @if (Model.Pager.HasNext)
+        {
+            <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage + 1)@filterQs">Next &rarr;</a>
+        }
+    </nav>
+    @if (Model.Items.Count == 0)
+    {
+        <p>No items.</p>
+    }
+    @foreach (var item in Model.Items)
+    {
+        <partial name="_ItemRow" model="item" />
+    }
+}

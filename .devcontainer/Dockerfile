@@ -1,10 +1,14 @@
 FROM mcr.microsoft.com/devcontainers/dotnet:10.0
 
 # python3: needed by the peon-ping installer.
+# rar/unrar (multiverse, already enabled on the Ubuntu base): create/extract
+#   RAR archives so the seed can build .cbr comic fixtures for download tests.
 # (No AOT here, so no clang/zlib. No audio encode, so no ffmpeg.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
+    rar \
+    unrar \
     && rm -rf /var/lib/apt/lists/*
 
 # Claude Code CLI (native installer) + peon-ping both install to ~/.local/bin

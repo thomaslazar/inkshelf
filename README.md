@@ -1,5 +1,12 @@
 # Inkshelf
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="src/Inkshelf/wwwroot/img/logo-inverted.png">
+    <img src="src/Inkshelf/wwwroot/img/logo-black.png" alt="Inkshelf" width="360">
+  </picture>
+</p>
+
 A thin, server-rendered web client for the [Audiobookshelf](https://www.audiobookshelf.org/)
 (ABS) API, built for e-reader browsers.
 

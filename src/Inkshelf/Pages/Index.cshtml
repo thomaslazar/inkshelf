@@ -1,7 +1,9 @@
 @page
 @model Inkshelf.Pages.IndexModel
-<h1>Libraries</h1>
-<form method="post" action="/logout"><button type="submit">Log out</button></form>
+<div class="page-head">
+    <h1 class="page-title"><img src="~/img/icon-black.png" alt="" class="title-icon" /> Libraries</h1>
+    <form class="logout-form" method="post" action="/logout">@Html.AntiForgeryToken()<button type="submit">Log out</button></form>
+</div>
 <ul>
 @foreach (var lib in Model.Libraries)
 {

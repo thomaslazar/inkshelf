@@ -1,5 +1,31 @@
 body { font-family: serif; margin: 1rem; line-height: 1.5; color: #000; background: #fff; }
 a { color: #000; }
 img { max-width: 100%; height: auto; }
-.item { display: flex; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid #ccc; }
+/* No flex `gap` / `object-fit` — the Tolino's browser ignores both. Use a
+   fixed square cover slot (so text always starts at the same left offset) with
+   a margin for spacing; the image keeps its natural ratio via max-width/height. */
+.item { display: flex; align-items: flex-start; padding: .5rem 0; border-bottom: 1px solid #ccc; }
+.item .cover { flex: 0 0 72px; width: 72px; height: 72px; margin-right: 1rem; text-align: center; }
+.item .cover img { max-width: 72px; max-height: 72px; width: auto; height: auto; }
+/* Placeholder shown when an item has no cover (title initial in a grey box). */
+.item .cover.placeholder { background: #eee; color: #999; font-size: 2rem; line-height: 72px; }
+.item .body { flex: 1 1 auto; min-width: 0; }
 nav.pager a { margin-right: 1rem; }
+/* Logo mark beside the page heading. The explicit height is needed because the
+   global `img { height:auto }` rule would otherwise blow it up to full width.
+   No flex `gap` on the Tolino — the icon is inline with a margin instead. */
+.page-title { margin: 0; }
+.title-icon { height: 1.4em; width: auto; vertical-align: -0.25em; margin-right: .4rem; }
+.page-head { display: flex; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
+.crumb-sep { color: #666; }
+.fav-form { margin: 0 0 0 .6rem; }
+.fav-star { border: none; background: none; cursor: pointer; font-size: 1.8rem; line-height: 1; padding: 0; }
+.logo { text-align: center; }
+.logo img { max-width: 320px; width: 60%; height: auto; }
+.login-form { max-width: 320px; margin: 0 auto; text-align: center; }
+.login-form input { width: 100%; box-sizing: border-box; padding: .3rem; }
+.searchbar { margin-left: auto; }
+.searchbar input { padding: .2rem; }
+.logout-form { margin: 0 0 0 auto; }
+.tabs { margin: .5rem 0; font-weight: bold; }
+.totop { font-weight: normal; font-size: .8em; text-decoration: none; margin-left: .5rem; }

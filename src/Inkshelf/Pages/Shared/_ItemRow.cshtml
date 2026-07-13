@@ -1,0 +1,37 @@
+@model Inkshelf.Abs.AbsItem
+@{
+    var libId = ViewData["LibraryId"] as string ?? "";
+    var m = Model.Media?.Metadata;
+    string AuthorHref(string name) => $"/library/{libId}?author={System.Uri.EscapeDataString(name)}";
+    // Series display can be "Name #seq"; link by the bare name.
+    string SeriesHref(string display) => $"/library/{libId}?series={System.Uri.EscapeDataString(display.Split(" #")[0])}";
+    var authors = string.IsNullOrWhiteSpace(m?.AuthorName)
+        ? System.Array.Empty<string>()
+        : m!.AuthorName!.Split(", ", System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
+    var seriesList = string.IsNullOrWhiteSpace(m?.SeriesName)
+        ? System.Array.Empty<string>()
+        : m!.SeriesName!.Split(", ", System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
+}
+<div class="item">
+    @if (!string.IsNullOrEmpty(Model.Media?.CoverPath))
+    {
+        <span class="cover"><img src="/cover/@Model.Id?w=120" alt="" /></span>
+    }
+    else
+    {
+        <span class="cover placeholder">@(string.IsNullOrEmpty(m?.Title) ? "?" : m!.Title!.Substring(0, 1).ToUpperInvariant())</span>
+    }
+    <div class="body">
+        <strong>@(m?.Title ?? "(untitled)")</strong><br />
+        @for (var i = 0; i < authors.Length; i++)
+        {
+            if (i > 0) { <text>, </text> }
+            <a href="@AuthorHref(authors[i])">@authors[i]</a>
+        }
+        @foreach (var s in seriesList)
+        {
+            <text> · </text>
+            <a href="@SeriesHref(s)">@s</a>
+        }
+    </div>
+</div>
