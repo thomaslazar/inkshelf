@@ -3,7 +3,7 @@
 @{ ViewData["HideChrome"] = true; }
 <p class="logo"><img src="~/img/logo-black.png" alt="Inkshelf" /></p>
 @if (Model.Error is not null) { <p role="alert">@Model.Error</p> }
-<form method="post">
+<form method="post" class="login-form">
     <p><label>Username<br /><input name="Username" autocomplete="username" /></label></p>
     <p><label>Password<br /><input name="Password" type="password" autocomplete="current-password" /></label></p>
     <p><button type="submit">Log in</button></p>

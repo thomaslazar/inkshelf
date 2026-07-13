@@ -7,5 +7,7 @@ nav.pager a { margin-right: 1rem; }
 .topbar .brand { display: inline-flex; align-items: center; gap: .4rem; font-weight: bold; text-decoration: none; }
 .logo { text-align: center; }
 .logo img { max-width: 320px; width: 60%; height: auto; }
+.login-form { max-width: 320px; margin: 0 auto; text-align: center; }
+.login-form input { width: 100%; box-sizing: border-box; padding: .3rem; }
 .searchbar { margin-left: auto; }
 .searchbar input { padding: .2rem; }
