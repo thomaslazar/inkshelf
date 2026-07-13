@@ -83,17 +83,18 @@ form. Keep it small (constrained width) for e-ink.
 - Page size **10** (was 24) — `LibraryModel.PageSize = 10`.
 - Move the Prev/Next pager to the **top** of the list (above the rows). No
   bottom pager (save e-ink space).
-- **Clickable author/series.** Each author links to
-  `/library/{id}?filter=authors.<base64(authorId)>` and each series to
-  `/library/{id}?filter=series.<base64(seriesId)>` (a book can have several of
-  each; render one link per entry, series with its sequence when present).
-- To get the author/series **ids** the list must request full item JSON
-  (**drop `minified=1`**). The extra fields (`audioFiles`/`chapters`/
-  `ebookFile`) travel only on the Inkshelf↔ABS hop; the e-reader still receives
-  the same small HTML. Title still falls back to `metadata.title`; if the
-  author/series arrays are empty the row shows nothing clickable there.
-- Cover unchanged. (No download affordance — that feature was scrapped and is
-  out of scope for this iteration.)
+- **Clickable author/series.** The items list is **always minified** in ABS
+  (`getByFilterAndSort` calls `toOldJSONMinified` unconditionally; the
+  `minified` query param does not change it), so rows carry author/series
+  **names**, not ids. Each author links to `/library/{id}?author=<name>` and
+  each series to `/library/{id}?series=<name>` (split the joined name strings;
+  strip a trailing ` #<seq>` for the series link). The library page resolves
+  the name → id via **one search call at click time**, then shows the filtered
+  paged listing. Search-result Series/Authors groups already carry ids and link
+  directly to `?filter=<group>.<base64(id)>`.
+- Cover unchanged, except a missing cover now returns **404** (not 500), so a
+  coverless item just shows no image. (No download affordance — that feature
+  was scrapped and is out of scope for this iteration.)
 
 ## Search + filtered listing
 
@@ -124,10 +125,11 @@ URL-encode when placing in the link (`+`/`/`/`=` are not URL-safe).
 
 ## Client / data additions (`AbsClient`, `AbsModels`)
 
-- **Items list drops `minified=1`** to obtain author/series ids (minified only
-  carries the name strings). `AbsMetadata` gains `Authors: [{ Id, Name }]` and
-  `Series: [{ Id, Name, Sequence? }]` (the name strings stay for fallback). The
-  extra full-item fields are simply ignored by the deserializer.
+- The items list is always minified, so `AbsMetadata` stays
+  `{ Title, AuthorName, SeriesName }` (no id arrays — they aren't available).
+  Author/series ids are resolved from names via `SearchAsync` at click time
+  (see the listing section). `AbsRef`/`AbsSeriesRef` exist only for the search
+  DTOs.
 - `GetItemsAsync(..., string? filter = null)` — appends `&filter=<value>` when
   set (value already `group.<b64>`, URL-encoded).
 - `SearchAsync(accessToken, libraryId, q, limit)` →
