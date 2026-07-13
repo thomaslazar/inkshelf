@@ -20,17 +20,24 @@
 
 @if (Model.IsSearch)
 {
-    <p>Results for "<strong>@Model.Q</strong>" · <a href="/library/@Model.Id">clear</a></p>
     var books = Model.SearchResults?.Book ?? new();
     var series = Model.SearchResults?.Series ?? new();
     var authors = Model.SearchResults?.Authors ?? new();
+    <p id="results-top">Results for "<strong>@Model.Q</strong>" · <a href="/library/@Model.Id">clear</a></p>
+    <nav class="tabs">
+        @if (books.Count > 0) { <a href="#books">Books (@books.Count)</a> } else { <span>Books (0)</span> }
+        <span class="crumb-sep">·</span>
+        @if (series.Count > 0) { <a href="#series">Series (@series.Count)</a> } else { <span>Series (0)</span> }
+        <span class="crumb-sep">·</span>
+        @if (authors.Count > 0) { <a href="#authors">Authors (@authors.Count)</a> } else { <span>Authors (0)</span> }
+    </nav>
     if (books.Count == 0 && series.Count == 0 && authors.Count == 0)
     {
         <p>No matches.</p>
     }
     if (books.Count > 0)
     {
-        <h2>Books</h2>
+        <h2 id="books">Books <a class="totop" href="#results-top">↑</a></h2>
         foreach (var b in books)
         {
             <partial name="_ItemRow" model="b.LibraryItem" />
@@ -38,7 +45,7 @@
     }
     if (series.Count > 0)
     {
-        <h2>Series</h2>
+        <h2 id="series">Series <a class="totop" href="#results-top">↑</a></h2>
         <ul>
             @foreach (var s in series)
             {
@@ -48,7 +55,7 @@
     }
     if (authors.Count > 0)
     {
-        <h2>Authors</h2>
+        <h2 id="authors">Authors <a class="totop" href="#results-top">↑</a></h2>
         <ul>
             @foreach (var a in authors)
             {

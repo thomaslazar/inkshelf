@@ -25,3 +25,5 @@ nav.pager a { margin-right: 1rem; }
 .searchbar { margin-left: auto; }
 .searchbar input { padding: .2rem; }
 .logout-form { margin: 0 0 0 auto; }
+.tabs { margin: .5rem 0; font-weight: bold; }
+.totop { font-weight: normal; font-size: .8em; text-decoration: none; margin-left: .5rem; }
