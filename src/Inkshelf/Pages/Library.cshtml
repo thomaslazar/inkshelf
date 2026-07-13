@@ -70,17 +70,25 @@ else
     {
         <p>Filtered by <strong>@Model.FilterLabel</strong> · <a href="/library/@Model.Id">clear</a></p>
     }
-    string carry(string k, string? v) => string.IsNullOrEmpty(v) ? "" : $"&{k}={System.Uri.EscapeDataString(v)}";
-    var filterQs = carry("filter", Model.Filter) + carry("author", Model.Author) + carry("series", Model.Series);
+    <nav class="sortbar">
+        Sort:
+        <a href="@Model.SortHref("media.metadata.title")">Title@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.title", Model.Sort, Model.Desc))</a> ·
+        <a href="@Model.SortHref("media.metadata.authorNameLF")">Author@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.authorNameLF", Model.Sort, Model.Desc))</a> ·
+        <a href="@Model.SortHref("addedAt")">Added@(Inkshelf.Pages.SortLinks.Arrow("addedAt", Model.Sort, Model.Desc))</a>
+        @if (!string.IsNullOrEmpty(Model.Series) || Model.Filter?.StartsWith("series.") == true)
+        {
+            <text> · </text><a href="@Model.SortHref("sequence")">Sequence@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.Sort, Model.Desc))</a>
+        }
+    </nav>
     <nav class="pager">
         @if (Model.Pager.HasPrev)
         {
-            <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage - 1)@filterQs">&larr; Prev</a>
+            <a href="@Model.ListingHref(Model.Sort, Model.Desc, Model.Pager.DisplayPage - 1)">&larr; Prev</a>
         }
         <span>Page @Model.Pager.DisplayPage of @Math.Max(1, Model.Pager.TotalPages)</span>
         @if (Model.Pager.HasNext)
         {
-            <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage + 1)@filterQs">Next &rarr;</a>
+            <a href="@Model.ListingHref(Model.Sort, Model.Desc, Model.Pager.DisplayPage + 1)">Next &rarr;</a>
         }
     </nav>
     @if (Model.Items.Count == 0)
