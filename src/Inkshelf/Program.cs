@@ -34,6 +34,8 @@ builder.Services.AddHttpClient<AbsClient>(c =>
     // requests with no User-Agent (HTTP 403) before they reach the server.
     c.DefaultRequestHeaders.UserAgent.ParseAdd(absUserAgent);
 });
+builder.Services.AddSingleton(new Inkshelf.Convert.EpubCache(cachePath));
+builder.Services.AddSingleton<Inkshelf.Convert.EpubConverter>();
 builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AddPageRoute("/Library", "library/{id}");
@@ -92,6 +94,46 @@ app.MapGet("/download/{id}", async (string id, AbsSession session, AbsClient cli
         return Results.File(stream, contentType, fileDownloadName: name);
     }
     catch (HttpRequestException) { return Results.NotFound(); }
+});
+
+app.MapGet("/convert/{id}", async (string id, bool? fresh, AbsSession session, AbsClient client,
+    Inkshelf.Convert.EpubCache cache, Inkshelf.Convert.EpubConverter converter, CancellationToken ct) =>
+{
+    Inkshelf.Abs.AbsItemDetail detail;
+    try { detail = await session.ExecuteAsync((tok, c) => client.GetItemDetailAsync(tok, id, c), ct); }
+    catch (HttpRequestException) { return Results.NotFound(); }
+
+    var ef = detail.Media?.EbookFile;
+    var fmt = ef?.EbookFormat;
+    if (ef?.Metadata is null || (fmt != "cbz" && fmt != "cbr")) return Results.NotFound();
+
+    var size = ef.Metadata.Size; var mtime = ef.Metadata.MtimeMs;
+    if (fresh == true) cache.RemoveForItem(id);
+
+    var path = cache.PathFor(id, size, mtime);
+    if (!File.Exists(path))
+    {
+        var (archive, _) = await session.ExecuteAsync((tok, c) => client.GetEbookStreamAsync(tok, id, c), ct);
+        using var buffered = new MemoryStream();
+        await using (archive) await archive.CopyToAsync(buffered, ct);   // SharpCompress needs a seekable stream
+        buffered.Position = 0;
+        var md = detail.Media!.Metadata!;
+        var author = md.AuthorName ?? (md.Authors is { Count: > 0 } ? md.Authors[0].Name : "Unknown");
+        var seq = md.Series is { Count: > 0 } ? md.Series[0].Sequence : null;
+        var seriesName = md.Series is { Count: > 0 } ? md.Series[0].Name : md.SeriesName;
+        await converter.ConvertAsync(buffered, new Inkshelf.Convert.EbookMeta(md.Title ?? "Untitled", author, seriesName, seq), path, ct);
+    }
+
+    var title = detail.Media!.Metadata!.Title ?? "book";
+    var authorName = detail.Media!.Metadata!.AuthorName ?? "Unknown";
+    var fileName = Sanitize($"{authorName} - {title}") + ".epub";
+    return Results.File(path, "application/epub+zip", fileDownloadName: fileName);
+
+    static string Sanitize(string s)
+    {
+        foreach (var c in Path.GetInvalidFileNameChars()) s = s.Replace(c, '_');
+        return s.Trim();
+    }
 });
 
 app.MapPost("/logout", async (HttpContext httpContext, IAntiforgery antiforgery, TokenStore store) =>
