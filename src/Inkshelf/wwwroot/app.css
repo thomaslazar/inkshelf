@@ -1,15 +1,23 @@
 body { font-family: serif; margin: 1rem; line-height: 1.5; color: #000; background: #fff; }
 a { color: #000; }
 img { max-width: 100%; height: auto; }
-.item { display: flex; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid #ccc; }
+.item { display: flex; gap: 1rem; align-items: flex-start; padding: .5rem 0; border-bottom: 1px solid #ccc; }
+/* Fixed square cover box so every row's text starts at the same left offset,
+   regardless of the cover's aspect ratio (or whether it loaded at all). */
+.item .cover { flex: 0 0 72px; width: 72px; height: 72px; object-fit: contain; background: #f0f0f0; }
+.item .body { flex: 1 1 auto; min-width: 0; }
 nav.pager a { margin-right: 1rem; }
 .topbar { display: flex; align-items: center; gap: 1rem; padding-bottom: .5rem; border-bottom: 1px solid #ccc; margin-bottom: 1rem; flex-wrap: wrap; }
 .topbar .brand { font-weight: bold; text-decoration: none; }
 /* Logo mark beside the page heading. Sized relative to the heading; the
    explicit height is needed because the global `img { height:auto }` rule
    would otherwise blow it up to full width. */
-.page-title { display: flex; align-items: center; gap: .5rem; }
+.page-title { display: flex; align-items: center; gap: .5rem; margin: 0; }
 .title-icon { height: 1.6em; width: auto; }
+.page-head { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin: 1rem 0; }
+.crumb-sep { color: #666; }
+.fav-form { margin: 0; }
+.fav-star { border: none; background: none; cursor: pointer; font-size: 1.8rem; line-height: 1; padding: 0; }
 .logo { text-align: center; }
 .logo img { max-width: 320px; width: 60%; height: auto; }
 .login-form { max-width: 320px; margin: 0 auto; text-align: center; }

@@ -24,6 +24,7 @@ public class LibraryModel : PageModel
     public bool IsFavorite { get; private set; }
     public bool IsSearch => !string.IsNullOrWhiteSpace(Q);
     public string? FilterLabel { get; private set; }
+    public string LibraryName { get; private set; } = "Library";
 
     public List<AbsItem> Items { get; private set; } = new();
     public Pager Pager { get; private set; } = new(0, PageSize, 0);
@@ -33,6 +34,9 @@ public class LibraryModel : PageModel
     {
         if (string.IsNullOrEmpty(Id)) return NotFound();
         IsFavorite = Favorites.Read(Request) == Id;
+
+        var libraries = await _session.ExecuteAsync((tok, c) => _client.GetLibrariesAsync(tok, c), ct);
+        LibraryName = libraries.FirstOrDefault(l => l.Id == Id)?.Name ?? "Library";
 
         if (IsSearch)
         {
