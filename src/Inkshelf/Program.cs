@@ -1,8 +1,10 @@
+using Inkshelf;
 using Inkshelf.Abs;
 using Inkshelf.Auth;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -80,6 +82,15 @@ app.MapPost("/logout", async (HttpContext httpContext, IAntiforgery antiforgery,
     store.Clear();
     return Results.Redirect("/login");
 });
+
+app.MapPost("/favorite", async (HttpContext ctx, IAntiforgery antiforgery, [FromForm] string libraryId) =>
+{
+    try { await antiforgery.ValidateRequestAsync(ctx); }
+    catch (AntiforgeryValidationException) { return Results.BadRequest(); }
+    if (Favorites.Read(ctx.Request) == libraryId) Favorites.Clear(ctx.Response);
+    else Favorites.Set(ctx.Response, libraryId);
+    return Results.Redirect($"/library/{libraryId}");
+}).DisableAntiforgery();
 
 app.Run();
 

@@ -71,4 +71,40 @@ public class EndpointTests
         Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/login", response.Headers.Location?.OriginalString);
     }
+
+    [Fact]
+    public async Task Index_without_favorite_redirects_to_login_when_no_session()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var res = await client.GetAsync("/");
+        // No fav cookie, no session -> AbsAuthException -> /login
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
+        Assert.Equal("/login", res.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
+    public async Task Index_with_favorite_redirects_to_that_library()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var req = new HttpRequestMessage(HttpMethod.Get, "/");
+        req.Headers.Add("Cookie", "inkshelf_fav_library=lib9");
+        var res = await client.SendAsync(req);
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
+        Assert.Equal("/library/lib9", res.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
+    public async Task Index_with_favorite_and_all_bypasses_redirect()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var req = new HttpRequestMessage(HttpMethod.Get, "/?all=1");
+        req.Headers.Add("Cookie", "inkshelf_fav_library=lib9");
+        var res = await client.SendAsync(req);
+        // Bypasses fav redirect; no session -> falls through to /login
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
+        Assert.Equal("/login", res.Headers.Location?.OriginalString);
+    }
 }
