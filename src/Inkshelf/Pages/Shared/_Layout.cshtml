@@ -17,7 +17,7 @@
     @if (!(ViewData["HideChrome"] as bool? ?? false))
     {
         <header class="topbar">
-            <a href="/?all=1" class="brand"><img src="~/img/icon-black.png" alt="Inkshelf" height="24" /> Libraries</a>
+            <a href="/?all=1" class="brand">Libraries</a>
             @await RenderSectionAsync("topbar", required: false)
         </header>
     }
