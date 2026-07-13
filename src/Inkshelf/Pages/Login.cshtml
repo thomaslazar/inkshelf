@@ -1,6 +1,7 @@
 @page
 @model Inkshelf.Pages.LoginModel
-<h1>Inkshelf</h1>
+@{ ViewData["HideChrome"] = true; }
+<p class="logo"><img src="~/img/logo-black.png" alt="Inkshelf" /></p>
 @if (Model.Error is not null) { <p role="alert">@Model.Error</p> }
 <form method="post">
     <p><label>Username<br /><input name="Username" autocomplete="username" /></label></p>

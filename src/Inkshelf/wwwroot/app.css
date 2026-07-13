@@ -3,3 +3,9 @@ a { color: #000; }
 img { max-width: 100%; height: auto; }
 .item { display: flex; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid #ccc; }
 nav.pager a { margin-right: 1rem; }
+.topbar { display: flex; align-items: center; gap: 1rem; padding-bottom: .5rem; border-bottom: 1px solid #ccc; margin-bottom: 1rem; flex-wrap: wrap; }
+.topbar .brand { display: inline-flex; align-items: center; gap: .4rem; font-weight: bold; text-decoration: none; }
+.logo { text-align: center; }
+.logo img { max-width: 320px; width: 60%; height: auto; }
+.searchbar { margin-left: auto; }
+.searchbar input { padding: .2rem; }

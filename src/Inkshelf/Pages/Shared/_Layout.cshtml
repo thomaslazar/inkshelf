@@ -6,8 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Inkshelf</title>
     <link rel="stylesheet" href="~/app.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="~/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="~/favicon-16x16.png" />
+    <link rel="icon" href="~/favicon.ico" />
+    <link rel="apple-touch-icon" href="~/apple-touch-icon.png" />
+    <link rel="manifest" href="~/site.webmanifest" />
+    <meta name="theme-color" content="#ffffff" />
 </head>
 <body>
+    @if (!(ViewData["HideChrome"] as bool? ?? false))
+    {
+        <header class="topbar">
+            <a href="/?all=1" class="brand"><img src="~/img/icon-black.png" alt="Inkshelf" height="24" /> Libraries</a>
+            @await RenderSectionAsync("topbar", required: false)
+        </header>
+    }
     <main>
         @RenderBody()
     </main>
