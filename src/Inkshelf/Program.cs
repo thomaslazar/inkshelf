@@ -101,6 +101,16 @@ app.MapPost("/favorite", async (HttpContext ctx, IAntiforgery antiforgery, [From
     return Results.Redirect($"/library/{libraryId}");
 }).DisableAntiforgery();
 
+// Receives the /diag.html browser capability probe and logs it, so device
+// limitations can be collected without a screenshot. No auth (pre-login tool).
+app.MapPost("/diag", async (HttpContext ctx) =>
+{
+    using var reader = new StreamReader(ctx.Request.Body);
+    var body = await reader.ReadToEndAsync();
+    app.Logger.LogInformation("Browser probe: {Probe}", body);
+    return Results.Ok();
+});
+
 app.Run();
 
 public partial class Program { }

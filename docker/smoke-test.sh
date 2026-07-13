@@ -27,7 +27,7 @@ check() { # path substring
     echo "  ok: $1"
 }
 check "/?all=1" "Test Library"
-check "/library/$LIBRARY_ID" "Items"
+check "/library/$LIBRARY_ID" "Page "
 check "/library/$LIBRARY_ID?q=Dune" "Dune"
 
 # Real series filter link: fetch a series id, build group.<b64>, url-encode.

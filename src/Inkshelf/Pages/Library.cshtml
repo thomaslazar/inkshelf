@@ -14,6 +14,7 @@
         <a href="/?all=1">Libraries</a> <span class="crumb-sep">›</span> @Model.LibraryName
     </h1>
     <form class="fav-form" method="post" action="/favorite">
+        @Html.AntiForgeryToken()
         <input type="hidden" name="libraryId" value="@Model.Id" />
         <button type="submit" class="fav-star" title="@(Model.IsFavorite ? "Unset favorite" : "Set favorite")">@(Model.IsFavorite ? "★" : "☆")</button>
     </form>

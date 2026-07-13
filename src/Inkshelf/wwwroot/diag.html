@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Inkshelf browser probe</title>
+<style>
+  body { font-family: serif; margin: 1rem; color: #000; background: #fff; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; }
+  .y { font-weight: bold; }
+  .n { color: #666; }
+  #status { margin: .5rem 0; }
+</style>
+</head>
+<body>
+<h1>Browser capability probe</h1>
+<p id="status">Running…</p>
+<table id="out"><tbody></tbody></table>
+<script>
+/* Deliberately ES5-only (var, no arrow/template-literals/fetch) so it runs on
+   an old engine. Results render on-page and are best-effort POSTed to /diag. */
+(function () {
+  var rows = [];
+  function add(name, ok) { rows.push([name, ok]); }
+
+  var cssOk = (typeof window.CSS !== 'undefined' && CSS.supports);
+  function css(prop, val) {
+    if (!cssOk) return null;
+    try { return CSS.supports(prop, val); } catch (e) { return null; }
+  }
+  function mq(q) {
+    try { return window.matchMedia && window.matchMedia(q).media !== 'not all'; }
+    catch (e) { return null; }
+  }
+
+  add('CSS.supports() available', cssOk);
+  add('display: flex', css('display', 'flex'));
+  add('flex gap', css('gap', '1px'));
+  add('display: grid', css('display', 'grid'));
+  add('grid gap (row-gap)', css('row-gap', '1px'));
+  add('object-fit', css('object-fit', 'contain'));
+  add('aspect-ratio', css('aspect-ratio', '1 / 1'));
+  add('position: sticky', css('position', 'sticky'));
+  add('CSS variables', css('--x', '0'));
+  add('var()', css('color', 'var(--x)'));
+  add('clamp()', css('width', 'clamp(1px, 2px, 3px)'));
+  add('calc()', css('width', 'calc(1px + 1px)'));
+  add('min()/max()', css('width', 'min(1px, 2px)'));
+  add(':has() selector', (function () { try { return CSS.supports('selector(:has(*))'); } catch (e) { return null; } })());
+  add('gap in flex (prop)', css('gap', '1rem'));
+  add('overflow-wrap', css('overflow-wrap', 'break-word'));
+  add('media prefers-color-scheme', mq('(prefers-color-scheme: dark)'));
+
+  add('JS: Promise', typeof Promise !== 'undefined');
+  add('JS: fetch', typeof fetch !== 'undefined');
+  add('JS: XMLHttpRequest', typeof XMLHttpRequest !== 'undefined');
+  add('JS: localStorage', (function () { try { return !!window.localStorage; } catch (e) { return false; } })());
+  add('JS: addEventListener', typeof document.addEventListener !== 'undefined');
+  add('JS: Array.prototype.includes', !!Array.prototype.includes);
+  add('JS: const/let (eval)', (function () { try { eval('const _q=1; let _w=2;'); return true; } catch (e) { return false; } })());
+  add('JS: arrow fn (eval)', (function () { try { eval('var _a=function(){}; (()=>1);'); return true; } catch (e) { return false; } })());
+  add('JS: template literal (eval)', (function () { try { eval('var _t=`x`;'); return true; } catch (e) { return false; } })());
+
+  var info = {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    language: navigator.language,
+    screenW: screen.width, screenH: screen.height,
+    innerW: window.innerWidth, innerH: window.innerHeight,
+    dpr: window.devicePixelRatio || 1
+  };
+
+  // Render table
+  var tb = document.getElementById('out').getElementsByTagName('tbody')[0];
+  function put(k, v) {
+    var tr = document.createElement('tr');
+    var td1 = document.createElement('td'); td1.appendChild(document.createTextNode(k));
+    var td2 = document.createElement('td');
+    var text, cls;
+    if (v === true) { text = 'yes'; cls = 'y'; }
+    else if (v === false) { text = 'no'; cls = 'n'; }
+    else if (v === null) { text = '?'; cls = 'n'; }
+    else { text = String(v); cls = ''; }
+    td2.className = cls; td2.appendChild(document.createTextNode(text));
+    tr.appendChild(td1); tr.appendChild(td2); tb.appendChild(tr);
+  }
+  for (var k in info) { if (info.hasOwnProperty(k)) put(k, info[k]); }
+  for (var i = 0; i < rows.length; i++) put(rows[i][0], rows[i][1]);
+
+  // Best-effort POST back so the server (and the dev) can read exact results.
+  var payload = { info: info, features: {} };
+  for (var j = 0; j < rows.length; j++) payload.features[rows[j][0]] = rows[j][1];
+  var st = document.getElementById('status');
+  try {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/diag', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4) st.firstChild.data =
+        (xhr.status >= 200 && xhr.status < 300) ? 'Reported to server. Done.' : 'Shown below (server report failed: ' + xhr.status + ').';
+    };
+    xhr.send(JSON.stringify(payload));
+  } catch (e) {
+    st.firstChild.data = 'Shown below (could not report to server).';
+  }
+})();
+</script>
+</body>
+</html>
