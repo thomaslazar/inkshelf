@@ -28,6 +28,203 @@
 
 ---
 
+## Task 0: Transient seeded ABS (integration harness) — do this first
+
+**Files:**
+- Create: `docker/docker-compose.yml`, `docker/seed.sh`, `docker/smoke-test.sh`
+- Modify: `.gitignore` is unaffected (compose/seed/smoke are committed; `temp/` already ignored).
+
+**Interfaces:**
+- Produces a disposable ABS at host port **13379** with a seeded book library
+  (13 ebook items across several authors/series + 2 audio-only items) and root
+  `root`/`root`; and `docker/smoke-test.sh` driving Inkshelf's routes.
+- **Isolation:** compose project `inkshelf-it`, port 13379, prefixed volumes —
+  never touches abs-cli's stack (project `docker`, port 13378).
+
+- [ ] **Step 1: `docker/docker-compose.yml`**
+
+```yaml
+name: inkshelf-it
+services:
+  audiobookshelf:
+    image: advplyr/audiobookshelf:2.35.1
+    ports:
+      - "13379:80"
+    volumes:
+      - abs-config:/config
+      - abs-metadata:/metadata
+    environment:
+      - PORT=80
+      # Disposable test stack: disable auth rate limiting so repeated logins
+      # during dev/smoke don't hit ABS's 40-logins/10min cap.
+      - RATE_LIMIT_AUTH_MAX=0
+
+volumes:
+  abs-config:
+  abs-metadata:
+```
+
+- [ ] **Step 2: `docker/seed.sh`** (uploads ebooks; adapted from abs-cli's seed)
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+ABS_URL="${ABS_URL:-http://host.docker.internal:13379}"
+MAX_WAIT=40
+
+echo "Waiting for ABS at $ABS_URL ..."
+for i in $(seq 1 $MAX_WAIT); do
+    curl -sf "$ABS_URL/healthcheck" >/dev/null 2>&1 && { echo "ABS ready."; break; }
+    [ "$i" -eq "$MAX_WAIT" ] && { echo "ABS did not start"; exit 1; }
+    sleep 1
+done
+
+curl -sf -X POST "$ABS_URL/init" -H 'Content-Type: application/json' \
+    -d '{"newRoot":{"username":"root","password":"root"}}' >/dev/null 2>&1 || true
+
+TOKEN=$(curl -sf -X POST "$ABS_URL/login" \
+    -H 'Content-Type: application/json' -H 'X-Return-Tokens: true' \
+    -d '{"username":"root","password":"root"}' \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['user']['accessToken'])")
+AUTH="Authorization: Bearer $TOKEN"
+
+LIB=$(curl -sf -X POST "$ABS_URL/api/libraries" -H "$AUTH" -H 'Content-Type: application/json' \
+    -d '{"name":"Test Library","folders":[{"fullPath":"/books"}],"mediaType":"book","provider":"google"}')
+LIBRARY_ID=$(echo "$LIB" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+FOLDER_ID=$(echo "$LIB" | python3 -c "import sys,json; print(json.load(sys.stdin)['folders'][0]['id'])")
+echo "Library: $LIBRARY_ID"
+
+TMP=$(mktemp -d)
+# Minimal valid EPUB (mimetype stored first, uncompressed).
+python3 - "$TMP" <<'PY'
+import os,sys,zipfile
+t=sys.argv[1]; b=os.path.join(t,'e'); os.makedirs(b+'/META-INF',exist_ok=True)
+open(b+'/mimetype','w').write('application/epub+zip')
+open(b+'/META-INF/container.xml','w').write('<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>')
+open(b+'/content.opf','w').write('<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">x</dc:identifier><dc:title>x</dc:title><dc:language>en</dc:language></metadata><manifest><item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c1"/></spine></package>')
+open(b+'/c1.xhtml','w').write('<?xml version="1.0"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><title>c</title></head><body><p>c</p></body></html>')
+z=zipfile.ZipFile(t+'/book.epub','w')
+z.write(b+'/mimetype','mimetype',compress_type=zipfile.ZIP_STORED)
+z.write(b+'/META-INF/container.xml','META-INF/container.xml')
+z.write(b+'/content.opf','content.opf'); z.write(b+'/c1.xhtml','c1.xhtml'); z.close()
+PY
+# Minimal PDF and a tiny silent MP3.
+printf '%%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>endobj\ntrailer<</Root 1 0 R>>\n%%%%EOF\n' > "$TMP/book.pdf"
+python3 -c "open('$TMP/a.mp3','wb').write((bytes([0xFF,0xFB,0x90,0x00])+b'\x00'*413)*38)"
+
+upload() { # title author series file ext
+    curl -sf -X POST "$ABS_URL/api/upload" -H "$AUTH" \
+        -F "title=$1" -F "author=$2" ${3:+-F "series=$3"} \
+        -F "library=$LIBRARY_ID" -F "folder=$FOLDER_ID" \
+        -F "0=@$4;filename=book.$5" >/dev/null
+    echo "  + $2 — $1${3:+ ($3)} [$5]"
+}
+
+echo "Uploading ebooks + a couple audio-only items..."
+upload "The Final Empire"      "Brandon Sanderson" "Mistborn"           "$TMP/book.epub" epub
+upload "The Well of Ascension" "Brandon Sanderson" "Mistborn"           "$TMP/book.epub" epub
+upload "The Hero of Ages"      "Brandon Sanderson" "Mistborn"           "$TMP/book.epub" epub
+upload "Storm Front"           "Jim Butcher"       "The Dresden Files"  "$TMP/book.epub" epub
+upload "Fool Moon"             "Jim Butcher"       "The Dresden Files"  "$TMP/book.epub" epub
+upload "Grave Peril"           "Jim Butcher"       "The Dresden Files"  "$TMP/book.epub" epub
+upload "Rivers of London"      "Ben Aaronovitch"   "Rivers of London"   "$TMP/book.epub" epub
+upload "Moon Over Soho"        "Ben Aaronovitch"   "Rivers of London"   "$TMP/book.epub" epub
+upload "Uprooted"              "Naomi Novik"       ""                   "$TMP/book.epub" epub
+upload "Redshirts"             "John Scalzi"       ""                   "$TMP/book.epub" epub
+upload "Dune"                  "Frank Herbert"     "Dune"               "$TMP/book.pdf"  pdf
+upload "Dune Messiah"          "Frank Herbert"     "Dune"               "$TMP/book.pdf"  pdf
+upload "Little Brother"        "Cory Doctorow"     ""                   "$TMP/book.pdf"  pdf
+upload "Audio Only One"        "Studio Audio"      ""                   "$TMP/a.mp3"     mp3
+upload "Audio Only Two"        "Studio Audio"      ""                   "$TMP/a.mp3"     mp3
+rm -rf "$TMP"
+
+echo "Scanning..."
+curl -sf -X POST "$ABS_URL/api/libraries/$LIBRARY_ID/scan" -H "$AUTH" >/dev/null
+for i in $(seq 1 40); do
+    N=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=0" -H "$AUTH" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin).get('total',0))" 2>/dev/null || echo 0)
+    [ "${N:-0}" -ge 15 ] && { echo "Indexed $N items."; break; }
+    sleep 1
+done
+
+echo ""
+echo "Seed complete. ABS_URL=$ABS_URL  LIBRARY_ID=$LIBRARY_ID  root/root"
+```
+
+- [ ] **Step 3: `docker/smoke-test.sh`** (drives Inkshelf's routes)
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+# Drives a running Inkshelf against a seeded ABS.
+ABS_URL="${ABS_URL:?set ABS_URL to the seeded ABS}"
+INKSHELF_URL="${INKSHELF_URL:-http://localhost:5099}"
+JAR=$(mktemp)
+fail() { echo "SMOKE FAIL: $1"; exit 1; }
+
+# Discover library id + an ebook item id via ABS (root token).
+TOKEN=$(curl -sf -X POST "$ABS_URL/login" -H 'Content-Type: application/json' -H 'X-Return-Tokens: true' \
+    -d '{"username":"root","password":"root"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['user']['accessToken'])")
+LIBRARY_ID=$(curl -sf "$ABS_URL/api/libraries" -H "Authorization: Bearer $TOKEN" \
+    | python3 -c "import sys,json;print(json.load(sys.stdin)['libraries'][0]['id'])")
+EBOOK_ID=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=100" -H "Authorization: Bearer $TOKEN" \
+    | python3 -c "import sys,json;print(next(r['id'] for r in json.load(sys.stdin)['results'] if r.get('media',{}).get('ebookFile')))")
+
+# Login through Inkshelf.
+curl -sf -c "$JAR" "$INKSHELF_URL/login" -o /tmp/s_login.html
+TOK=$(grep -o 'name="__RequestVerificationToken"[^>]*value="[^"]*"' /tmp/s_login.html | sed 's/.*value="//;s/"//')
+code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" -c "$JAR" -X POST "$INKSHELF_URL/login" \
+    --data-urlencode "__RequestVerificationToken=$TOK" --data-urlencode "Username=root" --data-urlencode "Password=root")
+[ "$code" = "302" ] || fail "login expected 302 got $code"
+
+check() { # path substring
+    local body; body=$(curl -sf -b "$JAR" "$INKSHELF_URL$1") || fail "GET $1 failed"
+    echo "$body" | grep -q "$2" || fail "GET $1 missing '$2'"
+    echo "  ok: $1"
+}
+check "/?all=1" "Test Library"
+check "/library/$LIBRARY_ID" "Download"
+check "/library/$LIBRARY_ID?q=Dune" "Dune"
+
+FILTER=$(python3 -c "import base64;print('series.'+base64.b64encode(b'x').decode())")  # placeholder; real id below
+# real series filter: fetch a series id
+SERIES_FILTER=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/search?q=Mistborn&limit=5" -H "Authorization: Bearer $TOKEN" \
+    | python3 -c "import sys,json,base64,urllib.parse;s=json.load(sys.stdin)['series'][0]['series']['id'];print(urllib.parse.quote('series.'+base64.b64encode(s.encode()).decode()))")
+check "/library/$LIBRARY_ID?filter=$SERIES_FILTER" "clear"
+
+for p in "/cover/$EBOOK_ID" "/download/$EBOOK_ID"; do
+    code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$INKSHELF_URL$p")
+    [ "$code" = "200" ] || fail "GET $p expected 200 got $code"
+    echo "  ok: $p ($code)"
+done
+rm -f "$JAR"
+echo "SMOKE PASS"
+```
+
+- [ ] **Step 4: Bring it up and seed** (from the devcontainer)
+
+```bash
+cd /workspaces/inkshelf
+chmod +x docker/seed.sh docker/smoke-test.sh
+docker compose -f docker/docker-compose.yml up -d
+# host.docker.internal is unreliable in the dev container — resolve the IP:
+ABS_IP=$(docker inspect inkshelf-it-audiobookshelf-1 -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+echo "seeded ABS at http://$ABS_IP:80"
+ABS_URL="http://$ABS_IP:80" bash docker/seed.sh
+```
+
+Record `ABS_IP` — subsequent tasks run Inkshelf with `ABS_URL=http://$ABS_IP:80`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add docker/
+git commit -m "test: transient seeded ABS + smoke harness (isolated from abs-cli)"
+```
+
+---
+
 ## Task 1: Static assets + favicon + manifest
 
 **Files:**
@@ -682,7 +879,25 @@ git commit -m "feat: library search, filters, top pager, favorite star, 10/page"
 
 ---
 
-## Task 7: PR + CI + live verification
+## Task 7: Integration verify (seeded ABS) → PR + CI → real-ABS smoke
+
+- [ ] **Step 0: Verify against the seeded ABS (during/after implementation)**
+
+With the seeded stack up (Task 0), run Inkshelf against it and drive the flows
+in a browser, then run the automated smoke:
+
+```bash
+ABS_IP=$(docker inspect inkshelf-it-audiobookshelf-1 -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+ABS_URL="http://$ABS_IP:80" ASPNETCORE_URLS=http://0.0.0.0:5099 dotnet run --project src/Inkshelf &
+# then:
+ABS_URL="http://$ABS_IP:80" INKSHELF_URL=http://localhost:5099 bash docker/smoke-test.sh
+```
+
+Browser check (login root/root): favicon; login wordmark; header icon →
+libraries; set a favorite → `/` jumps into it → Libraries link escapes; rows
+show clickable authors/series that filter; audio-only items show NO download
+link, ebooks do; `?q=Dune` returns grouped Books/Series/Authors; download of an
+epub/pdf works; 10/page with a top pager. Expect **SMOKE PASS**.
 
 - [ ] **Step 1: Push + PR**
 
@@ -699,17 +914,27 @@ RUN_ID=$(gh run list --branch feat/ui-convenience --limit 1 --json databaseId -q
 gh run watch "$RUN_ID" --exit-status
 ```
 
-- [ ] **Step 3: Live verify against real ABS**
+- [ ] **Step 3: Final smoke against the real ABS**
 
-Run the app (`ABS_URL=<abs> dotnet run --project src/Inkshelf`) and confirm in a browser: favicon shows; login wordmark; header icon → libraries; set a favorite → `/` jumps into it → Libraries link escapes; item rows show clickable authors/series that filter; search box returns grouped Books/Series/Authors; download still works; 10 items/page with a top pager.
+After CI is green and seeded-ABS verification passed, run Inkshelf against the
+user's real ABS instance and do a manual smoke of the same flows (login with
+real credentials). This is the last gate before merge.
 
-- [ ] **Step 4: Merge** (human) → `:main` image republishes.
+- [ ] **Step 4: Tear down the test stack**
+
+```bash
+docker compose -f docker/docker-compose.yml down -v   # removes the transient ABS + volumes
+```
+
+- [ ] **Step 5: Merge** (human) → `:main` image republishes.
 
 ---
 
 ## Self-Review notes
 
-- **Spec coverage:** assets+favicon+manifest (T1), header+login wordmark (T2), README (T3), full-metadata/filter/search client + encode (T4), favorite cookie+redirect+endpoint (T5), 10/page+top pager+clickable author/series+search modes+star (T6), verify (T7). All covered.
+- **Spec coverage:** transient seeded ABS + smoke harness, isolated from abs-cli (T0), assets+favicon+manifest (T1), header+login wordmark (T2), README (T3), full-metadata/filter/search client + encode (T4), favorite cookie+redirect+endpoint (T5), 10/page+top pager+clickable author/series+search modes+star (T6), seeded-ABS verify + smoke + real-ABS smoke + teardown (T7). All covered.
+- **Isolation:** T0 uses compose project `inkshelf-it`, port 13379, prefixed volumes — abs-cli's stack (project `docker`, port 13378) is untouched, so both run simultaneously.
+- **Seeded ABS reachability:** resolve the container IP (`docker inspect`), not `host.docker.internal`, from the dev container.
 - **`minified` removal:** the existing `GetItemsAsync_builds_query_and_parses` test asserts `minified=1` — Task 4 Step 7 updates it. Flagged so it isn't missed.
 - **Ebook detection moved** to `media.ebookFile.ebookFormat`; `AbsMedia.EbookFormat` is now a computed property — the download button gate and the row both use it.
 - **Razor row rendering:** if the local-function-with-markup form fights the compiler, fall back to a `_ItemRow.cshtml` partial (called out in T6).

@@ -151,6 +151,41 @@ URL-encode when placing in the link (`+`/`/`/`=` are not URL-safe).
   `AbsSession` auth flow / 404 handling applies; a bad `filter` value yields an
   empty listing.
 
+## Integration test environment (transient seeded ABS)
+
+To exercise the real page flows during implementation (not just unit tests), a
+disposable ABS instance is seeded with data and run locally via Docker. This
+mirrors abs-cli's `docker/` setup, **isolated so both projects' stacks can run
+at once**:
+
+- `docker/docker-compose.yml` — `advplyr/audiobookshelf:2.35.1`. Isolation from
+  abs-cli: compose project `name: inkshelf-it`, host port **13379** (abs-cli
+  uses 13378), own named volumes (prefixed by the project name),
+  `RATE_LIMIT_AUTH_MAX=0` so repeated logins during testing don't rate-limit.
+- `docker/seed.sh` — initializes root (`root`/`root`), creates a book library,
+  and uploads a set of **ebook** items (minimal generated EPUB + PDF) across
+  several authors and multiple series, plus a couple of audio-only items (so
+  the "no download button" case is covered). Enough items for **2+ pages** at
+  10/page, with distinct titles/authors/series for search and filter links.
+  Then triggers a scan and waits for the items to index.
+- `docker/smoke-test.sh` — drives Inkshelf's own HTTP routes end to end
+  (login → cookie, libraries, items page, `?q=` search, `?filter=` listing,
+  `/cover/{id}`, `/download/{id}`), asserting status codes and key content. It
+  discovers a library id and an ebook item id via the ABS API (root token).
+  Runs against a running Inkshelf pointed at any ABS.
+
+**Reaching the seeded ABS from the devcontainer:** `host.docker.internal` is
+unreliable inside the dev container, so resolve the ABS container IP and use
+`http://<ip>:80` (documented in the plan). The stack runs on the host Docker
+daemon (docker-outside-of-docker).
+
+**Workflow:** during implementation, run Inkshelf against the **seeded** ABS
+and verify the pages there. Once everything is verified there, run the smoke
+test, and finally a manual smoke against the user's **real** ABS instance.
+
+The seed/compose are committed (they're dev/test tooling); the ABS image and
+volumes are transient and never committed.
+
 ## Testing
 
 - `AbsClient.SearchAsync` parses book/series/authors from a fixture (StubHandler).
@@ -163,6 +198,9 @@ URL-encode when placing in the link (`+`/`/`/`=` are not URL-safe).
   `?all=1` bypass (WebApplicationFactory, no live ABS).
 - `Pager` math unchanged (existing tests stay).
 - Existing 23 tests remain green.
+- Integration: pages verified against the seeded ABS during implementation;
+  `docker/smoke-test.sh` green against Inkshelf+seeded ABS; final manual smoke
+  against the real ABS.
 
 ## Out of scope
 
@@ -170,3 +208,5 @@ URL-encode when placing in the link (`+`/`/`/`=` are not URL-safe).
 - Sorting controls, multi-facet filtering, saved searches.
 - Global (cross-library) search.
 - Image resizing of the provided PNGs (used as-is; revisit if e-ink load is slow).
+- Wiring the seeded ABS into a CI smoke job (harness lands here; CI integration
+  stays a follow-up).
