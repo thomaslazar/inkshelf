@@ -38,15 +38,21 @@ Each field link computes its own next-state href from the current `sort`/`desc`.
 
 ## B. Download primary ebook
 
-Any item whose `media.ebookFormat` is set gets a **`Download`** link →
-`GET /download/{id}`:
+**Link gating:** the `Download` (and `Convert`) links render **only when the
+item has an ebook** — the listing JSON already carries `media.ebookFormat`, so
+the row decides for free (no extra request). Items without an ebook (audio-only)
+show no link at all.
+
+The `Download` link → `GET /download/{id}`:
 
 - Fetches item detail for the ebook file's real filename
   (`media.ebookFile.metadata.filename`), then proxies
   `GET /api/items/{id}/ebook` (no special ABS permission) and streams the bytes
   with `Content-Disposition: attachment; filename="<abs filename>"`.
 - Works for every format (epub/pdf/cbz/cbr/mobi/…) — the primary file, as-is.
-- 404 handling: if ABS has no ebook, return 404 (don't 500).
+- **Defensive 404:** since the link is gated, users don't normally hit
+  `/download/{id}` for an ebook-less item — but if the endpoint is hit directly
+  (bookmark/stale link/audio-only id), it returns 404 rather than 500.
 
 ## C. CBZ/CBR → EPUB conversion
 
