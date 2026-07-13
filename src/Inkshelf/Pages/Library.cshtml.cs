@@ -21,7 +21,10 @@ public class LibraryModel : PageModel
     [FromQuery] public string? Author { get; set; }
     [FromQuery] public string? Series { get; set; }
     [FromQuery] public string? Sort { get; set; }
-    [FromQuery(Name = "desc")] public bool Desc { get; set; }
+    // ABS wants desc=1 (not "true"), and Razor's bool binder rejects "1", so
+    // carry the raw token and derive the flag.
+    [FromQuery(Name = "desc")] public string? DescParam { get; set; }
+    public bool Desc => DescParam == "1";
 
     public bool IsFavorite { get; private set; }
     public bool IsSearch => !string.IsNullOrWhiteSpace(Q);
