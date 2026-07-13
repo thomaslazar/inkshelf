@@ -41,7 +41,7 @@ public class AbsSessionTests
         // AbsClient stub: /auth/refresh returns new tokens
         var refreshClient = new AbsClient(new HttpClient(new StubHandler(_ =>
             StubHandler.Json("""{"user":{"accessToken":"new","refreshToken":"newref"}}""")))
-            { BaseAddress = new Uri("http://abs.local") });
+        { BaseAddress = new Uri("http://abs.local") });
         var (session, _) = Make(WithTokens(new Tokens("old", "ref")), refreshClient);
 
         var calls = 0;
@@ -61,7 +61,7 @@ public class AbsSessionTests
     {
         var badRefresh = new AbsClient(new HttpClient(new StubHandler(_ =>
             new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized)))
-            { BaseAddress = new Uri("http://abs.local") });
+        { BaseAddress = new Uri("http://abs.local") });
         var (session, _) = Make(WithTokens(new Tokens("old", "ref")), badRefresh);
 
         await Assert.ThrowsAsync<AbsAuthException>(() =>
