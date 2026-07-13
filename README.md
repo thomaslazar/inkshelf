@@ -47,9 +47,10 @@ and adjust `ABS_URL` to point at your ABS service first):
 docker compose -f docker-compose.example.yml up
 ```
 
-This builds the image from the repo `Dockerfile`, exposes Inkshelf on port
-8080, and persists Data Protection keys (so login cookies survive restarts)
-in a named volume mounted at `/keys`.
+This pulls the published image (see below), exposes Inkshelf on port 8080, and
+persists Data Protection keys (so login cookies survive restarts) in a named
+volume mounted at `/keys`. To build from source instead, replace the `image:`
+line with `build: .`.
 
 ## Container image
 
@@ -67,10 +68,10 @@ Tags:
 | `:X.Y.Z`      | A tagged release                                    |
 | `:latest`     | The most recent tagged release                      |
 
-Run it directly (or point the example compose file at this image instead of
-`build: .`):
+`docker-compose.example.yml` already references this image (`:main`). To run it
+directly:
 
 ```bash
 docker run -e ABS_URL=https://your-abs.example -p 8080:8080 \
-  ghcr.io/thomaslazar/inkshelf:latest
+  ghcr.io/thomaslazar/inkshelf:main
 ```

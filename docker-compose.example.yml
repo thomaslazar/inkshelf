@@ -1,6 +1,8 @@
 services:
   inkshelf:
-    build: .
+    # Published multi-arch image. Tags: :main (latest main build),
+    # :X.Y.Z / :latest (tagged releases). Pin to a release for stability.
+    image: ghcr.io/thomaslazar/inkshelf:main
     environment:
       ABS_URL: "http://audiobookshelf:80"
       DataProtectionKeysPath: "/keys"
