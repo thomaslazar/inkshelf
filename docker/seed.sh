@@ -66,6 +66,12 @@ printf '%%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pa
 # here — drop a real .cbr into the library folder if you need to test cbr.)
 cp "$TMP/cover.png" "$TMP/page-01.png"
 (cd "$TMP" && zip -jq sample.cbz page-01.png)
+# CBR = RAR archive; only if the `rar` tool is installed (see the devcontainer
+# Dockerfile, or `sudo apt-get install -y rar`). Skipped otherwise.
+if command -v rar >/dev/null 2>&1; then
+    cp "$TMP/cover.png" "$TMP/page-02.png"
+    (cd "$TMP" && rar a -inul sample.cbr page-02.png)
+fi
 
 upload() { # title author series
     curl -sf -X POST "$ABS_URL/api/upload" -H "$AUTH" \
@@ -103,13 +109,15 @@ echo "Uploading ebook fixtures (epub / pdf / cbz)..."
 uploadf "The Silent Sea"    "Ada Ebook"  "Deep Space" "$TMP/sample.epub"
 uploadf "Field Manual"      "Pete PDF"   ""           "$TMP/sample.pdf"
 uploadf "Neon Blade Vol. 1" "Mika Manga" "Neon Blade" "$TMP/sample.cbz"
+EXPECT=18
+[ -f "$TMP/sample.cbr" ] && { uploadf "Neon Blade Vol. 2" "Mika Manga" "Neon Blade" "$TMP/sample.cbr"; EXPECT=19; }
 
 echo "Scanning..."
 curl -sf -X POST "$ABS_URL/api/libraries/$LIBRARY_ID/scan" -H "$AUTH" >/dev/null
 for i in $(seq 1 40); do
     N=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=0" -H "$AUTH" \
         | python3 -c "import sys,json; print(json.load(sys.stdin).get('total',0))" 2>/dev/null || echo 0)
-    [ "${N:-0}" -ge 18 ] && { echo "Indexed $N items."; break; }
+    [ "${N:-0}" -ge "$EXPECT" ] && { echo "Indexed $N items."; break; }
     sleep 1
 done
 
@@ -127,6 +135,7 @@ meta = {
     'epub': {'title': 'The Silent Sea', 'authors': [{'name': 'Ada Ebook'}], 'series': [{'name': 'Deep Space', 'sequence': '1'}]},
     'pdf':  {'title': 'Field Manual', 'authors': [{'name': 'Pete PDF'}]},
     'cbz':  {'title': 'Neon Blade Vol. 1', 'authors': [{'name': 'Mika Manga'}], 'series': [{'name': 'Neon Blade', 'sequence': '1'}]},
+    'cbr':  {'title': 'Neon Blade Vol. 2', 'authors': [{'name': 'Mika Manga'}], 'series': [{'name': 'Neon Blade', 'sequence': '2'}]},
 }
 for it in req('GET', '/api/libraries/%s/items?limit=200' % lib)['results']:
     fmt = (it.get('media') or {}).get('ebookFormat')
@@ -147,4 +156,8 @@ rm -rf "$TMP"
 echo ""
 echo "Seed complete. ABS_URL=$ABS_URL  LIBRARY_ID=$LIBRARY_ID  root/root"
 echo "One item has a cover ($COVER_ITEM); the rest are coverless."
-echo "Ebook fixtures: epub (The Silent Sea), pdf (Field Manual), cbz (Neon Blade Vol. 1). cbr not seeded (no rar tool)."
+if [ "$EXPECT" = 19 ]; then
+    echo "Ebook fixtures: epub, pdf, cbz, cbr."
+else
+    echo "Ebook fixtures: epub, pdf, cbz (cbr seeded only when the rar tool is present)."
+fi
