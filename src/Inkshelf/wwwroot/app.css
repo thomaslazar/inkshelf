@@ -5,6 +5,9 @@ img { max-width: 100%; height: auto; }
 nav.pager a { margin-right: 1rem; }
 .topbar { display: flex; align-items: center; gap: 1rem; padding-bottom: .5rem; border-bottom: 1px solid #ccc; margin-bottom: 1rem; flex-wrap: wrap; }
 .topbar .brand { display: inline-flex; align-items: center; gap: .4rem; font-weight: bold; text-decoration: none; }
+/* The global `img { height: auto }` overrides the height="24" attribute, so
+   pin the brand icon size explicitly or it renders full-width. */
+.topbar .brand img { height: 24px; width: auto; }
 .logo { text-align: center; }
 .logo img { max-width: 320px; width: 60%; height: auto; }
 .login-form { max-width: 320px; margin: 0 auto; text-align: center; }
