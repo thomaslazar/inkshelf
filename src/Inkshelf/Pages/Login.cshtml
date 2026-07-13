@@ -1,6 +1,5 @@
 @page
 @model Inkshelf.Pages.LoginModel
-@{ ViewData["HideChrome"] = true; }
 <p class="logo"><img src="~/img/logo-black.png" alt="Inkshelf" /></p>
 @if (Model.Error is not null) { <p role="alert">@Model.Error</p> }
 <form method="post" class="login-form">

@@ -1,12 +1,6 @@
 @page
 @model Inkshelf.Pages.LibraryModel
 @{ ViewData["LibraryId"] = Model.Id; }
-@section topbar {
-    <form class="searchbar" method="get" action="/library/@Model.Id">
-        <input type="search" name="q" value="@Model.Q" placeholder="Search…" />
-        <button type="submit">Search</button>
-    </form>
-}
 
 <div class="page-head">
     <h1 class="page-title">
@@ -17,6 +11,10 @@
         @Html.AntiForgeryToken()
         <input type="hidden" name="libraryId" value="@Model.Id" />
         <button type="submit" class="fav-star" title="@(Model.IsFavorite ? "Unset favorite" : "Set favorite")">@(Model.IsFavorite ? "★" : "☆")</button>
+    </form>
+    <form class="searchbar" method="get" action="/library/@Model.Id">
+        <input type="search" name="q" value="@Model.Q" placeholder="Search…" />
+        <button type="submit">Search</button>
     </form>
 </div>
 

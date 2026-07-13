@@ -9,12 +9,9 @@ img { max-width: 100%; height: auto; }
 .item .cover img { max-width: 72px; max-height: 72px; width: auto; height: auto; }
 .item .body { flex: 1 1 auto; min-width: 0; }
 nav.pager a { margin-right: 1rem; }
-.topbar { display: flex; align-items: center; padding-bottom: .5rem; border-bottom: 1px solid #ccc; margin-bottom: 1rem; flex-wrap: wrap; }
-.topbar .brand { font-weight: bold; text-decoration: none; }
-/* Logo mark beside the page heading. Sized relative to the heading; the
-   explicit height is needed because the global `img { height:auto }` rule
-   would otherwise blow it up to full width. */
-/* No flex `gap` on the Tolino — the icon is inline with a margin instead. */
+/* Logo mark beside the page heading. The explicit height is needed because the
+   global `img { height:auto }` rule would otherwise blow it up to full width.
+   No flex `gap` on the Tolino — the icon is inline with a margin instead. */
 .page-title { margin: 0; }
 .title-icon { height: 1.4em; width: auto; vertical-align: -0.25em; margin-right: .4rem; }
 .page-head { display: flex; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
@@ -27,3 +24,4 @@ nav.pager a { margin-right: 1rem; }
 .login-form input { width: 100%; box-sizing: border-box; padding: .3rem; }
 .searchbar { margin-left: auto; }
 .searchbar input { padding: .2rem; }
+.logout-form { margin: 0 0 0 auto; }
