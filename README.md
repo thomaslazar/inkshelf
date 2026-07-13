@@ -50,3 +50,27 @@ docker compose -f docker-compose.example.yml up
 This builds the image from the repo `Dockerfile`, exposes Inkshelf on port
 8080, and persists Data Protection keys (so login cookies survive restarts)
 in a named volume mounted at `/keys`.
+
+## Container image
+
+Instead of building locally, you can pull a prebuilt multi-arch image
+(`linux/amd64` and `linux/arm64`) from GitHub Container Registry:
+
+    ghcr.io/thomaslazar/inkshelf
+
+Tags:
+
+| Tag           | Meaning                                             |
+|---------------|-----------------------------------------------------|
+| `:main`       | Latest build from the `main` branch (moves on every merge) |
+| `:main-<sha>` | A specific `main` build, pinnable                   |
+| `:X.Y.Z`      | A tagged release                                    |
+| `:latest`     | The most recent tagged release                      |
+
+Run it directly (or point the example compose file at this image instead of
+`build: .`):
+
+```bash
+docker run -e ABS_URL=https://your-abs.example -p 8080:8080 \
+  ghcr.io/thomaslazar/inkshelf:latest
+```
