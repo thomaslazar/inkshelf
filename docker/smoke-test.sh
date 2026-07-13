@@ -36,7 +36,8 @@ SERIES_FILTER=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/search?q=Mistborn&l
 check "/library/$LIBRARY_ID?filter=$SERIES_FILTER" "clear"
 
 code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$INKSHELF_URL/cover/$ITEM_ID")
-[ "$code" = "200" ] || fail "GET /cover/$ITEM_ID expected 200 got $code"
+# 200 (has cover) or 404 (no cover) are both fine; a 500 is a failure.
+{ [ "$code" = "200" ] || [ "$code" = "404" ]; } || fail "GET /cover/$ITEM_ID expected 200/404 got $code"
 echo "  ok: /cover/$ITEM_ID ($code)"
 
 rm -f "$JAR"

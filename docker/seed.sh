@@ -27,29 +27,33 @@ FOLDER_ID=$(echo "$LIB" | python3 -c "import sys,json; print(json.load(sys.stdin
 echo "Library: $LIBRARY_ID"
 
 TMP=$(mktemp -d)
-# Minimal valid EPUB (mimetype stored first, uncompressed).
-python3 - "$TMP" <<'PY'
-import os,sys,zipfile
-t=sys.argv[1]; b=os.path.join(t,'e'); os.makedirs(b+'/META-INF',exist_ok=True)
-open(b+'/mimetype','w').write('application/epub+zip')
-open(b+'/META-INF/container.xml','w').write('<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>')
-open(b+'/content.opf','w').write('<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">x</dc:identifier><dc:title>x</dc:title><dc:language>en</dc:language></metadata><manifest><item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c1"/></spine></package>')
-open(b+'/c1.xhtml','w').write('<?xml version="1.0"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><title>c</title></head><body><p>c</p></body></html>')
-z=zipfile.ZipFile(t+'/book.epub','w')
-z.write(b+'/mimetype','mimetype',compress_type=zipfile.ZIP_STORED)
-z.write(b+'/META-INF/container.xml','META-INF/container.xml')
-z.write(b+'/content.opf','content.opf'); z.write(b+'/c1.xhtml','c1.xhtml'); z.close()
+# Silent MP3 (no embedded metadata, so the upload form's title/author/series
+# stick — an EPUB's OPF metadata would override them). ~1s of valid frames.
+python3 -c "open('$TMP/a.mp3','wb').write((bytes([0xFF,0xFB,0x90,0x00])+b'\x00'*413)*38)"
+# A small solid-colour PNG cover (no image libs needed).
+python3 - "$TMP/cover.png" <<'PY'
+import sys,zlib,struct
+w,h,rgb=120,180,(60,60,90)
+raw=b''.join(b'\x00'+bytes(rgb)*w for _ in range(h))
+def chunk(t,d):
+    c=t+d
+    return struct.pack('>I',len(d))+c+struct.pack('>I',zlib.crc32(c)&0xffffffff)
+open(sys.argv[1],'wb').write(
+    b'\x89PNG\r\n\x1a\n'
+    + chunk(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))
+    + chunk(b'IDAT',zlib.compress(raw))
+    + chunk(b'IEND',b''))
 PY
 
 upload() { # title author series
     curl -sf -X POST "$ABS_URL/api/upload" -H "$AUTH" \
         -F "title=$1" -F "author=$2" ${3:+-F "series=$3"} \
         -F "library=$LIBRARY_ID" -F "folder=$FOLDER_ID" \
-        -F "0=@$TMP/book.epub;filename=book.epub" >/dev/null
+        -F "0=@$TMP/a.mp3;filename=audiobook.mp3" >/dev/null
     echo "  + $2 — $1${3:+ ($3)}"
 }
 
-echo "Uploading items (EPUB media; the file just makes ABS create a book item)..."
+echo "Uploading items (silent MP3 media so form metadata sticks)..."
 upload "The Final Empire"      "Brandon Sanderson" "Mistborn"
 upload "The Well of Ascension" "Brandon Sanderson" "Mistborn"
 upload "The Hero of Ages"      "Brandon Sanderson" "Mistborn"
@@ -65,7 +69,6 @@ upload "Dune Messiah"          "Frank Herbert"     "Dune"
 upload "Little Brother"        "Cory Doctorow"     ""
 upload "Old Man's War"         "John Scalzi"       ""
 upload "Spinning Silver"       "Naomi Novik"       ""
-rm -rf "$TMP"
 
 echo "Scanning..."
 curl -sf -X POST "$ABS_URL/api/libraries/$LIBRARY_ID/scan" -H "$AUTH" >/dev/null
@@ -76,5 +79,15 @@ for i in $(seq 1 40); do
     sleep 1
 done
 
+# Give exactly one item a cover so both the cover-present and cover-absent
+# paths are exercised. The rest stay coverless.
+COVER_ITEM=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=1" -H "$AUTH" \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['results'][0]['id'])")
+curl -sf -X POST "$ABS_URL/api/items/$COVER_ITEM/cover" -H "$AUTH" \
+    -F "cover=@$TMP/cover.png;filename=cover.png" >/dev/null && \
+    echo "Cover set on item $COVER_ITEM"
+
+rm -rf "$TMP"
 echo ""
 echo "Seed complete. ABS_URL=$ABS_URL  LIBRARY_ID=$LIBRARY_ID  root/root"
+echo "One item has a cover ($COVER_ITEM); the rest are coverless."
