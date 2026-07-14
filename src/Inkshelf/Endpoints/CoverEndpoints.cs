@@ -6,13 +6,12 @@ public static class CoverEndpoints
 {
     public static void MapCoverEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/cover/{id}", async (string id, int? w, AbsSession session, AbsClient client, CancellationToken ct) =>
+        app.MapGet("/cover/{id}", async (string id, int? w, AbsApiClient api, CancellationToken ct) =>
         {
             var width = w is > 0 and <= 400 ? w.Value : 120;
             try
             {
-                var (stream, contentType) = await session.ExecuteAsync(
-                    (tok, c) => client.GetCoverAsync(tok, id, width, c), ct);
+                var (stream, contentType) = await api.GetCoverAsync(id, width, ct);
                 return Results.Stream(stream, contentType);
             }
             catch (HttpRequestException)

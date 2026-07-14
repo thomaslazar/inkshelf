@@ -26,15 +26,17 @@ Directory.CreateDirectory(cachePath);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<TokenStore>();
-builder.Services.AddScoped<AbsSession>();
+builder.Services.AddTransient<AbsAuthHandler>();
 var absUserAgent = $"Inkshelf/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "0"}";
-builder.Services.AddHttpClient<AbsClient>(c =>
+void ConfigureAbs(HttpClient c)
 {
     c.BaseAddress = new Uri(absUrl);
     // Identify the client: some reverse proxies / WAFs in front of ABS reject
     // requests with no User-Agent (HTTP 403) before they reach the server.
     c.DefaultRequestHeaders.UserAgent.ParseAdd(absUserAgent);
-});
+}
+builder.Services.AddHttpClient<AbsAuthClient>(ConfigureAbs);
+builder.Services.AddHttpClient<AbsApiClient>(ConfigureAbs).AddHttpMessageHandler<AbsAuthHandler>();
 builder.Services.AddSingleton(new Inkshelf.Convert.EpubCache(cachePath));
 builder.Services.AddSingleton<Inkshelf.Convert.EpubConverter>();
 builder.Services.AddScoped<Inkshelf.Convert.ConvertService>();

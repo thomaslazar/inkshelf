@@ -20,24 +20,22 @@ public readonly record struct ConvertOutcome(
 // outcome to an IResult).
 public class ConvertService
 {
-    private readonly AbsSession _session;
-    private readonly AbsClient _client;
+    private readonly AbsApiClient _api;
     private readonly EpubCache _cache;
     private readonly EpubConverter _converter;
     private readonly ILogger<ConvertService> _logger;
 
-    public ConvertService(AbsSession session, AbsClient client, EpubCache cache,
+    public ConvertService(AbsApiClient api, EpubCache cache,
         EpubConverter converter, ILogger<ConvertService> logger)
     {
-        _session = session; _client = client; _cache = cache;
-        _converter = converter; _logger = logger;
+        _api = api; _cache = cache; _converter = converter; _logger = logger;
     }
 
     public async Task<ConvertOutcome> ConvertAsync(string id, bool fresh, bool warm,
         int maxW, int maxH, double dpr, CancellationToken ct)
     {
         AbsItemDetail detail;
-        try { detail = await _session.ExecuteAsync((tok, c) => _client.GetItemDetailAsync(tok, id, c), ct); }
+        try { detail = await _api.GetItemDetailAsync(id, ct); }
         catch (HttpRequestException) { return ConvertOutcome.NotFound; }
 
         var ef = detail.Media?.EbookFile;
@@ -61,7 +59,7 @@ public class ConvertService
         {
             _logger.LogInformation("Converting {Id} ({Fmt}, {Bytes} bytes, cap {W}x{H} @dpr {Dpr}) to EPUB…", id, fmt, size, maxW, maxH, dpr);
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            var (archive, _) = await _session.ExecuteAsync((tok, c) => _client.GetEbookStreamAsync(tok, id, c), ct);
+            var (archive, _) = await _api.GetEbookStreamAsync(id, ct);
             using var buffered = new MemoryStream();
             await using (archive) await archive.CopyToAsync(buffered, ct);   // SharpCompress needs a seekable stream
             buffered.Position = 0;

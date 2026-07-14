@@ -64,8 +64,8 @@ public class EndpointTests
             AllowAutoRedirect = false
         });
 
-        // No session cookie set, so AbsSession.ExecuteAsync throws AbsAuthException
-        // before ever reaching the network — the auth middleware redirects to /login.
+        // No session cookie → AbsAuthHandler finds no token → throws AbsAuthException
+        // before any network call → the auth middleware redirects to /login.
         var response = await client.GetAsync("/cover/abc123?w=120");
 
         Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);

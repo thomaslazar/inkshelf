@@ -9,10 +9,9 @@ public class LibraryModel : PageModel
 {
     public const int PageSize = 10;
     public const int SearchLimit = 25;
-    private readonly AbsSession _session;
-    private readonly AbsClient _client;
+    private readonly AbsApiClient _api;
     private readonly EpubCache _cache;
-    public LibraryModel(AbsSession session, AbsClient client, EpubCache cache) { _session = session; _client = client; _cache = cache; }
+    public LibraryModel(AbsApiClient api, EpubCache cache) { _api = api; _cache = cache; }
 
     [FromRoute] public string Id { get; set; } = "";
     [FromQuery] public string? Q { get; set; }
@@ -42,20 +41,18 @@ public class LibraryModel : PageModel
         if (string.IsNullOrEmpty(Id)) return NotFound();
         IsFavorite = Favorites.Read(Request) == Id;
 
-        var libraries = await _session.ExecuteAsync((tok, c) => _client.GetLibrariesAsync(tok, c), ct);
+        var libraries = await _api.GetLibrariesAsync(ct);
         LibraryName = libraries.FirstOrDefault(l => l.Id == Id)?.Name ?? "Library";
 
         if (IsSearch)
         {
-            SearchResults = await _session.ExecuteAsync(
-                (tok, c) => _client.SearchAsync(tok, Id, Q!.Trim(), SearchLimit, c), ct);
+            SearchResults = await _api.SearchAsync(Id, Q!.Trim(), SearchLimit, ct);
             return Page();
         }
 
         var filter = await ResolveFilterAsync(ct);
         var zeroPage = Math.Max(0, page - 1);
-        var result = await _session.ExecuteAsync(
-            (tok, c) => _client.GetItemsAsync(tok, Id, zeroPage, PageSize, filter, Sort, Desc, c), ct);
+        var result = await _api.GetItemsAsync(Id, zeroPage, PageSize, filter, Sort, Desc, ct);
         Items = result.Results;
         _structured = await FetchStructuredAsync(Items, ct);
         Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
@@ -71,7 +68,7 @@ public class LibraryModel : PageModel
     {
         var ids = items.Select(i => i.Id).ToList();
         if (ids.Count == 0) return new();
-        try { return await _session.ExecuteAsync((tok, c) => _client.GetItemsMetadataBatchAsync(tok, ids, c), ct); }
+        try { return await _api.GetItemsMetadataBatchAsync(ids, ct); }
         catch (HttpRequestException) { return new(); }
     }
 
@@ -106,7 +103,7 @@ public class LibraryModel : PageModel
 
         if (!string.IsNullOrWhiteSpace(Author))
         {
-            var r = await _session.ExecuteAsync((tok, c) => _client.SearchAsync(tok, Id, Author!.Trim(), SearchLimit, c), ct);
+            var r = await _api.SearchAsync(Id, Author!.Trim(), SearchLimit, ct);
             var a = r.Authors.FirstOrDefault(x => string.Equals(x.Name, Author!.Trim(), StringComparison.OrdinalIgnoreCase));
             if (a is not null) { FilterLabel = a.Name; return AbsFilter.Encode("authors", a.Id); }
             FilterLabel = Author; return "authors.__none__";
@@ -114,7 +111,7 @@ public class LibraryModel : PageModel
         if (!string.IsNullOrWhiteSpace(Series))
         {
             var name = Series!.Trim();
-            var r = await _session.ExecuteAsync((tok, c) => _client.SearchAsync(tok, Id, name, SearchLimit, c), ct);
+            var r = await _api.SearchAsync(Id, name, SearchLimit, ct);
             var s = r.Series.FirstOrDefault(x => string.Equals(x.Series.Name, name, StringComparison.OrdinalIgnoreCase));
             if (s is not null) { FilterLabel = s.Series.Name; return AbsFilter.Encode("series", s.Series.Id); }
             FilterLabel = name; return "series.__none__";
