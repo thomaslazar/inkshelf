@@ -7,9 +7,9 @@ namespace Inkshelf.Pages;
 
 public class LoginModel : PageModel
 {
-    private readonly AbsClient _client;
+    private readonly AbsAuthClient _auth;
     private readonly TokenStore _store;
-    public LoginModel(AbsClient client, TokenStore store) { _client = client; _store = store; }
+    public LoginModel(AbsAuthClient auth, TokenStore store) { _auth = auth; _store = store; }
 
     [BindProperty] public string Username { get; set; } = "";
     [BindProperty] public string Password { get; set; } = "";
@@ -21,7 +21,7 @@ public class LoginModel : PageModel
     {
         try
         {
-            var tokens = await _client.LoginAsync(Username, Password, ct);
+            var tokens = await _auth.LoginAsync(Username, Password, ct);
             _store.Save(tokens);
             return RedirectToPage("/Index");
         }

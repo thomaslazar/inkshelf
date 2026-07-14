@@ -1,4 +1,5 @@
 using Inkshelf.Abs;
+using Inkshelf.Auth;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -6,9 +7,8 @@ namespace Inkshelf.Pages;
 
 public class IndexModel : PageModel
 {
-    private readonly AbsSession _session;
-    private readonly AbsClient _client;
-    public IndexModel(AbsSession session, AbsClient client) { _session = session; _client = client; }
+    private readonly AbsApiClient _api;
+    public IndexModel(AbsApiClient api) { _api = api; }
 
     public List<AbsLibrary> Libraries { get; private set; } = new();
 
@@ -17,7 +17,7 @@ public class IndexModel : PageModel
         var fav = Favorites.Read(Request);
         if (fav is not null && string.IsNullOrEmpty(all))
             return Redirect($"/library/{fav}");
-        Libraries = await _session.ExecuteAsync((tok, c) => _client.GetLibrariesAsync(tok, c), ct);
+        Libraries = await _api.GetLibrariesAsync(ct);
         return Page();
     }
 }

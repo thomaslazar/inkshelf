@@ -1,4 +1,5 @@
 using Inkshelf.Abs;
+using Inkshelf.Auth;
 using Inkshelf.Convert;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -9,10 +10,9 @@ public class LibraryModel : PageModel
 {
     public const int PageSize = 10;
     public const int SearchLimit = 25;
-    private readonly AbsSession _session;
-    private readonly AbsClient _client;
+    private readonly AbsApiClient _api;
     private readonly EpubCache _cache;
-    public LibraryModel(AbsSession session, AbsClient client, EpubCache cache) { _session = session; _client = client; _cache = cache; }
+    public LibraryModel(AbsApiClient api, EpubCache cache) { _api = api; _cache = cache; }
 
     [FromRoute] public string Id { get; set; } = "";
     [FromQuery] public string? Q { get; set; }
@@ -42,20 +42,18 @@ public class LibraryModel : PageModel
         if (string.IsNullOrEmpty(Id)) return NotFound();
         IsFavorite = Favorites.Read(Request) == Id;
 
-        var libraries = await _session.ExecuteAsync((tok, c) => _client.GetLibrariesAsync(tok, c), ct);
+        var libraries = await _api.GetLibrariesAsync(ct);
         LibraryName = libraries.FirstOrDefault(l => l.Id == Id)?.Name ?? "Library";
 
         if (IsSearch)
         {
-            SearchResults = await _session.ExecuteAsync(
-                (tok, c) => _client.SearchAsync(tok, Id, Q!.Trim(), SearchLimit, c), ct);
+            SearchResults = await _api.SearchAsync(Id, Q!.Trim(), SearchLimit, ct);
             return Page();
         }
 
         var filter = await ResolveFilterAsync(ct);
         var zeroPage = Math.Max(0, page - 1);
-        var result = await _session.ExecuteAsync(
-            (tok, c) => _client.GetItemsAsync(tok, Id, zeroPage, PageSize, filter, Sort, Desc, c), ct);
+        var result = await _api.GetItemsAsync(Id, zeroPage, PageSize, filter, Sort, Desc, ct);
         Items = result.Results;
         _structured = await FetchStructuredAsync(Items, ct);
         Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
@@ -71,7 +69,7 @@ public class LibraryModel : PageModel
     {
         var ids = items.Select(i => i.Id).ToList();
         if (ids.Count == 0) return new();
-        try { return await _session.ExecuteAsync((tok, c) => _client.GetItemsMetadataBatchAsync(tok, ids, c), ct); }
+        try { return await _api.GetItemsMetadataBatchAsync(ids, ct); }
         catch (HttpRequestException) { return new(); }
     }
 
@@ -81,7 +79,7 @@ public class LibraryModel : PageModel
     public ItemRowModel RowFor(AbsItem item)
     {
         _structured.TryGetValue(item.Id, out var media);
-        return new ItemRowModel(item, media?.Metadata?.Authors, media?.Metadata?.Series, IsCached(item, media));
+        return new ItemRowModel(item, Links, media?.Metadata?.Authors, media?.Metadata?.Series, IsCached(item, media));
     }
 
     // A convert is cached only for the exact device size (the cache key includes
@@ -106,7 +104,7 @@ public class LibraryModel : PageModel
 
         if (!string.IsNullOrWhiteSpace(Author))
         {
-            var r = await _session.ExecuteAsync((tok, c) => _client.SearchAsync(tok, Id, Author!.Trim(), SearchLimit, c), ct);
+            var r = await _api.SearchAsync(Id, Author!.Trim(), SearchLimit, ct);
             var a = r.Authors.FirstOrDefault(x => string.Equals(x.Name, Author!.Trim(), StringComparison.OrdinalIgnoreCase));
             if (a is not null) { FilterLabel = a.Name; return AbsFilter.Encode("authors", a.Id); }
             FilterLabel = Author; return "authors.__none__";
@@ -114,7 +112,7 @@ public class LibraryModel : PageModel
         if (!string.IsNullOrWhiteSpace(Series))
         {
             var name = Series!.Trim();
-            var r = await _session.ExecuteAsync((tok, c) => _client.SearchAsync(tok, Id, name, SearchLimit, c), ct);
+            var r = await _api.SearchAsync(Id, name, SearchLimit, ct);
             var s = r.Series.FirstOrDefault(x => string.Equals(x.Series.Name, name, StringComparison.OrdinalIgnoreCase));
             if (s is not null) { FilterLabel = s.Series.Name; return AbsFilter.Encode("series", s.Series.Id); }
             FilterLabel = name; return "series.__none__";
@@ -124,29 +122,6 @@ public class LibraryModel : PageModel
 
     public bool IsFiltered => FilterLabel is not null;
 
-    // Build a listing URL for this library carrying the active facet, plus the
-    // given sort/page overrides. page resets to 1 on a sort change.
-    public string ListingHref(string? sort, bool desc, int page)
-    {
-        var qs = new List<string>();
-        if (!string.IsNullOrEmpty(Filter)) qs.Add("filter=" + Uri.EscapeDataString(Filter));
-        if (!string.IsNullOrEmpty(Author)) qs.Add("author=" + Uri.EscapeDataString(Author));
-        if (!string.IsNullOrEmpty(Series)) qs.Add("series=" + Uri.EscapeDataString(Series));
-        if (!string.IsNullOrEmpty(sort)) { qs.Add("sort=" + Uri.EscapeDataString(sort)); if (desc) qs.Add("desc=1"); }
-        if (page > 1) qs.Add("page=" + page);
-        return $"/library/{Id}" + (qs.Count > 0 ? "?" + string.Join("&", qs) : "");
-    }
-
-    public string SortHref(string field)
-    {
-        var (s, d) = SortLinks.Next(field, Sort, Desc);
-        return ListingHref(s, d, 1);
-    }
-
-    // Row link helpers (names — resolved at click time).
-    public string AuthorHref(string name) => $"/library/{Id}?author={Uri.EscapeDataString(name)}";
-    public string SeriesHref(string name) => $"/library/{Id}?series={Uri.EscapeDataString(name)}";
-    // Search-group link helpers (ids — direct filter).
-    public string AuthorFilterHref(string authorId) => $"/library/{Id}?filter={Uri.EscapeDataString(AbsFilter.Encode("authors", authorId))}";
-    public string SeriesFilterHref(string seriesId) => $"/library/{Id}?filter={Uri.EscapeDataString(AbsFilter.Encode("series", seriesId))}";
+    // One shared builder for every library URL (page + row partial).
+    public LibraryLinks Links => new(Id, Filter, Author, Series, Sort, Desc);
 }

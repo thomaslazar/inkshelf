@@ -1,6 +1,5 @@
 @page
 @model Inkshelf.Pages.LibraryModel
-@{ ViewData["LibraryId"] = Model.Id; }
 
 <div class="page-head" id="top">
     <h1 class="page-title">
@@ -40,7 +39,7 @@
         <h2 id="books">Books <a class="totop" href="#top">↑</a></h2>
         foreach (var b in books)
         {
-            <partial name="_ItemRow" model="new Inkshelf.Pages.ItemRowModel(b.LibraryItem)" />
+            <partial name="_ItemRow" model="new Inkshelf.Pages.ItemRowModel(b.LibraryItem, Model.Links)" />
         }
     }
     if (series.Count > 0)
@@ -49,7 +48,7 @@
         <ul>
             @foreach (var s in series)
             {
-                <li><a href="@Model.SeriesFilterHref(s.Series.Id)">@s.Series.Name</a></li>
+                <li><a href="@Model.Links.FilterHref("series", s.Series.Id)">@s.Series.Name</a></li>
             }
         </ul>
     }
@@ -59,7 +58,7 @@
         <ul>
             @foreach (var a in authors)
             {
-                <li><a href="@Model.AuthorFilterHref(a.Id)">@a.Name</a></li>
+                <li><a href="@Model.Links.FilterHref("authors", a.Id)">@a.Name</a></li>
             }
         </ul>
     }
@@ -72,12 +71,12 @@ else
     }
     <nav class="sortbar">
         Sort:
-        <a href="@Model.SortHref("media.metadata.title")">Title@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.title", Model.Sort, Model.Desc))</a> ·
-        <a href="@Model.SortHref("media.metadata.authorNameLF")">Author@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.authorNameLF", Model.Sort, Model.Desc))</a> ·
-        <a href="@Model.SortHref("addedAt")">Added@(Inkshelf.Pages.SortLinks.Arrow("addedAt", Model.Sort, Model.Desc))</a>
+        <a href="@Model.Links.SortHref("media.metadata.title")">Title@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.title", Model.Sort, Model.Desc))</a> ·
+        <a href="@Model.Links.SortHref("media.metadata.authorNameLF")">Author@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.authorNameLF", Model.Sort, Model.Desc))</a> ·
+        <a href="@Model.Links.SortHref("addedAt")">Added@(Inkshelf.Pages.SortLinks.Arrow("addedAt", Model.Sort, Model.Desc))</a>
         @if (!string.IsNullOrEmpty(Model.Series) || Model.Filter?.StartsWith("series.") == true)
         {
-            <text> · </text><a href="@Model.SortHref("sequence")">Sequence@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.Sort, Model.Desc))</a>
+            <text> · </text><a href="@Model.Links.SortHref("sequence")">Sequence@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.Sort, Model.Desc))</a>
         }
     </nav>
     <partial name="_Pager" model="Model" />

@@ -1,17 +1,11 @@
 @model Inkshelf.Pages.ItemRowModel
 @{
     var item = Model.Item;
-    var libId = ViewData["LibraryId"] as string ?? "";
     var m = item.Media?.Metadata;
     // Listing rows are enriched with structured authors/series arrays (with ids)
     // via the batch call; search rows carry only the comma-joined name strings.
-    // Prefer the arrays: they separate multiple authors/series correctly and
-    // never mistake a comma inside one name for a separator. Fall back to a
-    // single link on the whole string (splitting it is unreliable).
-    string FilterHref(string group, string id) => $"/library/{libId}?filter={System.Uri.EscapeDataString(Inkshelf.Abs.AbsFilter.Encode(group, id))}";
-    string AuthorHref(string name) => $"/library/{libId}?author={System.Uri.EscapeDataString(name)}";
-    // Series display can be "Name #seq"; link by the bare name.
-    string SeriesHref(string display) => $"/library/{libId}?series={System.Uri.EscapeDataString(display.Split(" #")[0])}";
+    // Prefer the arrays: they separate multiple authors/series correctly and never
+    // mistake a comma inside one name for a separator.
 }
 <div class="item">
     @if (!string.IsNullOrEmpty(item.Media?.CoverPath))
@@ -29,25 +23,25 @@
             for (var i = 0; i < authors.Count; i++)
             {
                 if (i > 0) { <text>, </text> }
-                <a href="@FilterHref("authors", authors[i].Id)">@authors[i].Name</a>
+                <a href="@Model.Links.FilterHref("authors", authors[i].Id)">@authors[i].Name</a>
             }
         }
         else if (!string.IsNullOrWhiteSpace(m?.AuthorName))
         {
-            <a href="@AuthorHref(m!.AuthorName!)">@m!.AuthorName!</a>
+            <a href="@Model.Links.AuthorHref(m!.AuthorName!)">@m!.AuthorName!</a>
         }
         @if (Model.Series is { Count: > 0 } series)
         {
             foreach (var s in series)
             {
                 <text> · </text>
-                <a href="@FilterHref("series", s.Id)">@s.Name@(string.IsNullOrEmpty(s.Sequence) ? "" : $" #{s.Sequence}")</a>
+                <a href="@Model.Links.FilterHref("series", s.Id)">@s.Name@(string.IsNullOrEmpty(s.Sequence) ? "" : $" #{s.Sequence}")</a>
             }
         }
         else if (!string.IsNullOrWhiteSpace(m?.SeriesName))
         {
             <text> · </text>
-            <a href="@SeriesHref(m!.SeriesName!)">@m!.SeriesName!</a>
+            <a href="@Model.Links.SeriesHref(m!.SeriesName!)">@m!.SeriesName!</a>
         }
     </div>
     @{ var fmt = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat; }
