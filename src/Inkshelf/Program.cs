@@ -18,6 +18,7 @@ var absOptions = new AbsOptions
     DiagEnabled = !string.Equals(builder.Configuration["DIAG_ENABLED"], "false", StringComparison.OrdinalIgnoreCase),
     ForceSecureCookies = bool.TryParse(builder.Configuration["FORCE_SECURE_COOKIES"], out var fsc) && fsc,
     TrustedProxy = builder.Configuration["TRUSTED_PROXY"],
+    MaxCacheBytes = long.TryParse(builder.Configuration["MaxCacheBytes"], out var mcb) && mcb > 0 ? mcb : 1_073_741_824,
 };
 // Fail fast on missing required config. SmokeTests.MissingAbsUrl_FailsStartup
 // depends on this exact exception type.

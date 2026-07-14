@@ -16,4 +16,6 @@ public sealed class AbsOptions
     public string? TrustedProxy { get; set; }
     // Whether the unauthenticated /diag probe endpoint is mapped. Default true.
     public bool DiagEnabled { get; set; } = true;
+    // Soft cap on total EPUB cache bytes; oldest entries are evicted past it. Default 1 GiB.
+    public long MaxCacheBytes { get; set; } = 1_073_741_824;
 }

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Inkshelf;
 using Inkshelf.Abs;
 using Inkshelf.Convert;
 
@@ -11,7 +12,8 @@ public class ConvertServiceTests
         { BaseAddress = new Uri("http://abs.local") });
 
     private static ConvertService Service(AbsApiClient api, EpubCache cache) =>
-        new(api, cache, new EpubConverter(), NullLogger<ConvertService>.Instance);
+        new(api, cache, new EpubConverter(), new AbsOptions { MaxCacheBytes = long.MaxValue },
+            NullLogger<ConvertService>.Instance);
 
     private static string DetailJson(string format, string title, string author, long size, long mtime) =>
         $$"""

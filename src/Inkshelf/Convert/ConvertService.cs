@@ -23,12 +23,13 @@ public class ConvertService
     private readonly AbsApiClient _api;
     private readonly EpubCache _cache;
     private readonly EpubConverter _converter;
+    private readonly AbsOptions _options;
     private readonly ILogger<ConvertService> _logger;
 
     public ConvertService(AbsApiClient api, EpubCache cache,
-        EpubConverter converter, ILogger<ConvertService> logger)
+        EpubConverter converter, AbsOptions options, ILogger<ConvertService> logger)
     {
-        _api = api; _cache = cache; _converter = converter; _logger = logger;
+        _api = api; _cache = cache; _converter = converter; _options = options; _logger = logger;
     }
 
     public async Task<ConvertOutcome> ConvertAsync(string id, bool fresh, bool warm,
@@ -65,9 +66,11 @@ public class ConvertService
             buffered.Position = 0;
             await _converter.ConvertAsync(buffered, new EbookMeta(title, author, seriesName, seq, id), path, maxW, maxH, dpr, ct);
             _logger.LogInformation("Converted {Id} in {Ms} ms → {OutBytes} bytes", id, sw.ElapsedMilliseconds, new FileInfo(path).Length);
+            _cache.EnforceCap(_options.MaxCacheBytes);
         }
         else
         {
+            _cache.Touch(path);
             _logger.LogInformation("Serving cached EPUB for {Id} ({OutBytes} bytes)", id, new FileInfo(path).Length);
         }
 
