@@ -12,6 +12,9 @@ container next to ABS. See `docs/superpowers/specs/` for the design.
 - Plain HTML: `<form>` and `<a>` only. No client JS unless unavoidable.
 - Stateless: ABS JWT lives in an encrypted cookie (Data Protection).
 
+**Read `docs/ARCHITECTURE.md` before adding features** — it maps the structure and
+the load-bearing conventions (some look like cleanup targets but are deliberate).
+
 ## Development environment
 - **All .NET development happens inside the devcontainer. No dotnet on the Mac host.**
 - Reopen the folder in the container, then work on a feature branch.
