@@ -1,4 +1,4 @@
-using Inkshelf;
+using Inkshelf.Convert;
 
 namespace Inkshelf.Tests;
 

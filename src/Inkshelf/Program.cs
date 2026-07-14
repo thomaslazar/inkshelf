@@ -1,6 +1,7 @@
 using Inkshelf;
 using Inkshelf.Abs;
 using Inkshelf.Auth;
+using Inkshelf.Convert;
 using Inkshelf.Endpoints;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
@@ -45,9 +46,9 @@ void ConfigureAbs(HttpClient c)
 }
 builder.Services.AddHttpClient<AbsAuthClient>(ConfigureAbs);
 builder.Services.AddHttpClient<AbsApiClient>(ConfigureAbs).AddHttpMessageHandler<AbsAuthHandler>();
-builder.Services.AddSingleton(new Inkshelf.Convert.EpubCache(cachePath));
-builder.Services.AddSingleton<Inkshelf.Convert.EpubConverter>();
-builder.Services.AddScoped<Inkshelf.Convert.ConvertService>();
+builder.Services.AddSingleton(new EpubCache(cachePath));
+builder.Services.AddSingleton<EpubConverter>();
+builder.Services.AddScoped<ConvertService>();
 builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AddPageRoute("/Library", "library/{id}");

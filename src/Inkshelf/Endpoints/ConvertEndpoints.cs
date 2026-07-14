@@ -12,7 +12,7 @@ public static class ConvertEndpoints
             // Page-image cap + DPR from the device's screen (the layout script reports
             // "cssW x cssH x dpr" in the "scr" cookie). No cookie (JS off) → 0×0 → no
             // downscaling and viewport = image size.
-            var (maxW, maxH, dpr) = Inkshelf.ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"]);
+            var (maxW, maxH, dpr) = ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"]);
 
             var outcome = await convert.ConvertAsync(
                 id, fresh is "1" or "true", warm is "1", maxW, maxH, dpr, ct);

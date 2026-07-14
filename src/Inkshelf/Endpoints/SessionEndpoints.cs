@@ -21,7 +21,7 @@ public static class SessionEndpoints
 
             store.Clear();
             return Results.Redirect("/login");
-        });
+        }).DisableAntiforgery();
 
         app.MapPost("/favorite", async (HttpContext ctx, IAntiforgery antiforgery, [FromForm] string libraryId) =>
         {

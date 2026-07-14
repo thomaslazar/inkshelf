@@ -1,4 +1,4 @@
-namespace Inkshelf;
+namespace Inkshelf.Auth;
 
 public static class Favorites
 {

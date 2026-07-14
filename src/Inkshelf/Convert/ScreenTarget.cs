@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Inkshelf;
+namespace Inkshelf.Convert;
 
 public static class ScreenTarget
 {
