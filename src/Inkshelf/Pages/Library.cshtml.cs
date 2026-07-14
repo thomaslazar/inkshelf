@@ -78,7 +78,7 @@ public class LibraryModel : PageModel
     public ItemRowModel RowFor(AbsItem item)
     {
         _structured.TryGetValue(item.Id, out var media);
-        return new ItemRowModel(item, media?.Metadata?.Authors, media?.Metadata?.Series, IsCached(item, media));
+        return new ItemRowModel(item, Links, media?.Metadata?.Authors, media?.Metadata?.Series, IsCached(item, media));
     }
 
     // A convert is cached only for the exact device size (the cache key includes
@@ -121,29 +121,6 @@ public class LibraryModel : PageModel
 
     public bool IsFiltered => FilterLabel is not null;
 
-    // Build a listing URL for this library carrying the active facet, plus the
-    // given sort/page overrides. page resets to 1 on a sort change.
-    public string ListingHref(string? sort, bool desc, int page)
-    {
-        var qs = new List<string>();
-        if (!string.IsNullOrEmpty(Filter)) qs.Add("filter=" + Uri.EscapeDataString(Filter));
-        if (!string.IsNullOrEmpty(Author)) qs.Add("author=" + Uri.EscapeDataString(Author));
-        if (!string.IsNullOrEmpty(Series)) qs.Add("series=" + Uri.EscapeDataString(Series));
-        if (!string.IsNullOrEmpty(sort)) { qs.Add("sort=" + Uri.EscapeDataString(sort)); if (desc) qs.Add("desc=1"); }
-        if (page > 1) qs.Add("page=" + page);
-        return $"/library/{Id}" + (qs.Count > 0 ? "?" + string.Join("&", qs) : "");
-    }
-
-    public string SortHref(string field)
-    {
-        var (s, d) = SortLinks.Next(field, Sort, Desc);
-        return ListingHref(s, d, 1);
-    }
-
-    // Row link helpers (names — resolved at click time).
-    public string AuthorHref(string name) => $"/library/{Id}?author={Uri.EscapeDataString(name)}";
-    public string SeriesHref(string name) => $"/library/{Id}?series={Uri.EscapeDataString(name)}";
-    // Search-group link helpers (ids — direct filter).
-    public string AuthorFilterHref(string authorId) => $"/library/{Id}?filter={Uri.EscapeDataString(AbsFilter.Encode("authors", authorId))}";
-    public string SeriesFilterHref(string seriesId) => $"/library/{Id}?filter={Uri.EscapeDataString(AbsFilter.Encode("series", seriesId))}";
+    // One shared builder for every library URL (page + row partial).
+    public LibraryLinks Links => new(Id, Filter, Author, Series, Sort, Desc);
 }
