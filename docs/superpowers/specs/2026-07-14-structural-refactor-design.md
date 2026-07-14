@@ -28,8 +28,10 @@ idiomatic pattern it adopts and why.
 
 ## Sequencing
 
-Six independently shippable PRs off an up-to-date `main`. Each ends with tests
-green.
+Six sequenced steps on one branch (`refactor/structural`), shipping as a
+**single PR at the end**. Each step is planned just-in-time (plan → implement →
+plan next) and ends with `dotnet test` green — the green-tests contract is
+per-commit, not deferred to PR time.
 
 1. **3.1** — Extract endpoints + `ConvertService`.
 2. **3.2** — Auth `DelegatingHandler`; delete `AbsSession`.
@@ -240,10 +242,10 @@ the steady state:
 - A short "adding a new X" guide (new endpoint, new ABS call, new page).
 
 It is **linked from `CLAUDE.md`** so every future agent session picks it up. It is
-authored in **PR 6**, once the structure has settled, and each earlier PR that
+authored in **Step 6**, once the structure has settled, and each earlier PR that
 changes structure updates its relevant part (or PR 6 reconciles).
 
-## PR 6 — Final sweep
+## Step 6 — Final sweep
 
 Author `docs/ARCHITECTURE.md` (above) reflecting the settled structure and add a
 link to it from `CLAUDE.md`. Docs touch-up (README/design-doc pointers to the new
