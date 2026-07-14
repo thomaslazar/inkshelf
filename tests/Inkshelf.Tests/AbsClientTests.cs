@@ -82,11 +82,77 @@ public class AbsClientTests
     }
 
     [Fact]
+    public async Task SearchAsync_parses_ebookFile_format()
+    {
+        // Search results use the expanded shape: format lives in ebookFile, not
+        // at media.ebookFormat — the row falls back to it to show ebook links.
+        var h = new StubHandler(_ => StubHandler.Json(
+            """{"book":[{"libraryItem":{"id":"i1","media":{"metadata":{"title":"Tanya"},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"t.cbz","size":1,"mtimeMs":2}}}}}],"series":[],"authors":[]}"""));
+        var r = await Client(h).SearchAsync("acc", "lib1", "tanya", 25);
+        var media = r.Book[0].LibraryItem.Media!;
+        Assert.Null(media.EbookFormat);                       // top-level absent in search
+        Assert.Equal("cbz", media.EbookFile!.EbookFormat);    // available via ebookFile
+    }
+
+    [Fact]
     public async Task GetItemsAsync_throws_unauthorized_on_401()
     {
         var h = new StubHandler(_ => new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized));
         await Assert.ThrowsAsync<AbsUnauthorizedException>(
             () => Client(h).GetItemsAsync("acc", "lib1", 0, 24));
+    }
+
+    [Fact]
+    public async Task GetItemsAsync_appends_sort_and_desc()
+    {
+        var h = new StubHandler(_ => StubHandler.Json("""{"results":[],"total":0,"limit":10,"page":0}"""));
+        await Client(h).GetItemsAsync("acc", "lib1", 0, 10, filter: null, sort: "addedAt", desc: true);
+        var q = System.Web.HttpUtility.ParseQueryString(h.Last!.RequestUri!.Query);
+        Assert.Equal("addedAt", q["sort"]);
+        Assert.Equal("1", q["desc"]);
+    }
+
+    [Fact]
+    public async Task GetItemDetailAsync_parses_ebook_and_metadata()
+    {
+        var h = new StubHandler(_ => StubHandler.Json(
+            """{"media":{"metadata":{"title":"Vol 1","authorName":"A Artist","authors":[{"id":"a1","name":"A Artist"}],"series":[{"id":"s1","name":"Saga","sequence":"1"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"Vol1.cbz","size":123,"mtimeMs":999}}}}"""));
+        var d = await Client(h).GetItemDetailAsync("acc", "i1");
+        Assert.Equal("Vol 1", d.Media!.Metadata!.Title);
+        Assert.Equal("cbz", d.Media!.EbookFile!.EbookFormat);
+        Assert.Equal(123, d.Media!.EbookFile!.Metadata!.Size);
+        Assert.Equal(999, d.Media!.EbookFile!.Metadata!.MtimeMs);
+        Assert.Equal("Vol1.cbz", d.Media!.EbookFile!.Metadata!.Filename);
+        Assert.Equal("/api/items/i1", h.Last!.RequestUri!.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task GetItemsMetadataBatchAsync_posts_ids_and_maps_structured_metadata()
+    {
+        var h = new StubHandler(_ => StubHandler.Json(
+            """{"libraryItems":[{"id":"i1","media":{"metadata":{"title":"Vol 1","authorName":"A, B","seriesName":"Saga, Part 2 #1","authors":[{"id":"a1","name":"A"},{"id":"a2","name":"B"}],"series":[{"id":"s1","name":"Saga, Part 2","sequence":"1"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"v1.cbz","size":42,"mtimeMs":7}}}}]}"""));
+        var map = await Client(h).GetItemsMetadataBatchAsync("acc", new[] { "i1" });
+        Assert.Equal(HttpMethod.Post, h.Last!.Method);
+        Assert.Equal("/api/items/batch/get", h.Last!.RequestUri!.AbsolutePath);
+        var md = map["i1"].Metadata!;
+        Assert.Equal(2, md.Authors!.Count);
+        Assert.Equal("a2", md.Authors[1].Id);
+        // A single series name containing a comma stays one entry.
+        Assert.Single(md.Series!);
+        Assert.Equal("Saga, Part 2", md.Series![0].Name);
+        Assert.Equal("1", md.Series![0].Sequence);
+        // ebookFile carries the cache-key inputs (size + mtime).
+        Assert.Equal(42, map["i1"].EbookFile!.Metadata!.Size);
+        Assert.Equal(7, map["i1"].EbookFile!.Metadata!.MtimeMs);
+    }
+
+    [Fact]
+    public async Task GetItemsMetadataBatchAsync_empty_skips_call()
+    {
+        var h = new StubHandler(_ => StubHandler.Json("""{"libraryItems":[]}"""));
+        var map = await Client(h).GetItemsMetadataBatchAsync("acc", System.Array.Empty<string>());
+        Assert.Empty(map);
+        Assert.Null(h.Last); // no request made
     }
 
     [Fact]

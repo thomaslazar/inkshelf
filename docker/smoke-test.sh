@@ -40,5 +40,18 @@ code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$INKSHELF_URL/cover/$IT
 { [ "$code" = "200" ] || [ "$code" = "404" ]; } || fail "GET /cover/$ITEM_ID expected 200/404 got $code"
 echo "  ok: /cover/$ITEM_ID ($code)"
 
+# Download a plain ebook (epub fixture) and convert a comic (cbz fixture).
+EPUB_ID=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=200" -H "Authorization: Bearer $TOKEN" \
+  | python3 -c "import sys,json;print(next(r['id'] for r in json.load(sys.stdin)['results'] if (r.get('media') or {}).get('ebookFormat')=='epub'))")
+CBZ_ID=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=200" -H "Authorization: Bearer $TOKEN" \
+  | python3 -c "import sys,json;print(next(r['id'] for r in json.load(sys.stdin)['results'] if (r.get('media') or {}).get('ebookFormat')=='cbz'))")
+# ?warm=1 builds + caches the EPUB and returns OK (the listing's XHR); a plain
+# /convert downloads it. Both 200.
+for p in "/download/$EPUB_ID" "/convert/$CBZ_ID?warm=1" "/convert/$CBZ_ID" "/convert/$CBZ_ID?fresh=1"; do
+    code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$INKSHELF_URL$p")
+    [ "$code" = "200" ] || fail "GET $p expected 200 got $code"
+    echo "  ok: $p ($code)"
+done
+
 rm -f "$JAR"
 echo "SMOKE PASS"

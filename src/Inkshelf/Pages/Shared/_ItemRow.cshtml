@@ -1,21 +1,22 @@
-@model Inkshelf.Abs.AbsItem
+@model Inkshelf.Pages.ItemRowModel
 @{
+    var item = Model.Item;
     var libId = ViewData["LibraryId"] as string ?? "";
-    var m = Model.Media?.Metadata;
+    var m = item.Media?.Metadata;
+    // Listing rows are enriched with structured authors/series arrays (with ids)
+    // via the batch call; search rows carry only the comma-joined name strings.
+    // Prefer the arrays: they separate multiple authors/series correctly and
+    // never mistake a comma inside one name for a separator. Fall back to a
+    // single link on the whole string (splitting it is unreliable).
+    string FilterHref(string group, string id) => $"/library/{libId}?filter={System.Uri.EscapeDataString(Inkshelf.Abs.AbsFilter.Encode(group, id))}";
     string AuthorHref(string name) => $"/library/{libId}?author={System.Uri.EscapeDataString(name)}";
     // Series display can be "Name #seq"; link by the bare name.
     string SeriesHref(string display) => $"/library/{libId}?series={System.Uri.EscapeDataString(display.Split(" #")[0])}";
-    var authors = string.IsNullOrWhiteSpace(m?.AuthorName)
-        ? System.Array.Empty<string>()
-        : m!.AuthorName!.Split(", ", System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
-    var seriesList = string.IsNullOrWhiteSpace(m?.SeriesName)
-        ? System.Array.Empty<string>()
-        : m!.SeriesName!.Split(", ", System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
 }
 <div class="item">
-    @if (!string.IsNullOrEmpty(Model.Media?.CoverPath))
+    @if (!string.IsNullOrEmpty(item.Media?.CoverPath))
     {
-        <span class="cover"><img src="/cover/@Model.Id?w=120" alt="" /></span>
+        <span class="cover"><img src="/cover/@item.Id?w=120" alt="" /></span>
     }
     else
     {
@@ -23,15 +24,51 @@
     }
     <div class="body">
         <strong>@(m?.Title ?? "(untitled)")</strong><br />
-        @for (var i = 0; i < authors.Length; i++)
+        @if (Model.Authors is { Count: > 0 } authors)
         {
-            if (i > 0) { <text>, </text> }
-            <a href="@AuthorHref(authors[i])">@authors[i]</a>
+            for (var i = 0; i < authors.Count; i++)
+            {
+                if (i > 0) { <text>, </text> }
+                <a href="@FilterHref("authors", authors[i].Id)">@authors[i].Name</a>
+            }
         }
-        @foreach (var s in seriesList)
+        else if (!string.IsNullOrWhiteSpace(m?.AuthorName))
+        {
+            <a href="@AuthorHref(m!.AuthorName!)">@m!.AuthorName!</a>
+        }
+        @if (Model.Series is { Count: > 0 } series)
+        {
+            foreach (var s in series)
+            {
+                <text> · </text>
+                <a href="@FilterHref("series", s.Id)">@s.Name@(string.IsNullOrEmpty(s.Sequence) ? "" : $" #{s.Sequence}")</a>
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(m?.SeriesName))
         {
             <text> · </text>
-            <a href="@SeriesHref(s)">@s</a>
+            <a href="@SeriesHref(m!.SeriesName!)">@m!.SeriesName!</a>
         }
     </div>
+    @{ var fmt = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat; }
+    @if (!string.IsNullOrEmpty(fmt))
+    {
+        <div class="actions">
+            <a href="/download/@item.Id">Download</a>
+            @if (fmt == "cbz" || fmt == "cbr")
+            {
+                <span class="convert">
+                    @if (Model.Cached)
+                    {
+                        <a href="/convert/@item.Id" title="Already converted — downloads right away">EPUB &#10003;</a>
+                    }
+                    else
+                    {
+                        <a href="/convert/@item.Id" data-warm>Convert</a>
+                    }
+                    <a class="regen" href="/convert/@item.Id?fresh=1" title="Regenerate">&#8635;</a>
+                </span>
+            }
+        </div>
+    }
 </div>

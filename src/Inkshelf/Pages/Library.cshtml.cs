@@ -1,4 +1,5 @@
 using Inkshelf.Abs;
+using Inkshelf.Convert;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -10,7 +11,8 @@ public class LibraryModel : PageModel
     public const int SearchLimit = 25;
     private readonly AbsSession _session;
     private readonly AbsClient _client;
-    public LibraryModel(AbsSession session, AbsClient client) { _session = session; _client = client; }
+    private readonly EpubCache _cache;
+    public LibraryModel(AbsSession session, AbsClient client, EpubCache cache) { _session = session; _client = client; _cache = cache; }
 
     [FromRoute] public string Id { get; set; } = "";
     [FromQuery] public string? Q { get; set; }
@@ -20,6 +22,11 @@ public class LibraryModel : PageModel
     [FromQuery] public string? Filter { get; set; }
     [FromQuery] public string? Author { get; set; }
     [FromQuery] public string? Series { get; set; }
+    [FromQuery] public string? Sort { get; set; }
+    // ABS wants desc=1 (not "true"), and Razor's bool binder rejects "1", so
+    // carry the raw token and derive the flag.
+    [FromQuery(Name = "desc")] public string? DescParam { get; set; }
+    public bool Desc => DescParam == "1";
 
     public bool IsFavorite { get; private set; }
     public bool IsSearch => !string.IsNullOrWhiteSpace(Q);
@@ -48,10 +55,46 @@ public class LibraryModel : PageModel
         var filter = await ResolveFilterAsync(ct);
         var zeroPage = Math.Max(0, page - 1);
         var result = await _session.ExecuteAsync(
-            (tok, c) => _client.GetItemsAsync(tok, Id, zeroPage, PageSize, filter, c), ct);
+            (tok, c) => _client.GetItemsAsync(tok, Id, zeroPage, PageSize, filter, Sort, Desc, c), ct);
         Items = result.Results;
+        _structured = await FetchStructuredAsync(Items, ct);
         Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
         return Page();
+    }
+
+    // Expanded media (structured authors/series + ebookFile) for the current
+    // page, keyed by item id, from one batch call. A batch failure leaves it
+    // empty and rows fall back to the comma-joined name strings.
+    private Dictionary<string, AbsBatchMedia> _structured = new();
+
+    private async Task<Dictionary<string, AbsBatchMedia>> FetchStructuredAsync(List<AbsItem> items, CancellationToken ct)
+    {
+        var ids = items.Select(i => i.Id).ToList();
+        if (ids.Count == 0) return new();
+        try { return await _session.ExecuteAsync((tok, c) => _client.GetItemsMetadataBatchAsync(tok, ids, c), ct); }
+        catch (HttpRequestException) { return new(); }
+    }
+
+    // Row view-model for a listing item: structured author/series links plus
+    // whether a converted EPUB is already cached for this device (so the row can
+    // show it downloads instantly).
+    public ItemRowModel RowFor(AbsItem item)
+    {
+        _structured.TryGetValue(item.Id, out var media);
+        return new ItemRowModel(item, media?.Metadata?.Authors, media?.Metadata?.Series, IsCached(item, media));
+    }
+
+    // A convert is cached only for the exact device size (the cache key includes
+    // it), so we need the screen cookie; on the first load (before the layout
+    // script has set it) this reports false, which self-corrects on next render.
+    private bool IsCached(AbsItem item, AbsBatchMedia? media)
+    {
+        var fmt = item.Media?.EbookFormat;
+        if (fmt != "cbz" && fmt != "cbr") return false;
+        var efm = media?.EbookFile?.Metadata;
+        if (efm is null) return false;
+        var (w, h, _) = ScreenTarget.FromCookie(Request.Cookies["scr"]);
+        return _cache.TryGet(item.Id, efm.Size, efm.MtimeMs, w, h, out _);
     }
 
     // Turn ?filter / ?author / ?series into an ABS filter string. Author/series
@@ -80,6 +123,25 @@ public class LibraryModel : PageModel
     }
 
     public bool IsFiltered => FilterLabel is not null;
+
+    // Build a listing URL for this library carrying the active facet, plus the
+    // given sort/page overrides. page resets to 1 on a sort change.
+    public string ListingHref(string? sort, bool desc, int page)
+    {
+        var qs = new List<string>();
+        if (!string.IsNullOrEmpty(Filter)) qs.Add("filter=" + Uri.EscapeDataString(Filter));
+        if (!string.IsNullOrEmpty(Author)) qs.Add("author=" + Uri.EscapeDataString(Author));
+        if (!string.IsNullOrEmpty(Series)) qs.Add("series=" + Uri.EscapeDataString(Series));
+        if (!string.IsNullOrEmpty(sort)) { qs.Add("sort=" + Uri.EscapeDataString(sort)); if (desc) qs.Add("desc=1"); }
+        if (page > 1) qs.Add("page=" + page);
+        return $"/library/{Id}" + (qs.Count > 0 ? "?" + string.Join("&", qs) : "");
+    }
+
+    public string SortHref(string field)
+    {
+        var (s, d) = SortLinks.Next(field, Sort, Desc);
+        return ListingHref(s, d, 1);
+    }
 
     // Row link helpers (names — resolved at click time).
     public string AuthorHref(string name) => $"/library/{Id}?author={Uri.EscapeDataString(name)}";

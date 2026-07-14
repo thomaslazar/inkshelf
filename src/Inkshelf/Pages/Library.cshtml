@@ -40,7 +40,7 @@
         <h2 id="books">Books <a class="totop" href="#top">↑</a></h2>
         foreach (var b in books)
         {
-            <partial name="_ItemRow" model="b.LibraryItem" />
+            <partial name="_ItemRow" model="new Inkshelf.Pages.ItemRowModel(b.LibraryItem)" />
         }
     }
     if (series.Count > 0)
@@ -70,25 +70,27 @@ else
     {
         <p>Filtered by <strong>@Model.FilterLabel</strong> · <a href="/library/@Model.Id">clear</a></p>
     }
-    string carry(string k, string? v) => string.IsNullOrEmpty(v) ? "" : $"&{k}={System.Uri.EscapeDataString(v)}";
-    var filterQs = carry("filter", Model.Filter) + carry("author", Model.Author) + carry("series", Model.Series);
-    <nav class="pager">
-        @if (Model.Pager.HasPrev)
+    <nav class="sortbar">
+        Sort:
+        <a href="@Model.SortHref("media.metadata.title")">Title@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.title", Model.Sort, Model.Desc))</a> ·
+        <a href="@Model.SortHref("media.metadata.authorNameLF")">Author@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.authorNameLF", Model.Sort, Model.Desc))</a> ·
+        <a href="@Model.SortHref("addedAt")">Added@(Inkshelf.Pages.SortLinks.Arrow("addedAt", Model.Sort, Model.Desc))</a>
+        @if (!string.IsNullOrEmpty(Model.Series) || Model.Filter?.StartsWith("series.") == true)
         {
-            <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage - 1)@filterQs">&larr; Prev</a>
-        }
-        <span>Page @Model.Pager.DisplayPage of @Math.Max(1, Model.Pager.TotalPages)</span>
-        @if (Model.Pager.HasNext)
-        {
-            <a href="/library/@Model.Id?page=@(Model.Pager.DisplayPage + 1)@filterQs">Next &rarr;</a>
+            <text> · </text><a href="@Model.SortHref("sequence")">Sequence@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.Sort, Model.Desc))</a>
         }
     </nav>
+    <partial name="_Pager" model="Model" />
     @if (Model.Items.Count == 0)
     {
         <p>No items.</p>
     }
     @foreach (var item in Model.Items)
     {
-        <partial name="_ItemRow" model="item" />
+        <partial name="_ItemRow" model="Model.RowFor(item)" />
+    }
+    @if (Model.Items.Count > 0)
+    {
+        <partial name="_Pager" model="Model" />
     }
 }
