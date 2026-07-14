@@ -18,4 +18,7 @@ public sealed class AbsOptions
     public bool DiagEnabled { get; set; } = true;
     // Soft cap on total EPUB cache bytes; oldest entries are evicted past it. Default 1 GiB.
     public long MaxCacheBytes { get; set; } = 1_073_741_824;
+    // Max bytes buffered from an ebook archive before conversion; larger archives
+    // are refused (decompression-bomb / OOM guard). Default 500 MiB.
+    public long MaxArchiveBytes { get; set; } = 524_288_000;
 }

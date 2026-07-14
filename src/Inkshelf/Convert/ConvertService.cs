@@ -70,7 +70,14 @@ public class ConvertService
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     var (archive, _) = await _api.GetEbookStreamAsync(id, ct);
                     using var buffered = new MemoryStream();
-                    await using (archive) await archive.CopyToAsync(buffered, ct);   // SharpCompress needs a seekable stream
+                    await using (archive)
+                    {
+                        if (!await CopyWithLimitAsync(archive, buffered, _options.MaxArchiveBytes, ct))
+                        {
+                            _logger.LogWarning("Archive for {Id} exceeds {Limit} bytes — refusing to convert.", id, _options.MaxArchiveBytes);
+                            return ConvertOutcome.NotFound;
+                        }
+                    }
                     buffered.Position = 0;
                     await _converter.ConvertAsync(buffered, new EbookMeta(title, author, seriesName, seq, id), path, maxW, maxH, dpr, ct);
                     _logger.LogInformation("Converted {Id} in {Ms} ms → {OutBytes} bytes", id, sw.ElapsedMilliseconds, new FileInfo(path).Length);
@@ -92,5 +99,22 @@ public class ConvertService
     {
         foreach (var c in Path.GetInvalidFileNameChars()) s = s.Replace(c, '_');
         return s.Trim();
+    }
+
+    // Copy src → dst, aborting (returning false) as soon as more than `limit` bytes
+    // are read, so a huge/decompression-bomb archive can't be buffered into memory.
+    // limit <= 0 disables the cap.
+    private static async Task<bool> CopyWithLimitAsync(Stream src, Stream dst, long limit, CancellationToken ct)
+    {
+        var buffer = new byte[81920];
+        long total = 0;
+        int read;
+        while ((read = await src.ReadAsync(buffer, ct)) > 0)
+        {
+            total += read;
+            if (limit > 0 && total > limit) return false;
+            await dst.WriteAsync(buffer.AsMemory(0, read), ct);
+        }
+        return true;
     }
 }

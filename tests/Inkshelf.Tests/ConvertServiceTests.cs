@@ -11,9 +11,10 @@ public class ConvertServiceTests
         new(new HttpClient(new StubHandler(_ => StubHandler.Json(detailJson)))
         { BaseAddress = new Uri("http://abs.local") });
 
-    private static ConvertService Service(AbsApiClient api, EpubCache cache) =>
+    private static ConvertService Service(AbsApiClient api, EpubCache cache, long maxArchiveBytes = long.MaxValue) =>
         new(api, cache, new EpubConverter(), new ConvertLock(),
-            new AbsOptions { MaxCacheBytes = long.MaxValue }, NullLogger<ConvertService>.Instance);
+            new AbsOptions { MaxCacheBytes = long.MaxValue, MaxArchiveBytes = maxArchiveBytes },
+            NullLogger<ConvertService>.Instance);
 
     private static string DetailJson(string format, string title, string author, long size, long mtime) =>
         $$"""
@@ -52,6 +53,17 @@ public class ConvertServiceTests
         var svc = Service(DetailClient(DetailJson("cbz", "T", "A", 123, 456)), cache);
         var outcome = await svc.ConvertAsync("item1", fresh: false, warm: true, 100, 200, 1.0, default);
         Assert.Equal(ConvertResultKind.Warmed, outcome.Kind);
+    }
+
+    [Fact]
+    public async Task ConvertAsync_returns_NotFound_when_archive_exceeds_ceiling()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path); // empty → cache miss → enters convert path
+        // Tiny ceiling; the stubbed ebook stream (the detail JSON bytes) is larger.
+        var svc = Service(DetailClient(DetailJson("cbz", "T", "A", 123, 456)), cache, maxArchiveBytes: 8);
+        var outcome = await svc.ConvertAsync("item1", fresh: false, warm: false, 100, 200, 1.0, default);
+        Assert.Equal(ConvertResultKind.NotFound, outcome.Kind);
     }
 
     private sealed class TempDir : IDisposable
