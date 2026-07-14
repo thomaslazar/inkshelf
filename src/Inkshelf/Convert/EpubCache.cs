@@ -23,4 +23,27 @@ public class EpubCache
             try { File.Delete(f); } catch (IOException) { }
         }
     }
+
+    // Bump a served file's timestamp so EnforceCap treats recently-used entries as
+    // "new" (approximate LRU — serving a file doesn't otherwise touch its mtime).
+    public void Touch(string path)
+    {
+        try { if (File.Exists(path)) File.SetLastWriteTimeUtc(path, DateTime.UtcNow); }
+        catch (IOException) { }
+    }
+
+    // Evict oldest-by-write-time entries until total cache bytes are under the cap.
+    // No-op when maxBytes <= 0 or already under. Best-effort (ignores IO races).
+    public void EnforceCap(long maxBytes)
+    {
+        if (maxBytes <= 0) return;
+        var files = new DirectoryInfo(_dir).GetFiles("*.epub");
+        var total = files.Sum(f => f.Length);
+        if (total <= maxBytes) return;
+        foreach (var f in files.OrderBy(f => f.LastWriteTimeUtc))
+        {
+            if (total <= maxBytes) break;
+            try { total -= f.Length; f.Delete(); } catch (IOException) { }
+        }
+    }
 }

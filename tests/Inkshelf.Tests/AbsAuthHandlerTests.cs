@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Inkshelf;
 using Inkshelf.Abs;
 using Inkshelf.Auth;
 
@@ -51,6 +52,7 @@ public class AbsAuthHandlerTests
         var services = new ServiceCollection();
         services.AddSingleton<IDataProtectionProvider>(dp);
         services.AddSingleton<IHttpContextAccessor>(accessor);
+        services.AddSingleton(new AbsOptions());
         services.AddTransient<TokenStore>();          // transient in tests avoids scope ceremony
         services.AddSingleton(authClient);
         var provider = services.BuildServiceProvider();
@@ -64,7 +66,7 @@ public class AbsAuthHandlerTests
         if (withToken)
         {
             var w = new DefaultHttpContext();
-            new TokenStore(dp, new HttpContextAccessor { HttpContext = w }).Save(new Tokens("acc", "ref"));
+            new TokenStore(dp, new HttpContextAccessor { HttpContext = w }, new AbsOptions()).Save(new Tokens("acc", "ref"));
             var value = w.Response.Headers.SetCookie.ToString().Split(';')[0].Split('=', 2)[1];
             ctx.Request.Headers.Cookie = $"inkshelf_session={value}";
         }

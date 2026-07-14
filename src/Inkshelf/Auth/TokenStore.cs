@@ -7,11 +7,13 @@ public class TokenStore
     private const string CookieName = "inkshelf_session";
     private readonly IDataProtector _protector;
     private readonly IHttpContextAccessor _accessor;
+    private readonly AbsOptions _options;
 
-    public TokenStore(IDataProtectionProvider dp, IHttpContextAccessor accessor)
+    public TokenStore(IDataProtectionProvider dp, IHttpContextAccessor accessor, AbsOptions options)
     {
         _protector = dp.CreateProtector("inkshelf.session.v1");
         _accessor = accessor;
+        _options = options;
     }
 
     private HttpContext Ctx => _accessor.HttpContext
@@ -25,7 +27,7 @@ public class TokenStore
         {
             HttpOnly = true,
             SameSite = SameSiteMode.Lax,
-            Secure = Ctx.Request.IsHttps,
+            Secure = _options.ForceSecureCookies || Ctx.Request.IsHttps,
             IsEssential = true,
             MaxAge = TimeSpan.FromDays(30),
             Path = "/"

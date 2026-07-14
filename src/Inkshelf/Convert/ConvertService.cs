@@ -23,12 +23,15 @@ public class ConvertService
     private readonly AbsApiClient _api;
     private readonly EpubCache _cache;
     private readonly EpubConverter _converter;
+    private readonly ConvertLock _lock;
+    private readonly AbsOptions _options;
     private readonly ILogger<ConvertService> _logger;
 
-    public ConvertService(AbsApiClient api, EpubCache cache,
-        EpubConverter converter, ILogger<ConvertService> logger)
+    public ConvertService(AbsApiClient api, EpubCache cache, EpubConverter converter,
+        ConvertLock convertLock, AbsOptions options, ILogger<ConvertService> logger)
     {
-        _api = api; _cache = cache; _converter = converter; _logger = logger;
+        _api = api; _cache = cache; _converter = converter;
+        _lock = convertLock; _options = options; _logger = logger;
     }
 
     public async Task<ConvertOutcome> ConvertAsync(string id, bool fresh, bool warm,
@@ -57,19 +60,32 @@ public class ConvertService
         var path = _cache.PathFor(id, size, mtime, maxW, maxH);
         if (!System.IO.File.Exists(path))
         {
-            _logger.LogInformation("Converting {Id} ({Fmt}, {Bytes} bytes, cap {W}x{H} @dpr {Dpr}) to EPUB…", id, fmt, size, maxW, maxH, dpr);
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            var (archive, _) = await _api.GetEbookStreamAsync(id, ct);
-            using var buffered = new MemoryStream();
-            await using (archive) await archive.CopyToAsync(buffered, ct);   // SharpCompress needs a seekable stream
-            buffered.Position = 0;
-            await _converter.ConvertAsync(buffered, new EbookMeta(title, author, seriesName, seq, id), path, maxW, maxH, dpr, ct);
-            _logger.LogInformation("Converted {Id} in {Ms} ms → {OutBytes} bytes", id, sw.ElapsedMilliseconds, new FileInfo(path).Length);
+            // Serialize concurrent converts of the SAME target so they don't both
+            // build + write the .tmp. The second waiter re-checks and skips.
+            using (await _lock.AcquireAsync(path, ct))
+            {
+                if (!System.IO.File.Exists(path))
+                {
+                    _logger.LogInformation("Converting {Id} ({Fmt}, {Bytes} bytes, cap {W}x{H} @dpr {Dpr}) to EPUB…", id, fmt, size, maxW, maxH, dpr);
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    var (archive, _) = await _api.GetEbookStreamAsync(id, ct);
+                    using var buffered = new MemoryStream();
+                    await using (archive)
+                    {
+                        if (!await CopyWithLimitAsync(archive, buffered, _options.MaxArchiveBytes, ct))
+                        {
+                            _logger.LogWarning("Archive for {Id} exceeds {Limit} bytes — refusing to convert.", id, _options.MaxArchiveBytes);
+                            return ConvertOutcome.NotFound;
+                        }
+                    }
+                    buffered.Position = 0;
+                    await _converter.ConvertAsync(buffered, new EbookMeta(title, author, seriesName, seq, id), path, maxW, maxH, dpr, ct);
+                    _logger.LogInformation("Converted {Id} in {Ms} ms → {OutBytes} bytes", id, sw.ElapsedMilliseconds, new FileInfo(path).Length);
+                    _cache.EnforceCap(_options.MaxCacheBytes);
+                }
+            }
         }
-        else
-        {
-            _logger.LogInformation("Serving cached EPUB for {Id} ({OutBytes} bytes)", id, new FileInfo(path).Length);
-        }
+        _cache.Touch(path);   // count this serve as recent use (fresh or cached)
 
         // warm just ensures the EPUB is built + cached, so the user's next tap
         // downloads it instantly; it returns OK, not the file.
@@ -83,5 +99,22 @@ public class ConvertService
     {
         foreach (var c in Path.GetInvalidFileNameChars()) s = s.Replace(c, '_');
         return s.Trim();
+    }
+
+    // Copy src → dst, aborting (returning false) as soon as more than `limit` bytes
+    // are read, so a huge/decompression-bomb archive can't be buffered into memory.
+    // limit <= 0 disables the cap.
+    private static async Task<bool> CopyWithLimitAsync(Stream src, Stream dst, long limit, CancellationToken ct)
+    {
+        var buffer = new byte[81920];
+        long total = 0;
+        int read;
+        while ((read = await src.ReadAsync(buffer, ct)) > 0)
+        {
+            total += read;
+            if (limit > 0 && total > limit) return false;
+            await dst.WriteAsync(buffer.AsMemory(0, read), ct);
+        }
+        return true;
     }
 }

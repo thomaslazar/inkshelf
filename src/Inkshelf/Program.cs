@@ -15,6 +15,11 @@ var absOptions = new AbsOptions
     AbsUrl = builder.Configuration["ABS_URL"] ?? "",
     CachePath = builder.Configuration["CachePath"],
     DataProtectionKeysPath = builder.Configuration["DataProtectionKeysPath"],
+    DiagEnabled = !string.Equals(builder.Configuration["DIAG_ENABLED"], "false", StringComparison.OrdinalIgnoreCase),
+    ForceSecureCookies = bool.TryParse(builder.Configuration["FORCE_SECURE_COOKIES"], out var fsc) && fsc,
+    TrustedProxy = builder.Configuration["TRUSTED_PROXY"],
+    MaxCacheBytes = long.TryParse(builder.Configuration["MaxCacheBytes"], out var mcb) && mcb > 0 ? mcb : 1_073_741_824,
+    MaxArchiveBytes = long.TryParse(builder.Configuration["MaxArchiveBytes"], out var mab) && mab > 0 ? mab : 524_288_000,
 };
 // Fail fast on missing required config. SmokeTests.MissingAbsUrl_FailsStartup
 // depends on this exact exception type.
@@ -48,6 +53,7 @@ builder.Services.AddHttpClient<AbsAuthClient>(ConfigureAbs);
 builder.Services.AddHttpClient<AbsApiClient>(ConfigureAbs).AddHttpMessageHandler<AbsAuthHandler>();
 builder.Services.AddSingleton(new EpubCache(cachePath));
 builder.Services.AddSingleton<EpubConverter>();
+builder.Services.AddSingleton<ConvertLock>();
 builder.Services.AddScoped<ConvertService>();
 builder.Services.AddRazorPages(options =>
 {
@@ -57,10 +63,15 @@ builder.Services.AddRazorPages(options =>
 var app = builder.Build();
 
 var fho = new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor };
-// Sidecar sits behind the operator's own reverse proxy; the proxy isn't on a known
-// network/loopback, so trust forwarded headers from it. Deploy on a trusted network only.
 fho.KnownIPNetworks.Clear();
 fho.KnownProxies.Clear();
+var (trustedProxies, trustedNetworks) = ForwardedProxies.Parse(absOptions.TrustedProxy);
+// With TRUSTED_PROXY set, only those proxies/networks may set forwarded headers
+// (default-deny). With it unset, both lists stay empty → forwarded headers are
+// trusted from any hop (deploy behind a trusted proxy; FORCE_SECURE_COOKIES
+// protects the cookie Secure flag independently).
+foreach (var p in trustedProxies) fho.KnownProxies.Add(p);
+foreach (var net in trustedNetworks) fho.KnownIPNetworks.Add(net);
 app.UseForwardedHeaders(fho);
 
 app.UseStaticFiles();
@@ -85,7 +96,7 @@ app.MapConvertEndpoints();
 
 app.MapSessionEndpoints();
 
-app.MapDiagEndpoints();
+if (absOptions.DiagEnabled) app.MapDiagEndpoints();
 
 app.Run();
 
