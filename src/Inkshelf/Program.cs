@@ -15,6 +15,7 @@ var absOptions = new AbsOptions
     AbsUrl = builder.Configuration["ABS_URL"] ?? "",
     CachePath = builder.Configuration["CachePath"],
     DataProtectionKeysPath = builder.Configuration["DataProtectionKeysPath"],
+    DiagEnabled = !string.Equals(builder.Configuration["DIAG_ENABLED"], "false", StringComparison.OrdinalIgnoreCase),
     ForceSecureCookies = bool.TryParse(builder.Configuration["FORCE_SECURE_COOKIES"], out var fsc) && fsc,
     TrustedProxy = builder.Configuration["TRUSTED_PROXY"],
 };
@@ -92,7 +93,7 @@ app.MapConvertEndpoints();
 
 app.MapSessionEndpoints();
 
-app.MapDiagEndpoints();
+if (absOptions.DiagEnabled) app.MapDiagEndpoints();
 
 app.Run();
 

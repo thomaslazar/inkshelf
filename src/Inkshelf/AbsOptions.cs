@@ -2,7 +2,7 @@ namespace Inkshelf;
 
 // Typed view of the app's configuration, bound once at startup so config reads
 // live in one place instead of scattered Configuration["…"] lookups. Config keys:
-// ABS_URL (required), CachePath, DataProtectionKeysPath, FORCE_SECURE_COOKIES, TRUSTED_PROXY.
+// ABS_URL (required), CachePath, DataProtectionKeysPath, DIAG_ENABLED, FORCE_SECURE_COOKIES, TRUSTED_PROXY.
 public sealed class AbsOptions
 {
     public string AbsUrl { get; set; } = "";
@@ -14,4 +14,6 @@ public sealed class AbsOptions
     // Comma-separated IPs/CIDRs allowed to set forwarded headers. Null = trust all
     // (deploy behind a trusted proxy). Consumed in Program.cs forwarded-headers setup.
     public string? TrustedProxy { get; set; }
+    // Whether the unauthenticated /diag probe endpoint is mapped. Default true.
+    public bool DiagEnabled { get; set; } = true;
 }
