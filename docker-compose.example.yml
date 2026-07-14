@@ -1,12 +1,16 @@
 services:
   inkshelf:
-    # Published multi-arch image. Tags: :main (latest main build),
-    # :X.Y.Z / :latest (tagged releases). Pin to a release for stability.
-    image: ghcr.io/thomaslazar/inkshelf:main
+    # Published multi-arch image. Tags: :latest (most recent release),
+    # :X.Y.Z (a specific release), :main (bleeding-edge main build).
+    # Pin to :X.Y.Z for reproducible deploys.
+    image: ghcr.io/thomaslazar/inkshelf:latest
     environment:
       ABS_URL: "http://audiobookshelf:80"
       DataProtectionKeysPath: "/keys"
       CachePath: "/cache"
+      # Set true when a TLS-terminating reverse proxy sits in front of Inkshelf
+      # (recommended) so session cookies are marked Secure. See README → Deployment.
+      # FORCE_SECURE_COOKIES: "true"
     volumes:
       - inkshelf-keys:/keys
       - inkshelf-cache:/cache
