@@ -59,10 +59,15 @@ builder.Services.AddRazorPages(options =>
 var app = builder.Build();
 
 var fho = new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor };
-// Sidecar sits behind the operator's own reverse proxy; the proxy isn't on a known
-// network/loopback, so trust forwarded headers from it. Deploy on a trusted network only.
 fho.KnownIPNetworks.Clear();
 fho.KnownProxies.Clear();
+var (trustedProxies, trustedNetworks) = ForwardedProxies.Parse(absOptions.TrustedProxy);
+// With TRUSTED_PROXY set, only those proxies/networks may set forwarded headers
+// (default-deny). With it unset, both lists stay empty → forwarded headers are
+// trusted from any hop (deploy behind a trusted proxy; FORCE_SECURE_COOKIES
+// protects the cookie Secure flag independently).
+foreach (var p in trustedProxies) fho.KnownProxies.Add(p);
+foreach (var net in trustedNetworks) fho.KnownIPNetworks.Add(net);
 app.UseForwardedHeaders(fho);
 
 app.UseStaticFiles();
