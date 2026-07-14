@@ -14,6 +14,10 @@ public static class ScreenTarget
     //   retina  = false → image at css px,                  viewport = css  (softer, ~3.5× lighter)
     public const bool Retina = false;
 
+    // Upper bound on a page dimension fed into the converter + cache key, so a
+    // client-set "scr" cookie can't mint absurd sizes (disk exhaustion / OOM).
+    public const int MaxDimension = 4096;
+
     // Parse the "scr" cookie (the layout script reports "<cssW>x<cssH>x<dpr>")
     // into a page-image cap (MaxW/MaxH) and the pixel ratio the converter uses to
     // derive each page's CSS viewport (viewport = image px / Dpr). The Tolino
@@ -33,12 +37,16 @@ public static class ScreenTarget
                 && int.TryParse(p[0], out var cw) && int.TryParse(p[1], out var ch)
                 && double.TryParse(p[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var dpr)
                 && cw > 0 && ch > 0 && dpr > 0)
+            {
+                cw = Math.Min(cw, MaxDimension);
+                ch = Math.Min(ch, MaxDimension);
                 return Retina
                     ? ((int)Math.Round(cw * dpr), (int)Math.Round(ch * dpr), dpr)
                     : (cw, ch, 1);
+            }
             // Legacy 2-part physical cookie, transient until the script rewrites it.
             if (p.Length == 2 && int.TryParse(p[0], out var w2) && int.TryParse(p[1], out var h2) && w2 > 0 && h2 > 0)
-                return (w2, h2, 1);
+                return (Math.Min(w2, MaxDimension), Math.Min(h2, MaxDimension), 1);
         }
         return (0, 0, 1);
     }

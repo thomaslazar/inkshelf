@@ -24,4 +24,21 @@ public class ScreenTargetTests
         var (w, h, dpr) = ScreenTarget.FromCookie(scr);
         Assert.True(w >= 0 && h >= 0 && dpr > 0);
     }
+
+    [Fact]
+    public void FromCookie_clamps_oversized_dimensions()
+    {
+        var (w, h, dpr) = ScreenTarget.FromCookie("9999x9999x1");
+        Assert.Equal(ScreenTarget.MaxDimension, w);
+        Assert.Equal(ScreenTarget.MaxDimension, h);
+        Assert.Equal(1.0, dpr, 3);
+    }
+
+    [Fact]
+    public void FromCookie_leaves_in_range_dimensions_untouched()
+    {
+        var (w, h, _) = ScreenTarget.FromCookie("768x1024x1");
+        Assert.Equal(768, w);
+        Assert.Equal(1024, h);
+    }
 }
