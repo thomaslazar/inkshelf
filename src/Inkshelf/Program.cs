@@ -15,6 +15,8 @@ var absOptions = new AbsOptions
     AbsUrl = builder.Configuration["ABS_URL"] ?? "",
     CachePath = builder.Configuration["CachePath"],
     DataProtectionKeysPath = builder.Configuration["DataProtectionKeysPath"],
+    ForceSecureCookies = bool.TryParse(builder.Configuration["FORCE_SECURE_COOKIES"], out var fsc) && fsc,
+    TrustedProxy = builder.Configuration["TRUSTED_PROXY"],
 };
 // Fail fast on missing required config. SmokeTests.MissingAbsUrl_FailsStartup
 // depends on this exact exception type.

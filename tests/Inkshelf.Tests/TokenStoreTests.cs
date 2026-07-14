@@ -1,16 +1,17 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
+using Inkshelf;
 using Inkshelf.Auth;
 
 namespace Inkshelf.Tests;
 
 public class TokenStoreTests
 {
-    private static TokenStore Make(HttpContext ctx)
+    private static TokenStore Make(HttpContext ctx, AbsOptions? options = null)
     {
         var dp = DataProtectionProvider.Create("inkshelf-tests");
         var accessor = new HttpContextAccessor { HttpContext = ctx };
-        return new TokenStore(dp, accessor);
+        return new TokenStore(dp, accessor, options ?? new AbsOptions());
     }
 
     [Fact]
@@ -48,5 +49,23 @@ public class TokenStoreTests
         Make(ctx).Save(new Tokens("acc", "ref"));
         var setCookie = ctx.Response.Headers.SetCookie.ToString();
         Assert.Contains("path=/", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Save_forces_secure_flag_when_configured()
+    {
+        var ctx = new DefaultHttpContext(); // IsHttps == false
+        Make(ctx, new AbsOptions { ForceSecureCookies = true }).Save(new Tokens("acc", "ref"));
+        var setCookie = ctx.Response.Headers.SetCookie.ToString();
+        Assert.Contains("secure", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Save_omits_secure_flag_on_http_by_default()
+    {
+        var ctx = new DefaultHttpContext(); // IsHttps == false, ForceSecureCookies false
+        Make(ctx).Save(new Tokens("acc", "ref"));
+        var setCookie = ctx.Response.Headers.SetCookie.ToString();
+        Assert.DoesNotContain("secure", setCookie, StringComparison.OrdinalIgnoreCase);
     }
 }

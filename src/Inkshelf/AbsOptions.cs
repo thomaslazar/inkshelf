@@ -2,10 +2,16 @@ namespace Inkshelf;
 
 // Typed view of the app's configuration, bound once at startup so config reads
 // live in one place instead of scattered Configuration["…"] lookups. Config keys:
-// ABS_URL (required), CachePath, DataProtectionKeysPath.
+// ABS_URL (required), CachePath, DataProtectionKeysPath, FORCE_SECURE_COOKIES, TRUSTED_PROXY.
 public sealed class AbsOptions
 {
     public string AbsUrl { get; set; } = "";
     public string? CachePath { get; set; }
     public string? DataProtectionKeysPath { get; set; }
+    // Force the Secure flag on cookies even when Request.IsHttps is false (the app
+    // sits behind a TLS-terminating proxy). Defaults false = derive from IsHttps.
+    public bool ForceSecureCookies { get; set; }
+    // Comma-separated IPs/CIDRs allowed to set forwarded headers. Null = trust all
+    // (deploy behind a trusted proxy). Consumed in Program.cs forwarded-headers setup.
+    public string? TrustedProxy { get; set; }
 }
