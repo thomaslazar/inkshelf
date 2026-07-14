@@ -14,7 +14,7 @@ SDK on your host.
 3. On first create, the container restores dependencies and clones the
    Audiobookshelf server source into `temp/audiobookshelf/` (see below).
 
-The app targets **.NET 10** (no AOT) and is an ASP.NET Core Razor Pages project.
+The app targets **.NET 10** and is an ASP.NET Core Razor Pages project.
 
 ## Build, test, format
 
@@ -38,12 +38,9 @@ See the [README](README.md#configuration) for all configuration variables.
 ## Project layout
 
 Before making a substantial change, read
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — it maps the structure
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — it maps the overall structure
 (`Endpoints/`, `Abs/`, `Convert/`, `Pages/` + `Pages/Support/`, `Auth/`) and the
-**load-bearing conventions** that look like cleanup targets but are deliberate
-(the two-client ABS split, the three separate metadata shapes, string-built EPUB
-XML, `LibraryLinks` as the single URL authority, and more). Please don't "clean
-those up" without discussion.
+conventions behind it.
 
 Roadmap items and ideas live in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 

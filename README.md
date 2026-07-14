@@ -27,6 +27,9 @@ the ABS API on your behalf, and keeps no database of its own — your ABS sessio
 token lives in an encrypted cookie. Pages are built from `<form>` and `<a>`
 elements only.
 
+> **Note:** Inkshelf was built using agentic software engineering (AI-assisted
+> coding) and reviewed by a human. See the git history for details.
+
 <!-- SCREENSHOT: drop a library-listing screenshot here, e.g.
 <p align="center"><img src="docs/img/screenshot.png" alt="Inkshelf library view" width="720"></p>
 -->
@@ -130,8 +133,8 @@ All configuration is via environment variables.
 
 ## How it works
 
-Inkshelf is an ASP.NET Core Razor Pages app (.NET 10, no AOT): Razor Pages render
-the HTML, minimal-API endpoints serve streams and actions, and a typed HTTP client
+Inkshelf is an ASP.NET Core Razor Pages app (.NET 10): Razor Pages render the
+HTML, minimal-API endpoints serve streams and actions, and a typed HTTP client
 talks to the ABS API with transparent token refresh. There is no database — state
 is the encrypted cookie plus the on-disk EPUB cache.
 
