@@ -73,6 +73,16 @@ repo root (inside the devcontainer) must stay green.
   convert-warm XHR) are deliberate and Tolino-tested. Anything touching them needs
   a real-device test before merge; defensive CSS only (no `object-fit`, no flex
   `gap`).
+- **Cookie `Secure` derives from config, not just `Request.IsHttps`.** Behind a
+  TLS-terminating proxy `IsHttps` is spoofable, so the flag is
+  `ForceSecureCookies || Request.IsHttps`. `TokenStore` and `Favorites` must apply
+  the same rule — keep them in sync.
+- **Conversion is serialized and resource-bounded.** `ConvertService` runs the
+  convert-on-miss block inside `ConvertLock` (a singleton keyed by cache-output
+  path) with a double-checked `File.Exists`, so concurrent requests for the same
+  target don't double-convert or corrupt the `.tmp`. Client-influenced inputs are
+  bounded (archive size, total cache size, `scr` dimensions) via `AbsOptions` — see
+  Configuration.
 
 ## Adding a new X
 
@@ -87,9 +97,32 @@ repo root (inside the devcontainer) must stay green.
   expired session lets `AbsAuthException` propagate — the middleware in `Program.cs`
   redirects to `/login`.
 
-## Not yet done (tracked separately)
+## Configuration (`AbsOptions`)
 
-Security hardening (forwarded-header trust, `/diag` body cap, `scr` clamp, cache
-eviction, archive size ceiling, concurrent-convert lock) is deferred to its own
-spec — see `docs/superpowers/specs/`. `ConvertService` is the intended home for the
-per-item convert lock.
+All config is read once into `AbsOptions` at startup (`Program.cs`). Keys:
+
+| Key | Default | Purpose |
+|---|---|---|
+| `ABS_URL` | — (required) | Audiobookshelf base URL |
+| `CachePath` | `<content>/.cache/epub` | converted-EPUB cache dir |
+| `DataProtectionKeysPath` | `<content>/.keys` | Data Protection key ring |
+| `FORCE_SECURE_COOKIES` | `false` | force cookie `Secure` behind a TLS proxy |
+| `TRUSTED_PROXY` | (unset) | comma-separated IPs/CIDRs allowed to set forwarded headers; unset = trust all |
+| `DIAG_ENABLED` | `true` | map the `/diag` probe endpoint |
+| `MaxArchiveBytes` | `524288000` (500 MB) | refuse larger ebook archives (OOM guard) |
+| `MaxCacheBytes` | `1073741824` (1 GB) | LRU-evict the EPUB cache past this |
+
+## Security
+
+The app trusts a reverse proxy in front of it and defends the boundaries that a
+client can influence: the session token lives in a Data-Protection-encrypted,
+HttpOnly, SameSite=Lax cookie whose `Secure` flag can be pinned via config;
+state-changing requests are antiforgery-protected; user-supplied ids are
+URL-escaped and EPUB metadata is XML-escaped; the unauthenticated `/diag` probe is
+bounded, sanitized, and gateable; and conversion is bounded against
+resource-exhaustion (archive size, cache size, screen-dimension inputs) — all tuned
+through Configuration.
+
+By design, `/login` relies on Audiobookshelf's own brute-force protection rather
+than a local rate limit, and Data-Protection keys are stored unencrypted on their
+(private) volume.
