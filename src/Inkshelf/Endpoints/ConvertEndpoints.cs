@@ -19,10 +19,10 @@ public static class ConvertEndpoints
 
             return outcome.Kind switch
             {
-                ConvertResultKind.NotFound => Results.NotFound(),
                 ConvertResultKind.Warmed => Results.Text("ok"),
-                _ => Results.File(outcome.FilePath!, "application/epub+zip",
-                        fileDownloadName: outcome.DownloadName)
+                ConvertResultKind.File => Results.File(outcome.FilePath!, "application/epub+zip",
+                        fileDownloadName: outcome.DownloadName),
+                _ => Results.NotFound()
             };
         });
     }

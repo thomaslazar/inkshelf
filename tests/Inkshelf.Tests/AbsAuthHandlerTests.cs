@@ -124,6 +124,17 @@ public class AbsAuthHandlerTests
     }
 
     [Fact]
+    public async Task Throws_AbsAuth_when_no_http_context()
+    {
+        // No request in flight (accessor.HttpContext == null) → auth is impossible.
+        var handler = new AbsAuthHandler(new HttpContextAccessor())
+        { InnerHandler = new RecordingHandler(HttpStatusCode.OK) };
+        await Assert.ThrowsAsync<AbsAuthException>(() =>
+            new HttpMessageInvoker(handler).SendAsync(
+                new HttpRequestMessage(HttpMethod.Get, "http://abs.local/x"), default));
+    }
+
+    [Fact]
     public async Task Preserves_user_agent_across_retry()
     {
         var s = Make(new[] { HttpStatusCode.Unauthorized, HttpStatusCode.OK }, withToken: true);
