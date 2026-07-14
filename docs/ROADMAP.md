@@ -45,7 +45,23 @@ CBZ/CBR→EPUB conversion, cached indicator, search links) works.
 - **Regen (↻) feedback.** The regenerate link is a plain direct link with no
   progress feedback; align it with whatever feedback approach is chosen.
 
-## Infrastructure
+## Security
 
-- **Cache eviction.** The EPUB cache grows unbounded (per-item × per-device-size
-  variants). Add a size cap / LRU eviction.
+Follow-ups from the hardening work (all non-blocking; the shipped controls are in
+place — these tighten test coverage and one latent edge):
+
+- **`ConvertLock` cancellation test.** The keyed convert lock's cancellation path
+  (a queued `AcquireAsync` that gets canceled) unwinds its ref-count but isn't
+  exercised by a test. Add one asserting `ActiveKeys` returns to 0 and the
+  semaphore isn't left stuck.
+- **Archive-ceiling test: assert no partial file.** The `MaxArchiveBytes`
+  over-limit test checks the `NotFound` outcome; also assert the cache dir is empty
+  afterward, so a regression that wrote a partial `.tmp`/`.epub` before aborting
+  would be caught.
+- **`Favorites` force-secure test.** `TokenStore` has forced-vs-default
+  `Secure`-flag tests; `Favorites.Set` applies the same rule but is untested — add
+  the mirror pair for symmetry.
+- **Retina dpr clamp.** `ScreenTarget` clamps dimensions to `MaxDimension` *before*
+  multiplying by the client-supplied `dpr`, and `dpr` itself is unbounded —
+  harmless while `Retina = false`, but when the retina toggle (see Conversion /
+  rendering) lands, clamp *after* the multiply and bound `dpr`.
