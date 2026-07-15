@@ -30,9 +30,16 @@ elements only.
 > **Note:** Inkshelf was built using agentic software engineering (AI-assisted
 > coding) and reviewed by a human. See the git history for details.
 
-<!-- SCREENSHOT: drop a library-listing screenshot here, e.g.
-<p align="center"><img src="docs/img/screenshot.png" alt="Inkshelf library view" width="720"></p>
--->
+## Screenshots
+
+<p align="center">
+  <a href="docs/img/login.jpg"><img src="docs/img/login.jpg" alt="Login screen" width="200"></a>
+  <a href="docs/img/libraries.jpg"><img src="docs/img/libraries.jpg" alt="Libraries list" width="200"></a>
+  <a href="docs/img/library-listing.jpg"><img src="docs/img/library-listing.jpg" alt="Library listing with download and convert actions" width="200"></a>
+  <a href="docs/img/converted-comic.jpg"><img src="docs/img/converted-comic.jpg" alt="A converted comic being read on the device" width="200"></a>
+</p>
+
+<p align="center"><sub>Login · libraries · a library listing with download/convert actions · a converted comic being read — on a real e-ink reader. Click any image to enlarge.</sub></p>
 
 ## Features
 
