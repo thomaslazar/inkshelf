@@ -8,9 +8,9 @@ CBZ/CBR→EPUB conversion, cached indicator, search links) works.
 
 - **Retina toggle (configurable).** Pages are currently hard-coded to
   **non-retina** (`ScreenTarget.Retina = false`) because full-resolution
-  ("retina") pages crash the tolino **epos** reader on large comics (its Adobe
-  engine is memory-limited and EPUB3/fixed-layout-flaky). Make it configurable —
-  ideally per-device via the `scr` cookie or a user setting — so the tolino app,
+  ("retina") pages crash some e-ink readers on large comics (their Adobe-based
+  engines are memory-limited and EPUB3/fixed-layout-flaky). Make it configurable —
+  ideally per-device via the `scr` cookie or a user setting — so apps, the
   webreader, and higher-memory devices can opt into crisp retina pages.
 - **User-defined resolution override.** Let the user hand-set the conversion
   resolution per device (via the cookie), for when the browser-reported screen
@@ -20,9 +20,9 @@ CBZ/CBR→EPUB conversion, cached indicator, search links) works.
   `matchMedia('(monochrome)')` is unreliable on e-ink (the browser reports its
   colour rendering surface, not the panel), so make it a manual per-device
   toggle; keep colour for colour e-ink readers.
-- **EPUB2 reflowable fallback.** Fixed-layout (EPUB3) is flagged by older tolino
-  eReaders ("Das Öffnen dieses Buches kann zu Fehlern führen") and can crash the
-  epos, whose Adobe engine is EPUB2-only. Offer a reflowable EPUB2 mode — works
+- **EPUB2 reflowable fallback.** Fixed-layout (EPUB3) is flagged by some older
+  e-ink eReaders ("Das Öffnen dieses Buches kann zu Fehlern führen") and can crash
+  them, as their Adobe engines are EPUB2-only. Offer a reflowable EPUB2 mode — works
   everywhere but has reader-imposed margins (not full-bleed) — as a per-device
   option for devices that can't do fixed-layout. (Our EPUB is already
   epubcheck-clean; the warning is the device's EPUB3 limitation, not our bug.)
