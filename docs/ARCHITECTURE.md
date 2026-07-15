@@ -1,7 +1,7 @@
 # Inkshelf Architecture
 
 A thin, server-rendered web client for the Audiobookshelf (ABS) API, built to run
-on old e-reader browsers (Tolino). This document describes the steady-state
+on old e-reader browsers. This document describes the steady-state
 structure and the conventions that hold it together. **Read it before adding
 features** — several conventions look like cleanup targets but are load-bearing.
 
@@ -11,7 +11,7 @@ features** — several conventions look like cleanup targets but are load-bearin
   endpoints serve streams and actions. Stateless: the ABS JWT lives in an
   encrypted cookie (Data Protection).
 - Near-zero client JavaScript so old e-reader browsers work. Only two tiny inline
-  scripts exist (in `_Layout.cshtml`) and both are Tolino-tested.
+  scripts exist (in `_Layout.cshtml`) and both are tested on a real e-ink reader.
 
 ## Layout — where things live
 
@@ -70,8 +70,9 @@ repo root (inside the devcontainer) must stay green.
   URL is built there, used by both the page model (`LibraryModel.Links`) and the
   row partial (`ItemRowModel.Links`). Don't re-implement URL building in a view.
 - **Near-zero JS.** The two inline scripts in `_Layout.cshtml` (screen-size cookie,
-  convert-warm XHR) are deliberate and Tolino-tested. Anything touching them needs
-  a real-device test before merge; defensive CSS only (no `object-fit`, no flex
+  convert-warm XHR) are deliberate and tested on a real e-ink reader. Anything
+  touching them needs a real-device test before merge; defensive CSS only (no
+  `object-fit`, no flex
   `gap`).
 - **Cookie `Secure` derives from config, not just `Request.IsHttps`.** Behind a
   TLS-terminating proxy `IsHttps` is spoofable, so the flag is

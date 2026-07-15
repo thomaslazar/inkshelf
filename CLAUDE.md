@@ -5,7 +5,7 @@ be brief
 
 ## What this is
 Inkshelf — thin, server-rendered web client for the Audiobookshelf (ABS) API.
-Near-zero JavaScript so e-reader browsers (Tolino) work. Runs as a sidecar
+Near-zero JavaScript so old e-reader browsers work. Runs as a sidecar
 container next to ABS. See `docs/superpowers/specs/` for the design.
 
 - ASP.NET Core Razor Pages, .NET 10, **no AOT**.
