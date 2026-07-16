@@ -58,6 +58,8 @@ builder.Services.AddHttpClient<AbsDownloadClient>(ConfigureAbs);
 builder.Services.AddSingleton(new EpubCache(cachePath));
 builder.Services.AddSingleton<EpubConverter>();
 builder.Services.AddSingleton<ConvertLock>();
+builder.Services.AddSingleton<ConvertQueue>();
+builder.Services.AddHostedService<ConvertWorker>();
 builder.Services.AddScoped<ConvertService>();
 builder.Services.AddRazorPages(options =>
 {
