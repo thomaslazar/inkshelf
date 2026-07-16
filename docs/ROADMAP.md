@@ -4,6 +4,16 @@ Outstanding work, mostly follow-ups from the sorting + ebook-delivery feature.
 Nothing here is blocking; the current build (sorting, download, device-sized
 CBZ/CBR→EPUB conversion, cached indicator, search links) works.
 
+## Priority (my current focus)
+
+The rest of this file is unordered backlog; these two are what I want to tackle
+next, in order:
+
+1. **Background conversion** — decouple conversion from the request so a client
+   disconnect on a slow host can't kill it (see *Convert UX / feedback*).
+2. **Settings system + retina toggle** — so converted pages are readable on
+   high-DPR screens (see *Settings*).
+
 ## Settings
 
 Inkshelf has no settings system yet — rendering knobs are hard-coded
@@ -48,12 +58,13 @@ settings cookie — fold the existing `scr` / favorite cookies into the same con
 ## Conversion / rendering
 
 - **Conversion memory footprint.** Conversion buffers the whole archive in a
-  `MemoryStream` and holds every page as bytes (peak ~600 MB on a 223 MB comic),
-  which can OOM a small host (a low-power self-hosted box / single-board computer
-  is a confirmed real-world pain point). Lower the peak — stream/spool the archive
-  to a temp file instead of
-  RAM, and release each page after it's written into the EPUB. Gets more important
-  once retina (heavier pages) is an option.
+  `MemoryStream` and holds every page as bytes (peak ~600 MB on a 223 MB comic).
+  Logs from a low-power self-hosted box show this running slowly, **not** OOMing —
+  the real failure there is the request-cancellation described under *Convert UX /
+  feedback* — but the high peak (and the slowness it brings) is what widens that
+  cancellation window, so lowering it still matters: spool the archive to a temp
+  file instead of RAM, and release each page after it's written into the EPUB.
+  More important once retina (heavier pages) is an option.
 - **Conversion speed.** First conversion of a big comic is ~60–90 s (ImageSharp
   resizing ~280 pages, serially). Parallelise page processing.
 - **Cover image.** Add a cover (`<meta name="cover">` + first page) to the
@@ -61,15 +72,24 @@ settings cookie — fold the existing `scr` / favorite cookies into the same con
 
 ## Convert UX / feedback
 
-- **Reliable "converting… / done" feedback.** The inline warm-XHR flip
-  ("Convert" → "Converting…" → "EPUB ↓") is fragile on old browsers: the ~80 s
-  warm request drops before it returns, and the browser also serves stale cached
-  list pages. Options, cheapest first:
-  1. `Cache-Control: no-store` on the listing so a normal reload reliably shows
-     the server-rendered "EPUB ✓" (low-risk; fixes the stale-reload root cause).
-  2. Auto-refresh the list (`<meta refresh>`) while a convert is pending.
-  3. Robust polling: background convert + a cheap status endpoint + short polls
-     that flip the link when ready.
+- **Background conversion (decouple from the request) — required, not cosmetic.**
+  *Confirmed root cause of "it never converts" on a slow host* (from real logs on a
+  low-power self-hosted box): the conversion runs **inside** the `/convert` request
+  and is threaded with
+  the request's `CancellationToken`, so when the client disconnects before it
+  finishes — the warm-XHR timing out, or the user navigating away — `RequestAborted`
+  cancels and tears the conversion down mid-flight. The `.tmp` is discarded, nothing
+  is cached, and the next attempt starts from scratch (re-downloading the whole
+  archive). On a small box a large comic takes minutes, well past the client's
+  patience, so it can **never** complete. Fix: run the conversion **detached from
+  the request** (a background worker keyed by the cache path, reusing `ConvertLock`),
+  so a disconnect can't kill it, plus a cheap status endpoint the listing polls to
+  flip "Converting…" → "EPUB ✓" when it's done. The memory/speed items only shrink
+  the window; this is the actual cure.
+- **Listing freshness.** Complementary to the above: `Cache-Control: no-store` on
+  the listing (and/or a `<meta refresh>` while a convert is pending) so a normal
+  reload reliably shows the server-rendered "EPUB ✓" once the background convert has
+  finished, instead of a stale cached page.
 - **Regen (↻) feedback.** The regenerate link is a plain direct link with no
   progress feedback; align it with whatever feedback approach is chosen.
 
