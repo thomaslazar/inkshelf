@@ -32,7 +32,11 @@ public class ConvertService
         var (path, meta, downloadName) = r.Value;
 
         if (fresh) _cache.RemoveForItem(id);
-        if (System.IO.File.Exists(path)) return new KickResult(ConvertStatus.Done, path, downloadName);
+        if (System.IO.File.Exists(path))
+        {
+            _cache.Touch(path);
+            return new KickResult(ConvertStatus.Done, path, downloadName);
+        }
 
         var tokens = _tokens.Read();
         if (tokens is null) return new KickResult(ConvertStatus.None); // no session

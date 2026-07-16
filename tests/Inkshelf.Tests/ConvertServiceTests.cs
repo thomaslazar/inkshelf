@@ -71,6 +71,21 @@ public class ConvertServiceTests
     }
 
     [Fact]
+    public async Task KickAsync_touches_cached_file_on_serve()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        var path = cache.PathFor("item1", 123, 456, 100, 200);
+        File.WriteAllText(path, "epub");
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-2));
+        var svc = Service(DetailClient(DetailJson("cbz", "My: Comic", "Jane Doe", 123, 456)),
+            cache, new ConvertQueue(), TokenStoreWith("tok"));
+        var r = await svc.KickAsync("item1", fresh: false, 100, 200, 1.0, default);
+        Assert.Equal(ConvertStatus.Done, r.Status);
+        Assert.True(File.GetLastWriteTimeUtc(path) > DateTime.UtcNow.AddMinutes(-1));
+    }
+
+    [Fact]
     public async Task KickAsync_enqueues_a_job_carrying_the_token_on_miss()
     {
         using var dir = new TempDir();

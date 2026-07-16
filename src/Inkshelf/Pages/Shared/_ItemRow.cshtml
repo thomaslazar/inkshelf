@@ -56,7 +56,7 @@
                     @switch (Model.State)
                     {
                         case ConvertRowState.Cached:
-                            <a href="/convert/@item.Id" title="Already converted — downloads right away">EPUB &#10003;</a>
+                            <a href="/convert/@item.Id?return=@ret" title="Already converted — downloads right away">EPUB &#10003;</a>
                             break;
                         case ConvertRowState.Converting:
                             <a href="/convert/@item.Id?return=@ret" data-warm data-poll>Converting&#8230;</a>
@@ -68,7 +68,7 @@
                             <a href="/convert/@item.Id?return=@ret" data-warm>Convert</a>
                             break;
                     }
-                    <a class="regen" href="/convert/@item.Id?fresh=1&return=@ret" title="Regenerate">&#8635;</a>
+                    <a class="regen" href="/convert/@item.Id?fresh=1&return=@ret" data-warm title="Regenerate">&#8635;</a>
                 </span>
             }
         </div>
