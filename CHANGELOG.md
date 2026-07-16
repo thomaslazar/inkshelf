@@ -3,6 +3,32 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.1.1 — 2026-07-16
+
+### Highlights
+- **Comic conversion no longer dies on slow hosts.** CBZ/CBR→EPUB conversion now
+  runs in a background worker instead of inside the web request, so a client
+  disconnect (a timed-out tab, navigating away) can no longer cancel it
+  mid-flight. On a low-powered box, a large comic that previously *never*
+  finished now converts reliably and stays cached.
+- The listing shows live progress — "Converting…" flips to "EPUB ✓" via a small
+  status poll, with a no-JavaScript fallback (a periodic refresh) for old e-reader
+  browsers.
+- Regenerate (↻) and repeated taps behave cleanly — no duplicate rows, no
+  stuck "Converting…" state after a restart.
+
+### Features
+- feat: poll convert status client-side, meta-refresh fallback
+- feat: reshape convert into a background-kick + status endpoint
+- feat: add ConvertWorker background service and tmp sweep
+- feat: add handler-free AbsDownloadClient for the worker
+- feat: add ConvertQueue job registry and channel
+- feat: add MaxConcurrentConversions option
+
+### Fixes
+- fix: make regen a plain link to avoid duplicate EPUB row
+- fix: restore cache LRU touch-on-serve and regen JS intercept
+
 ## v0.1.0 — 2026-07-15
 
 First tagged release of Inkshelf — a thin, server-rendered web client for the

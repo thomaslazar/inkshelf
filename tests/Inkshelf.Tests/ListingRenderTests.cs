@@ -58,8 +58,17 @@ public class ListingRenderTests
             b.UseSetting("CachePath", cachePath);
             b.UseSetting("DataProtectionKeysPath", keysPath);
             b.ConfigureTestServices(services =>
+            {
                 services.Configure<HttpClientFactoryOptions>(nameof(AbsApiClient), o =>
-                    o.HttpMessageHandlerBuilderActions.Add(hb => hb.PrimaryHandler = stub)));
+                    o.HttpMessageHandlerBuilderActions.Add(hb => hb.PrimaryHandler = stub));
+                // Drop the background ConvertWorker: these tests assert the RENDER
+                // of a given queue state (a Queued row shows "Converting…"). The
+                // real worker would drain the enqueued job and — with no stubbed
+                // AbsDownloadClient — fail the download and mark it Failed, racing
+                // the request and flaking the assertion.
+                var worker = services.FirstOrDefault(s => s.ImplementationType == typeof(ConvertWorker));
+                if (worker is not null) services.Remove(worker);
+            });
         });
 
     private static HttpRequestMessage LibraryRequest(WebApplicationFactory<Program> factory)
