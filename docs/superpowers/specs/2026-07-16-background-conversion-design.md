@@ -26,7 +26,7 @@ client polls (JS) or watches via `<meta refresh>` (no-JS).
 **In scope:**
 - Background execution model (queue + worker + registry).
 - New `/convert` endpoint semantics (kick / status / download / regen).
-- Client feedback: JS in-place poll + no-JS dedicated convert page.
+- Client feedback: JS in-place poll + no-JS `<noscript>` listing meta-refresh.
 - Complementary roadmap items that fall out naturally: **Listing freshness**
   (`Cache-Control: no-store`) and **Regen (↻) feedback** (aligned to the same
   machinery).
@@ -52,11 +52,13 @@ Ground rules (from `CLAUDE.md` / `ARCHITECTURE.md`):
 tap Convert (JS on)         tap Convert (JS off)
       │                            │
       ▼                            ▼
-GET ?warm=1  ──enqueue──►   GET /convert/{id}  (file missing)
-  (202, returns now)          ──enqueue──► render convert page
-      │                            │        <meta refresh=30 → self>
-      ▼ poll ?status=1 /5s         ▼ (30s reloads)
-   done → "EPUB ↓"             done → "Download EPUB" link
+GET ?warm=1  ──enqueue──►   GET /convert/{id}?return=…  (file missing)
+  (202, returns now)          ──enqueue──► 302 back to the listing
+      │                            │
+      ▼ poll ?status=1 /5s         ▼ listing has a pending row →
+   done → "EPUB ↓"              <noscript><meta refresh=30></noscript>
+   (no reload)                     │ (30s full reloads, no-JS only)
+                                   ▼ done → row flips to "EPUB ✓"
 ```
 
 Two new units, one existing unit reused:
@@ -125,10 +127,16 @@ One route, behavior selected by query params (all GET — idempotent, so a plain
 
 | Request | Meaning | Response |
 |---|---|---|
-| `GET /convert/{id}` | download, or no-JS kick | file exists → stream the EPUB (serves the `EPUB ✓` link **and** the JS "second tap"). File missing → `Enqueue` + render the **convert page** (HTML, `<meta refresh>`). |
+| `GET /convert/{id}` | download, or no-JS kick | file exists → stream the EPUB (serves the `EPUB ✓` link **and** the JS "second tap"). File missing → `Enqueue` + **302 back to the listing** (the `return` param). |
 | `GET /convert/{id}?warm=1` | JS kick | `Enqueue`, return **202** immediately (never streams the file). |
 | `GET /convert/{id}?status=1` | JS poll | plain text: `queued` / `running` / `done` / `failed` (trivial ES5 check, no JSON). |
-| `GET /convert/{id}?fresh=1` | regen (↻) | `RemoveForItem` + `Enqueue`; JS intercepts like `warm`, no-JS renders the convert page. |
+| `GET /convert/{id}?fresh=1` | regen (↻) | `RemoveForItem` + `Enqueue`; JS intercepts like `warm`, no-JS **302s back to the listing**. |
+
+**Return-to-listing.** The no-JS `Convert`/regen anchors carry a `return` param —
+the current listing URL (facet/sort/page), built by `LibraryLinks` (the single URL
+authority) so the user lands back exactly where they were. The endpoint validates
+it is a **local** path (must start with `/`, no scheme/host — open-redirect guard)
+and falls back to `/` otherwise. JS paths never navigate, so they don't need it.
 
 The endpoint still parses the `scr` cookie into `(maxW, maxH, dpr)` and computes
 the cache path via `EpubCache.PathFor` to key the job and answer status.
@@ -143,26 +151,31 @@ the cache path via `EpubCache.PathFor` to key the job and answer status.
   polling on `queued`/`running`.
 - `data-ready=1` links let the native click through to download.
 
-**JS off (dedicated convert page):**
-- The plain `Convert` anchor navigates to `GET /convert/{id}`; file missing →
-  `Enqueue` + a tiny per-item HTML page: `Converting "Title"… (refreshes
-  automatically)` with `<meta http-equiv="refresh" content="30">` back to itself
-  (**30s**, a named constant). Chosen over refreshing the whole listing because on
-  e-ink a full-listing reload re-hits the ABS batch call, re-renders every
-  row/cover, and flashes the panel — a few-byte single-purpose page is far
-  gentler.
-- When `done`, the page renders a plain **`Download EPUB`** link (no
-  auto-download). When `failed`, it shows `Convert (retry)` linking back.
-- The **listing** still reflects a static registry snapshot (`Converting…` vs
-  `Convert` vs `EPUB ✓`) whenever it is rendered, so a user who navigates back
-  sees current state — it just does not self-refresh in the no-JS path.
+**JS off (listing meta-refresh):**
+- The plain `Convert` anchor navigates to `GET /convert/{id}?return=…`; file
+  missing → `Enqueue` + **302 back to the listing**.
+- The listing renders `<noscript><meta http-equiv="refresh" content="30"></noscript>`
+  in `<head>` **whenever any visible row has a pending job** (`queued`/`running`).
+  So a no-JS browser reloads the whole listing every **30s** (a named constant),
+  and on each render the server flips the finished row to `EPUB ✓`; once no
+  visible row is pending, the `<noscript>` block is omitted and reloading stops.
+- The `<noscript>` wrapper is the key reconciliation with the JS path: JS-on
+  browsers **ignore** it (they poll in place, no reload), JS-off browsers honor
+  it. Server doesn't need to detect JS. `<noscript>` in `<head>` containing
+  `<meta>` is ancient, universally-supported HTML — safe on old e-ink engines.
+- 30s (not 5s) because a full-listing reload re-hits the ABS batch call,
+  re-renders every row/cover, and flashes the e-ink panel; the interval trades
+  latency for gentleness on the box and the display.
 
 ## Listing freshness (complementary)
 
-Add `Cache-Control: no-store` to the library listing response so a manual reload
-always re-renders current registry/file state instead of a stale bfcache/proxy
-copy. `Library.cshtml.cs` already computes cached-ness per row; it additionally
-consults `ConvertQueue.Status` to render the `Converting…` state.
+- `<noscript>` meta-refresh (above) is the no-JS progress surface.
+- `Cache-Control: no-store` on the library listing response so a manual reload
+  (and each meta-refresh reload) always re-renders current registry/file state
+  instead of a stale bfcache/proxy copy.
+- `Library.cshtml.cs` already computes cached-ness per row; it additionally
+  consults `ConvertQueue.Status` to render the `Converting…` state and to decide
+  whether to emit the `<noscript>` refresh block.
 
 ## Testing
 
@@ -176,8 +189,12 @@ consults `ConvertQueue.Status` to render the `Converting…` state.
 - **Startup sweep**: an orphan `*.tmp` in the cache dir is deleted on start; a
   real `.epub` is left intact.
 - **Endpoint**: `?status=1` returns the right text per state; `?warm=1` returns
-  202 without streaming; `/convert/{id}` streams when the file exists and renders
-  the convert page (200, contains `<meta refresh>`) when it does not.
+  202 without streaming; `/convert/{id}` streams when the file exists and **302s
+  to the listing** when it does not; the `return` param is honored only when local
+  (a non-local/absolute `return` falls back to `/` — open-redirect guard).
+- **Listing render**: the `<noscript>` meta-refresh block is emitted when a
+  visible row is `queued`/`running` and **omitted** when none is pending; the row
+  shows `Converting…` / `Convert` / `EPUB ✓` per `ConvertQueue.Status`.
 - **`ConvertService`**: existing convert/ceiling/lock tests stay green; the
   convert-on-miss logic is exercised through the worker path.
 
@@ -195,10 +212,12 @@ green.
    Move `ConvertService`'s convert-on-miss into the worker path (keep
    `ConvertLock` + ceiling).
 4. **Endpoint rewrite**: `warm` → 202 kick, new `?status=1`, `/convert/{id}`
-   file-or-convert-page, `?fresh=1` alignment + tests.
-5. **Client**: evolve the warm inline script (kick → poll), add the convert page
-   view, `Cache-Control: no-store` + `Converting…` render on the listing.
-   **Real-device test before merge.**
+   file-or-302-to-listing (with local-only `return` guard), `?fresh=1` alignment
+   + tests.
+5. **Client**: evolve the warm inline script (kick → poll); `LibraryLinks` adds
+   the `return` param to the convert/regen anchors; listing emits the `<noscript>`
+   meta-refresh when a row is pending, `Cache-Control: no-store`, and the
+   `Converting…` render. **Real-device test before merge.**
 6. **Docs**: update `docs/ARCHITECTURE.md` (background-conversion convention, new
    config, endpoint semantics); tick the roadmap items.
 
