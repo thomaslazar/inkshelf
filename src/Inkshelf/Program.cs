@@ -52,6 +52,9 @@ void ConfigureAbs(HttpClient c)
 }
 builder.Services.AddHttpClient<AbsAuthClient>(ConfigureAbs);
 builder.Services.AddHttpClient<AbsApiClient>(ConfigureAbs).AddHttpMessageHandler<AbsAuthHandler>();
+// Handler-FREE (no AbsAuthHandler) — the worker supplies the bearer; ConfigureAbs
+// gives it the BaseAddress + required User-Agent. See AbsDownloadClient.
+builder.Services.AddHttpClient<AbsDownloadClient>(ConfigureAbs);
 builder.Services.AddSingleton(new EpubCache(cachePath));
 builder.Services.AddSingleton<EpubConverter>();
 builder.Services.AddSingleton<ConvertLock>();
