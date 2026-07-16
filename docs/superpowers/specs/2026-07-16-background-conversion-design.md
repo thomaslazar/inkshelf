@@ -49,11 +49,18 @@ Ground rules (from `CLAUDE.md` / `ARCHITECTURE.md`):
 ## Architecture overview
 
 ```
+KICK (request scope, has token)        WORKER (app lifetime, no HttpContext)
+  detail fetch + validate                await channel.Read()
+  read access token                      gate(MaxConcurrentConversions)
+  Enqueue(job incl. token) ───channel──► AbsDownloadClient.Download(id, token)
+  return now                             EpubConverter → .tmp → .epub
+                                         registry: Done | Failed
+
 tap Convert (JS on)         tap Convert (JS off)
       │                            │
       ▼                            ▼
-GET ?warm=1  ──enqueue──►   GET /convert/{id}?return=…  (file missing)
-  (202, returns now)          ──enqueue──► 302 back to the listing
+GET ?warm=1  ──kick──►      GET /convert/{id}?return=…  (file missing)
+  (202, returns now)          ──kick──► 302 back to the listing
       │                            │
       ▼ poll ?status=1 /5s         ▼ listing has a pending row →
    done → "EPUB ↓"              <noscript><meta refresh=30></noscript>
@@ -61,23 +68,64 @@ GET ?warm=1  ──enqueue──►   GET /convert/{id}?return=…  (file missin
                                    ▼ done → row flips to "EPUB ✓"
 ```
 
-Two new units, one existing unit reused:
+Work splits between the **request** (which has the ABS token) and the **worker**
+(which does not — see *Worker authentication* below):
 
+- **Kick (request scope, in `ConvertService`)** — does the fast, token-bearing
+  work: `GetItemDetailAsync` (validate `cbz`/`cbr`, read `size`/`mtime`, build
+  `EbookMeta`), compute the cache path, read the access token from `TokenStore`,
+  and `Enqueue` a job. Returns immediately (202 / status), never downloads or
+  converts. If the file already exists it short-circuits to `done`.
 - **`ConvertQueue`** (new, singleton) — the in-memory job registry **and** the
   channel producer. Owns `ConcurrentDictionary<string cachePath, JobState>` and
   an unbounded `Channel<ConvertJob>`. Public surface: `Enqueue(job)` (idempotent —
-  see dedup), `Status(cachePath)`, and internal `Reader` for the worker.
+  see dedup), `Status(cachePath)`, and an internal `Reader` for the worker.
 - **`ConvertWorker`** (new, `BackgroundService`) — drains the channel with a
-  global concurrency cap, runs the conversion on the **app lifetime**
-  (`ApplicationStopping`), and writes terminal state back to the registry.
-- **`ConvertService`** (existing) — its convert-on-miss block moves into the
-  worker path; it keeps `ConvertLock` (same-target dedup / double-checked
-  `File.Exists`) and the archive-ceiling guard unchanged.
+  global concurrency cap. Per job, on the **app lifetime** (`ApplicationStopping`):
+  downloads the archive via `AbsDownloadClient` using the job's captured token,
+  runs `EpubConverter` (reuses `ConvertLock` for same-target dedup + double-checked
+  `File.Exists`, and the archive-size ceiling), and writes terminal state back to
+  the registry.
+- **`AbsDownloadClient`** (new, handler-free) — the worker's authenticated ebook
+  download; see *Worker authentication*.
+- **`ConvertService`** (existing) — reshaped from "do everything" into the **kick**
+  above; the download+convert body moves into `ConvertWorker`. `EpubCache`,
+  `EpubConverter`, `ConvertLock`, and the ceiling logic are unchanged.
+
+A **`ConvertJob`** carries everything the token-less worker needs:
+`record ConvertJob(string ItemId, string AccessToken, string CachePath,
+EbookMeta Meta, int MaxW, int MaxH, double Dpr)`.
 
 "Done" is **never stored in the registry** — it is the atomic existence of the
 `.epub` on disk (`EpubWriter` writes `outPath + ".tmp"` then `File.Move`s it into
 place, so a crash never yields a partial `.epub`). The registry holds only the
 transient states the feedback UX needs.
+
+## Worker authentication (why a third ABS client)
+
+The ABS token lives in the Data-Protection cookie; `TokenStore` reads it from
+`HttpContext`, and `AbsAuthHandler` resolves scoped services from
+`HttpContext.RequestServices`. The background worker has **no `HttpContext`**, so
+it cannot use `AbsApiClient` at all. Resolution (chosen over spooling the archive
+to a temp file in-request, so a disconnect can't kill the download either):
+
+- The kick reads the current access token (`TokenStore.Read().Access`) and puts it
+  on the `ConvertJob`.
+- A new **`AbsDownloadClient`** — a **handler-free** typed client (no
+  `AbsAuthHandler`) registered with the same `ConfigureAbs` (so it inherits the
+  `BaseAddress` **and the required `User-Agent`** — the ABS proxy 403s an empty
+  UA) — exposes `Task<Stream> DownloadEbookAsync(string itemId, string accessToken,
+  CancellationToken ct)`, setting `Authorization: Bearer <token>` per call.
+- **No refresh-on-401.** The worker can't write a refreshed token back (that needs
+  `HttpContext`). A 401 (or any download failure) marks the job `Failed`; the user
+  re-taps and the fresh request captures a current token. Access tokens outlive a
+  minutes-long convert, so this is a rare, graceful fallback — not corruption.
+
+This is a deliberate **third** ABS client alongside the two load-bearing ones
+(`AbsAuthClient` login/refresh, `AbsApiClient` data). Rules: it is handler-free,
+carries a **caller-supplied** bearer, does **not** refresh, and is used **only**
+by the worker. Never attach `AbsAuthHandler` to it; never use it from a request
+path (those keep using `AbsApiClient`).
 
 ## Job registry & states
 
@@ -182,10 +230,13 @@ the cache path via `EpubCache.PathFor` to key the job and answer status.
 - **`ConvertQueue`**: `Enqueue` is idempotent for an in-flight path (no duplicate
   channel item; returns current status); `Status` precedence (file-exists beats
   registry; `none` when absent); `Failed` past TTL sweeps to `none`.
+- **`AbsDownloadClient`**: issues `GET` for the ebook with the supplied bearer and
+  a non-empty `User-Agent` (assert both headers on a stub handler); surfaces a 401
+  as a throw the worker maps to `Failed`.
 - **`ConvertWorker`**: a job runs to completion on a token unrelated to any
   request (disconnect simulated by a cancelled *request* token does **not** cancel
   it); concurrency cap of 1 serializes two distinct jobs; a throwing conversion
-  lands `Failed` (not `Running`) and is logged.
+  (or download failure) lands `Failed` (not `Running`) and is logged.
 - **Startup sweep**: an orphan `*.tmp` in the cache dir is deleted on start; a
   real `.epub` is left intact.
 - **Endpoint**: `?status=1` returns the right text per state; `?warm=1` returns
@@ -205,21 +256,24 @@ green.
 
 1. **`AbsOptions`**: add `MaxConcurrentConversions` (default 1). Named constants
    for the two intervals (JS poll 5s, no-JS refresh 30s) and the `Failed` TTL.
-2. **`ConvertQueue`** (registry + channel producer, idempotent `Enqueue`,
-   `Status`, TTL sweep) + unit tests.
-3. **`ConvertWorker`** `BackgroundService`: drain with the cap on
-   `ApplicationStopping`, write terminal state, startup `.tmp` sweep + tests.
-   Move `ConvertService`'s convert-on-miss into the worker path (keep
-   `ConvertLock` + ceiling).
-4. **Endpoint rewrite**: `warm` → 202 kick, new `?status=1`, `/convert/{id}`
+2. **`ConvertJob` + `ConvertQueue`** (registry + channel producer, idempotent
+   `Enqueue`, `Status`, TTL sweep) + unit tests.
+3. **`AbsDownloadClient`** (handler-free, Bearer + inherited User-Agent) + tests;
+   register with `ConfigureAbs` in `Program.cs`.
+4. **`ConvertWorker`** `BackgroundService`: drain with the cap on
+   `ApplicationStopping`, download via `AbsDownloadClient`, convert (keep
+   `ConvertLock` + ceiling), write terminal state, startup `.tmp` sweep + tests.
+   Reshape `ConvertService` into the **kick** (detail + token capture + `Enqueue`).
+5. **Endpoint rewrite**: `warm` → 202 kick, new `?status=1`, `/convert/{id}`
    file-or-302-to-listing (with local-only `return` guard), `?fresh=1` alignment
    + tests.
-5. **Client**: evolve the warm inline script (kick → poll); `LibraryLinks` adds
+6. **Client**: evolve the warm inline script (kick → poll); `LibraryLinks` adds
    the `return` param to the convert/regen anchors; listing emits the `<noscript>`
    meta-refresh when a row is pending, `Cache-Control: no-store`, and the
    `Converting…` render. **Real-device test before merge.**
-6. **Docs**: update `docs/ARCHITECTURE.md` (background-conversion convention, new
-   config, endpoint semantics); tick the roadmap items.
+7. **Docs**: update `docs/ARCHITECTURE.md` (background-conversion convention, the
+   third ABS client + its rules, new config, endpoint semantics); tick the roadmap
+   items.
 
 ## Non-goals
 
