@@ -20,6 +20,7 @@ var absOptions = new AbsOptions
     TrustedProxy = builder.Configuration["TRUSTED_PROXY"],
     MaxCacheBytes = long.TryParse(builder.Configuration["MaxCacheBytes"], out var mcb) && mcb > 0 ? mcb : 1_073_741_824,
     MaxArchiveBytes = long.TryParse(builder.Configuration["MaxArchiveBytes"], out var mab) && mab > 0 ? mab : 524_288_000,
+    MaxConcurrentConversions = int.TryParse(builder.Configuration["MaxConcurrentConversions"], out var mcc) && mcc > 0 ? mcc : 1,
 };
 // Fail fast on missing required config. SmokeTests.MissingAbsUrl_FailsStartup
 // depends on this exact exception type.
