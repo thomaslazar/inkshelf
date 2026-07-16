@@ -1,17 +1,15 @@
 # Roadmap
 
-Outstanding work, mostly follow-ups from the sorting + ebook-delivery feature.
-Nothing here is blocking; the current build (sorting, download, device-sized
-CBZ/CBR→EPUB conversion, cached indicator, search links) works.
+Planned and in-progress work, mostly follow-ups from the sorting + ebook-delivery
+feature; shipped items are recorded under **Done** at the bottom rather than
+deleted. Nothing here is blocking; the current build (sorting, download,
+device-sized CBZ/CBR→EPUB conversion, cached indicator, search links) works.
 
 ## Priority (my current focus)
 
-The rest of this file is unordered backlog; these two are what I want to tackle
-next, in order:
+The rest of this file is unordered backlog; this is what I want to tackle next:
 
-1. **Background conversion** — decouple conversion from the request so a client
-   disconnect on a slow host can't kill it (see *Convert UX / feedback*).
-2. **Settings system + retina toggle** — so converted pages are readable on
+1. **Settings system + retina toggle** — so converted pages are readable on
    high-DPR screens (see *Settings*).
 
 ## Settings
@@ -59,12 +57,12 @@ settings cookie — fold the existing `scr` / favorite cookies into the same con
 
 - **Conversion memory footprint.** Conversion buffers the whole archive in a
   `MemoryStream` and holds every page as bytes (peak ~600 MB on a 223 MB comic).
-  Logs from a low-power self-hosted box show this running slowly, **not** OOMing —
-  the real failure there is the request-cancellation described under *Convert UX /
-  feedback* — but the high peak (and the slowness it brings) is what widens that
-  cancellation window, so lowering it still matters: spool the archive to a temp
-  file instead of RAM, and release each page after it's written into the EPUB.
-  More important once retina (heavier pages) is an option.
+  Logs from a low-power self-hosted box show this running slowly, **not** OOMing.
+  The request-cancellation that used to make a slow convert never finish is now
+  cured (conversion runs detached in a background worker), but the high peak (and
+  the slowness it brings) still matters: spool the archive to a temp file instead
+  of RAM, and release each page after it's written into the EPUB. More important
+  once retina (heavier pages) is an option.
 - **Conversion speed.** First conversion of a big comic is ~60–90 s (ImageSharp
   resizing ~280 pages, serially). Parallelise page processing.
 - **Cover image.** The converted EPUB currently declares **no cover**, so Apple
@@ -77,29 +75,6 @@ settings cookie — fold the existing `scr` / favorite cookies into the same con
      entry) when ABS has a cover that's present and large enough to look good.
   2. **Fall back to the first page** when ABS has no usable cover — flag the first
      page image as the cover instead.
-
-## Convert UX / feedback
-
-- **Background conversion (decouple from the request) — required, not cosmetic.**
-  *Confirmed root cause of "it never converts" on a slow host* (from real logs on a
-  low-power self-hosted box): the conversion runs **inside** the `/convert` request
-  and is threaded with
-  the request's `CancellationToken`, so when the client disconnects before it
-  finishes — the warm-XHR timing out, or the user navigating away — `RequestAborted`
-  cancels and tears the conversion down mid-flight. The `.tmp` is discarded, nothing
-  is cached, and the next attempt starts from scratch (re-downloading the whole
-  archive). On a small box a large comic takes minutes, well past the client's
-  patience, so it can **never** complete. Fix: run the conversion **detached from
-  the request** (a background worker keyed by the cache path, reusing `ConvertLock`),
-  so a disconnect can't kill it, plus a cheap status endpoint the listing polls to
-  flip "Converting…" → "EPUB ✓" when it's done. The memory/speed items only shrink
-  the window; this is the actual cure.
-- **Listing freshness.** Complementary to the above: `Cache-Control: no-store` on
-  the listing (and/or a `<meta refresh>` while a convert is pending) so a normal
-  reload reliably shows the server-rendered "EPUB ✓" once the background convert has
-  finished, instead of a stale cached page.
-- **Regen (↻) feedback.** The regenerate link is a plain direct link with no
-  progress feedback; align it with whatever feedback approach is chosen.
 
 ## Browsing & reading
 
@@ -141,6 +116,33 @@ settings cookie — fold the existing `scr` / favorite cookies into the same con
   reflects everywhere? Prefer syncing to ABS if the API supports it (verify the
   endpoint against the ABS source).
 
+## Runtime footprint
+
+- **Idle memory (~500 MB).** The container sits at ~500 MB while doing nothing —
+  far more than a thin Razor Pages sidecar should need. Goal: get idle usage
+  *much* lower (well under ~150 MB feels realistic for this app). Leads, roughly
+  in order:
+  1. **Measure before tuning.** Pin down what the 500 MB actually is: compare the
+     container stat (cgroup v2 counts page cache, which is reclaimable and mostly
+     harmless) against the process working set and `GC.GetGCMemoryInfo()`. Also
+     distinguish *fresh-start* idle from *post-conversion* idle — after a
+     ~600 MB-peak conversion (see **Conversion memory footprint**) the GC keeps
+     large-object-heap segments committed, so "idle" after one convert can look
+     like a leak when it's really retained heap. Fixing the conversion item
+     (temp-file spooling, per-page release) may fix much of this for free.
+  2. **GC mode.** ASP.NET Core defaults to Server GC, which commits per-core
+     heaps sized for throughput — wrong trade-off for a mostly-idle single-user
+     sidecar. Try Workstation GC (`<ServerGarbageCollection>false</…>`),
+     `GCConserveMemory`, and/or a heap hard limit — either
+     `DOTNET_GCHeapHardLimit*` or simply a container memory limit, which the GC
+     respects. Verify a capped heap still survives a worst-case conversion
+     (another reason the spool-to-disk work matters).
+  3. **Baseline trim.** Smaller wins: `InvariantGlobalization` (drops ICU —
+     verify title sorting for non-ASCII libraries first), disabling unused
+     ASP.NET Core features/logging providers, `PublishTrimmed`. Native AOT is
+     deliberately off the table (see CLAUDE.md), and shouldn't be needed —
+     GC configuration is where the bulk of this lives.
+
 ## Security
 
 Follow-ups from the hardening work (all non-blocking; the shipped controls are in
@@ -161,3 +163,13 @@ place — these tighten test coverage and one latent edge):
   multiplying by the client-supplied `dpr`, and `dpr` itself is unbounded —
   harmless while `Retina = false`, but when the retina toggle (see Conversion /
   rendering) lands, clamp *after* the multiply and bound `dpr`.
+
+## Done
+
+Shipped; kept as a short record (full detail in git history / the PR).
+
+- **Background conversion** (PR #9) — conversion runs detached in a background
+  worker (app lifetime, keyed by cache path), so a client disconnect can't kill
+  it; JS polls a status endpoint, no-JS gets a `<noscript>` meta-refresh.
+- **Listing freshness** — `Cache-Control: no-store` on the listing.
+- **Regen (↻) feedback** — rides the same status poll as Convert.

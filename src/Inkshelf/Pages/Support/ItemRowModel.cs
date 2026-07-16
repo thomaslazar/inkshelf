@@ -2,13 +2,17 @@ using Inkshelf.Abs;
 
 namespace Inkshelf.Pages;
 
+// Per-row convert state for the listing. NotConvertible = not a cbz/cbr (or no
+// size/mtime to key the cache). Convert = convertible, nothing cached/pending.
+public enum ConvertRowState { NotConvertible, Convert, Converting, Failed, Cached }
+
 // One item row. Links is the shared URL builder for the current library/facet.
-// Listing rows get structured authors/series (with ids) from the batch call;
-// search rows leave those null and fall back to the comma-joined name strings.
-// Cached = a converted EPUB for this item already exists for the requesting device.
+// State drives the convert action; ReturnUrl is the listing URL a no-JS convert
+// navigation returns to.
 public record ItemRowModel(
     AbsItem Item,
     LibraryLinks Links,
     IReadOnlyList<AbsRef>? Authors = null,
     IReadOnlyList<AbsSeriesRef>? Series = null,
-    bool Cached = false);
+    ConvertRowState State = ConvertRowState.NotConvertible,
+    string ReturnUrl = "/");

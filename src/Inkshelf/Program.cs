@@ -20,6 +20,7 @@ var absOptions = new AbsOptions
     TrustedProxy = builder.Configuration["TRUSTED_PROXY"],
     MaxCacheBytes = long.TryParse(builder.Configuration["MaxCacheBytes"], out var mcb) && mcb > 0 ? mcb : 1_073_741_824,
     MaxArchiveBytes = long.TryParse(builder.Configuration["MaxArchiveBytes"], out var mab) && mab > 0 ? mab : 524_288_000,
+    MaxConcurrentConversions = int.TryParse(builder.Configuration["MaxConcurrentConversions"], out var mcc) && mcc > 0 ? mcc : 1,
 };
 // Fail fast on missing required config. SmokeTests.MissingAbsUrl_FailsStartup
 // depends on this exact exception type.
@@ -51,9 +52,14 @@ void ConfigureAbs(HttpClient c)
 }
 builder.Services.AddHttpClient<AbsAuthClient>(ConfigureAbs);
 builder.Services.AddHttpClient<AbsApiClient>(ConfigureAbs).AddHttpMessageHandler<AbsAuthHandler>();
+// Handler-FREE (no AbsAuthHandler) — the worker supplies the bearer; ConfigureAbs
+// gives it the BaseAddress + required User-Agent. See AbsDownloadClient.
+builder.Services.AddHttpClient<AbsDownloadClient>(ConfigureAbs);
 builder.Services.AddSingleton(new EpubCache(cachePath));
 builder.Services.AddSingleton<EpubConverter>();
 builder.Services.AddSingleton<ConvertLock>();
+builder.Services.AddSingleton<ConvertQueue>();
+builder.Services.AddHostedService<ConvertWorker>();
 builder.Services.AddScoped<ConvertService>();
 builder.Services.AddRazorPages(options =>
 {

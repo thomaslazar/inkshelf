@@ -49,18 +49,30 @@
     {
         <div class="actions">
             <a href="/download/@item.Id">Download</a>
-            @if (fmt == "cbz" || fmt == "cbr")
+            @if (Model.State != ConvertRowState.NotConvertible)
             {
+                var ret = Uri.EscapeDataString(Model.ReturnUrl);
                 <span class="convert">
-                    @if (Model.Cached)
+                    @switch (Model.State)
                     {
-                        <a href="/convert/@item.Id" title="Already converted — downloads right away">EPUB &#10003;</a>
+                        case ConvertRowState.Cached:
+                            <a href="/convert/@item.Id?return=@ret" title="Already converted — downloads right away">EPUB &#10003;</a>
+                            break;
+                        case ConvertRowState.Converting:
+                            <a href="/convert/@item.Id?return=@ret" data-warm data-poll>Converting&#8230;</a>
+                            break;
+                        case ConvertRowState.Failed:
+                            <a href="/convert/@item.Id?return=@ret" data-warm>Convert (retry)</a>
+                            break;
+                        default:
+                            <a href="/convert/@item.Id?return=@ret" data-warm>Convert</a>
+                            break;
                     }
-                    else
-                    {
-                        <a href="/convert/@item.Id" data-warm>Convert</a>
-                    }
-                    <a class="regen" href="/convert/@item.Id?fresh=1" title="Regenerate">&#8635;</a>
+                    @* Plain link (no data-warm): the ↻ glyph must not become status text.
+                       Full-nav → server RemoveForItem + re-enqueue → 302 back to the listing,
+                       where the PRIMARY anchor re-renders as "Converting…" and the poll script
+                       drives it to "EPUB ✓". A rare action, so one reload is fine. *@
+                    <a class="regen" href="/convert/@item.Id?fresh=1&return=@ret" title="Regenerate">&#8635;</a>
                 </span>
             }
         </div>

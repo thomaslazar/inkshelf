@@ -12,7 +12,9 @@ public class LibraryModel : PageModel
     public const int SearchLimit = 25;
     private readonly AbsApiClient _api;
     private readonly EpubCache _cache;
-    public LibraryModel(AbsApiClient api, EpubCache cache) { _api = api; _cache = cache; }
+    private readonly ConvertQueue _queue;
+    public LibraryModel(AbsApiClient api, EpubCache cache, ConvertQueue queue)
+    { _api = api; _cache = cache; _queue = queue; }
 
     [FromRoute] public string Id { get; set; } = "";
     [FromQuery] public string? Q { get; set; }
@@ -56,6 +58,7 @@ public class LibraryModel : PageModel
         var result = await _api.GetItemsAsync(Id, zeroPage, PageSize, filter, Sort, Desc, ct);
         Items = result.Results;
         _structured = await FetchStructuredAsync(Items, ct);
+        ComputeConvertStates();
         Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
         return Page();
     }
@@ -74,25 +77,53 @@ public class LibraryModel : PageModel
     }
 
     // Row view-model for a listing item: structured author/series links plus
-    // whether a converted EPUB is already cached for this device (so the row can
-    // show it downloads instantly).
+    // the precomputed convert state (so the row can show progress/cached/retry).
     public ItemRowModel RowFor(AbsItem item)
     {
         _structured.TryGetValue(item.Id, out var media);
-        return new ItemRowModel(item, Links, media?.Metadata?.Authors, media?.Metadata?.Series, IsCached(item, media));
+        var state = _states.TryGetValue(item.Id, out var s) ? s : ConvertRowState.NotConvertible;
+        if (state == ConvertRowState.NotConvertible)
+        {
+            // Search rows: _states is empty (ComputeConvertStates runs only for
+            // the listing branch), so fall back to a plain Convert for cbz/cbr.
+            var f = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat;
+            if (f is "cbz" or "cbr") state = ConvertRowState.Convert;
+        }
+        var ret = Request.Path + Request.QueryString; // exact current listing URL
+        return new ItemRowModel(item, Links, media?.Metadata?.Authors, media?.Metadata?.Series, state, ret);
     }
 
-    // A convert is cached only for the exact device size (the cache key includes
-    // it), so we need the screen cookie; on the first load (before the layout
-    // script has set it) this reports false, which self-corrects on next render.
-    private bool IsCached(AbsItem item, AbsBatchMedia? media)
+    // Per-row convert state, precomputed so the head (which renders before the
+    // rows) can decide whether to emit the no-JS <noscript> meta-refresh.
+    public bool AnyConverting { get; private set; }
+    private readonly Dictionary<string, ConvertRowState> _states = new();
+
+    private void ComputeConvertStates()
+    {
+        var (w, h, _) = ScreenTarget.FromCookie(Request.Cookies["scr"]);
+        foreach (var item in Items)
+        {
+            _structured.TryGetValue(item.Id, out var media);
+            var state = RowState(item, media, w, h);
+            _states[item.Id] = state;
+            if (state == ConvertRowState.Converting) AnyConverting = true;
+        }
+    }
+
+    private ConvertRowState RowState(AbsItem item, AbsBatchMedia? media, int w, int h)
     {
         var fmt = item.Media?.EbookFormat;
-        if (fmt != "cbz" && fmt != "cbr") return false;
+        if (fmt != "cbz" && fmt != "cbr") return ConvertRowState.NotConvertible;
         var efm = media?.EbookFile?.Metadata;
-        if (efm is null) return false;
-        var (w, h, _) = ScreenTarget.FromCookie(Request.Cookies["scr"]);
-        return _cache.TryGet(item.Id, efm.Size, efm.MtimeMs, w, h, out _);
+        if (efm is null) return ConvertRowState.NotConvertible; // can't key the cache
+        var path = _cache.PathFor(item.Id, efm.Size, efm.MtimeMs, w, h);
+        return _queue.Status(path) switch
+        {
+            ConvertStatus.Done => ConvertRowState.Cached,
+            ConvertStatus.Queued or ConvertStatus.Running => ConvertRowState.Converting,
+            ConvertStatus.Failed => ConvertRowState.Failed,
+            _ => ConvertRowState.Convert,
+        };
     }
 
     // Turn ?filter / ?author / ?series into an ABS filter string. Author/series

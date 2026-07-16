@@ -4,26 +4,46 @@ namespace Inkshelf.Tests;
 
 public class EpubCacheTests
 {
-    private static string TempDir() { var d = Path.Combine(Path.GetTempPath(), "ic-" + Path.GetRandomFileName()); Directory.CreateDirectory(d); return d; }
+    private static string TempDirPath() { var d = Path.Combine(Path.GetTempPath(), "ic-" + Path.GetRandomFileName()); Directory.CreateDirectory(d); return d; }
+
+    private sealed class TempDir : IDisposable
+    {
+        public string Path { get; } = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(), "inkshelf-tests-" + Guid.NewGuid().ToString("N"));
+        public TempDir() => Directory.CreateDirectory(Path);
+        public void Dispose() { try { Directory.Delete(Path, true); } catch (IOException) { } }
+    }
 
     [Fact]
     public void PathFor_uses_id_size_mtime_and_cap()
     {
-        var c = new EpubCache(TempDir());
+        var c = new EpubCache(TempDirPath());
         Assert.EndsWith("i1-100-200-1730x2246.epub", c.PathFor("i1", 100, 200, 1730, 2246));
     }
 
     [Fact]
     public void PathFor_differs_by_cap()
     {
-        var c = new EpubCache(TempDir());
+        var c = new EpubCache(TempDirPath());
         Assert.NotEqual(c.PathFor("i1", 100, 200, 800, 1000), c.PathFor("i1", 100, 200, 1730, 2246));
+    }
+
+    [Fact]
+    public void SweepTemp_deletes_tmp_but_keeps_epub()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        File.WriteAllText(Path.Combine(dir.Path, "a.epub.tmp"), "partial");
+        File.WriteAllText(Path.Combine(dir.Path, "b.epub"), "real");
+        cache.SweepTemp();
+        Assert.False(File.Exists(Path.Combine(dir.Path, "a.epub.tmp")));
+        Assert.True(File.Exists(Path.Combine(dir.Path, "b.epub")));
     }
 
     [Fact]
     public void RemoveForItem_deletes_all_variants()
     {
-        var dir = TempDir();
+        var dir = TempDirPath();
         var c = new EpubCache(dir);
         File.WriteAllText(c.PathFor("i1", 1, 1, 0, 0), "a");
         File.WriteAllText(c.PathFor("i1", 2, 2, 800, 1000), "b");

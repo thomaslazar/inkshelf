@@ -107,4 +107,15 @@ public class EndpointTests
         Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
         Assert.Equal("/login", res.Headers.Location?.OriginalString);
     }
+
+    [Fact]
+    public async Task Convert_status_without_session_redirects_to_login()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        // No session → GetItemDetailAsync throws AbsAuthException → middleware → /login.
+        var res = await client.GetAsync("/convert/abc?status=1");
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
+        Assert.Equal("/login", res.Headers.Location?.OriginalString);
+    }
 }

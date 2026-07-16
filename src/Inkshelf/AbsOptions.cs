@@ -21,4 +21,7 @@ public sealed class AbsOptions
     // Max bytes buffered from an ebook archive before conversion; larger archives
     // are refused (decompression-bomb / OOM guard). Default 500 MiB.
     public long MaxArchiveBytes { get; set; } = 524_288_000;
+    // Max conversions the background worker runs at once. Default 1 — a small
+    // host must not run two ImageSharp resizes concurrently (CPU/RAM thrash).
+    public int MaxConcurrentConversions { get; set; } = 1;
 }

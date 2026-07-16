@@ -32,6 +32,16 @@ public class EpubCache
         catch (IOException) { }
     }
 
+    // Delete orphan .tmp files (a crash/shutdown between EpubWriter's temp write
+    // and its atomic rename leaves one). Called once at worker startup.
+    public void SweepTemp()
+    {
+        foreach (var f in Directory.EnumerateFiles(_dir, "*.tmp"))
+        {
+            try { File.Delete(f); } catch (IOException) { }
+        }
+    }
+
     // Evict oldest-by-write-time entries until total cache bytes are under the cap.
     // No-op when maxBytes <= 0 or already under. Best-effort (ignores IO races).
     public void EnforceCap(long maxBytes)
