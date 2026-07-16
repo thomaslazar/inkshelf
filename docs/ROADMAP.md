@@ -1,9 +1,9 @@
 # Roadmap
 
-Outstanding work, mostly follow-ups from the sorting + ebook-delivery feature.
-Nothing here is blocking; the current build (sorting, download, device-sized
-CBZ/CBR→EPUB conversion run in a background worker, cached indicator, search
-links) works.
+Planned and in-progress work, mostly follow-ups from the sorting + ebook-delivery
+feature; shipped items are recorded under **Done** at the bottom rather than
+deleted. Nothing here is blocking; the current build (sorting, download,
+device-sized CBZ/CBR→EPUB conversion, cached indicator, search links) works.
 
 ## Priority (my current focus)
 
@@ -163,3 +163,13 @@ place — these tighten test coverage and one latent edge):
   multiplying by the client-supplied `dpr`, and `dpr` itself is unbounded —
   harmless while `Retina = false`, but when the retina toggle (see Conversion /
   rendering) lands, clamp *after* the multiply and bound `dpr`.
+
+## Done
+
+Shipped; kept as a short record (full detail in git history / the PR).
+
+- **Background conversion** (PR #9) — conversion runs detached in a background
+  worker (app lifetime, keyed by cache path), so a client disconnect can't kill
+  it; JS polls a status endpoint, no-JS gets a `<noscript>` meta-refresh.
+- **Listing freshness** — `Cache-Control: no-store` on the listing.
+- **Regen (↻) feedback** — rides the same status poll as Convert.
