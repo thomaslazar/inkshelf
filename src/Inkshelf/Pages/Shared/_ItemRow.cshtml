@@ -68,7 +68,11 @@
                             <a href="/convert/@item.Id?return=@ret" data-warm>Convert</a>
                             break;
                     }
-                    <a class="regen" href="/convert/@item.Id?fresh=1&return=@ret" data-warm title="Regenerate">&#8635;</a>
+                    @* Plain link (no data-warm): the ↻ glyph must not become status text.
+                       Full-nav → server RemoveForItem + re-enqueue → 302 back to the listing,
+                       where the PRIMARY anchor re-renders as "Converting…" and the poll script
+                       drives it to "EPUB ✓". A rare action, so one reload is fine. *@
+                    <a class="regen" href="/convert/@item.Id?fresh=1&return=@ret" title="Regenerate">&#8635;</a>
                 </span>
             }
         </div>
