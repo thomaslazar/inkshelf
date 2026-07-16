@@ -23,12 +23,15 @@ src/Inkshelf/
     AbsAuthClient.cs      Login + refresh. Handler-FREE typed client.
     AbsApiClient.cs       The 7 data methods. Typed client WITH AbsAuthHandler.
     AbsAuthHandler.cs     DelegatingHandler: injects Bearer, refresh-on-401-retry.
+    AbsDownloadClient.cs  Handler-free authenticated ebook download for ConvertWorker.
     AbsModels.cs          Response DTOs (three separate metadata shapes — see below).
     AbsFilter.cs          Encodes ABS facet filters (authors.<b64>, series.<b64>).
     AbsExceptions.cs      AbsAuthException / AbsUnauthorizedException / AbsLoginFailedException.
   Auth/                 TokenStore (encrypted cookie), Tokens, Favorites (fav-library cookie).
   Convert/              CBZ/CBR → fixed-layout EPUB.
-    ConvertService.cs     Orchestrates /convert (detail → validate → cache → convert → name).
+    ConvertService.cs     Orchestrates the /convert kick (detail → validate → cache → enqueue).
+    ConvertQueue.cs       In-memory job registry + Channel producer (singleton).
+    ConvertWorker.cs      BackgroundService: drains the queue on the app lifetime, downloads + converts.
     EpubConverter.cs      Thin orchestrator: reader → processor → writer.
     ComicArchiveReader.cs Yields image entries in ordinal order (IAsyncEnumerable).
     PageImageProcessor.cs Decode + downscale-to-cap + WebP→JPEG transcode.
@@ -46,11 +49,18 @@ repo root (inside the devcontainer) must stay green.
 
 ## Load-bearing conventions (do not "clean these up")
 
-- **Two ABS clients, not one.** `AbsAuthClient` (login/refresh) has **no** auth
+- **Three ABS clients, not one.** `AbsAuthClient` (login/refresh) has **no** auth
   handler; `AbsApiClient` (data) runs through `AbsAuthHandler`. This split is what
   makes refresh-on-401 impossible to recurse — refresh goes through the
   handler-free client. Never attach `AbsAuthHandler` to `AbsAuthClient`, and never
-  put login/refresh on `AbsApiClient`.
+  put login/refresh on `AbsApiClient`. `AbsDownloadClient` is the third: also
+  handler-free, but for a different reason — it's the background worker's
+  authenticated ebook download, and the worker has no `HttpContext` for
+  `AbsAuthHandler` to resolve a token from. It carries a caller-supplied bearer
+  (captured at kick time) and does **not** refresh on 401 — a failed download just
+  fails the job, and the user re-taps with a fresh token. Never attach
+  `AbsAuthHandler` to it; never use it from a request path (use `AbsApiClient`
+  there).
 - **`AbsAuthHandler` resolves scoped services per request.** It injects
   `IHttpContextAccessor` and resolves `TokenStore` + `AbsAuthClient` from
   `HttpContext.RequestServices` inside `SendAsync` — it must not constructor-inject
@@ -78,10 +88,27 @@ repo root (inside the devcontainer) must stay green.
   TLS-terminating proxy `IsHttps` is spoofable, so the flag is
   `ForceSecureCookies || Request.IsHttps`. `TokenStore` and `Favorites` must apply
   the same rule — keep them in sync.
-- **Conversion is serialized and resource-bounded.** `ConvertService` runs the
-  convert-on-miss block inside `ConvertLock` (a singleton keyed by cache-output
-  path) with a double-checked `File.Exists`, so concurrent requests for the same
-  target don't double-convert or corrupt the `.tmp`. Client-influenced inputs are
+- **Conversion runs in the background.** The `/convert/{id}` request only *kicks*
+  a conversion: fetch item detail, validate the format, compute the per-device
+  cache path, capture the caller's ABS access token, and enqueue a job on
+  `ConvertQueue`. `ConvertWorker` (a `BackgroundService`) does the actual
+  download-and-convert on the app lifetime (`ApplicationStopping`), not the
+  request's cancellation token, so a client disconnect (page nav, browser close)
+  can't cancel an in-flight conversion. "Done" is the atomic existence of the
+  on-disk `.epub` (temp-file-then-rename); `ConvertQueue`'s registry only ever
+  holds the transient `Queued`/`Running`/`Failed` states, kept in memory rather
+  than persisted, so a restart just drops any pending/running row back to "no
+  job" and the next tap re-enqueues it — there is nothing to reconcile. An
+  interrupted conversion can leave an orphan `.tmp` behind; `ConvertWorker` sweeps
+  those at startup before it starts draining the queue. The endpoint distinguishes
+  callers by query param: plain navigation downloads the file (or 302s back to the
+  listing if not ready yet); `?warm=1` is the JS kick, answered with a 202 and a
+  status body while queued/running; `?status=1` polls without enqueuing, returning
+  the status as plain text; `?fresh=1` discards the cached EPUB and reconverts.
+- **Conversion is serialized and resource-bounded.** `ConvertService` and
+  `ConvertWorker` share `ConvertLock` (a singleton keyed by cache-output path)
+  with a double-checked `File.Exists`, so concurrent jobs for the same target
+  don't double-convert or corrupt the `.tmp`. Client-influenced inputs are
   bounded (archive size, total cache size, `scr` dimensions) via `AbsOptions` — see
   Configuration.
 
@@ -112,6 +139,7 @@ All config is read once into `AbsOptions` at startup (`Program.cs`). Keys:
 | `DIAG_ENABLED` | `true` | map the `/diag` probe endpoint |
 | `MaxArchiveBytes` | `524288000` (500 MB) | refuse larger ebook archives (OOM guard) |
 | `MaxCacheBytes` | `1073741824` (1 GB) | LRU-evict the EPUB cache past this |
+| `MaxConcurrentConversions` | `1` | cap on concurrent background `ConvertWorker` conversion loops |
 
 ## Security
 
