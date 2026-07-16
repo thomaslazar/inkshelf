@@ -49,18 +49,26 @@
     {
         <div class="actions">
             <a href="/download/@item.Id">Download</a>
-            @if (fmt == "cbz" || fmt == "cbr")
+            @if (Model.State != ConvertRowState.NotConvertible)
             {
+                var ret = Uri.EscapeDataString(Model.ReturnUrl);
                 <span class="convert">
-                    @if (Model.Cached)
+                    @switch (Model.State)
                     {
-                        <a href="/convert/@item.Id" title="Already converted — downloads right away">EPUB &#10003;</a>
+                        case ConvertRowState.Cached:
+                            <a href="/convert/@item.Id" title="Already converted — downloads right away">EPUB &#10003;</a>
+                            break;
+                        case ConvertRowState.Converting:
+                            <a href="/convert/@item.Id?return=@ret" data-warm data-poll>Converting&#8230;</a>
+                            break;
+                        case ConvertRowState.Failed:
+                            <a href="/convert/@item.Id?return=@ret" data-warm>Convert (retry)</a>
+                            break;
+                        default:
+                            <a href="/convert/@item.Id?return=@ret" data-warm>Convert</a>
+                            break;
                     }
-                    else
-                    {
-                        <a href="/convert/@item.Id" data-warm>Convert</a>
-                    }
-                    <a class="regen" href="/convert/@item.Id?fresh=1" title="Regenerate">&#8635;</a>
+                    <a class="regen" href="/convert/@item.Id?fresh=1&return=@ret" title="Regenerate">&#8635;</a>
                 </span>
             }
         </div>

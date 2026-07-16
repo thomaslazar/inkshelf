@@ -5,6 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Inkshelf</title>
+    @if (ViewData["MetaRefresh"] is int secs)
+    {
+        <noscript><meta http-equiv="refresh" content="@secs" /></noscript>
+    }
     <link rel="stylesheet" href="~/app.css" />
     <link rel="icon" type="image/png" sizes="32x32" href="~/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="~/favicon-16x16.png" />
@@ -29,31 +33,60 @@
             }
         } catch (e) {}
     })();
-    /* Convert-in-place: the first tap converts+caches via XHR (showing progress
-       in the link text); the next tap downloads the now-cached EPUB. Falls back
-       to a plain download link if JS/XHR is unavailable. ES5 for old e-readers. */
+    /* Background convert: tap kicks (?warm=1) then polls (?status=1) every 5s,
+       updating the link text in place — the conversion runs server-side even if
+       this page goes away. Links the server marked data-poll are already in
+       flight, so we resume polling them on load. No-JS falls back to the
+       <noscript> meta-refresh. ES5 for old e-readers. */
     (function () {
         try {
+            var POLL_MS = 5000;
+            function poll(a) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', a.href + (a.href.indexOf('?') < 0 ? '?' : '&') + 'status=1');
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState !== 4) { return; }
+                    var s = (xhr.responseText || '').replace(/^\s+|\s+$/g, '');
+                    if (xhr.status === 200 && s === 'done') {
+                        a.firstChild.nodeValue = 'EPUB ↓';
+                        a.setAttribute('data-ready', '1');
+                    } else if (xhr.status === 200 && (s === 'queued' || s === 'running')) {
+                        setTimeout(function () { poll(a); }, POLL_MS);
+                    } else {
+                        // failed, 404/None, or any error → terminal; revert to a tappable link.
+                        a.firstChild.nodeValue = (s === 'failed') ? 'Convert (retry)' : 'Convert';
+                    }
+                };
+                xhr.send();
+            }
+            function kick(a) {
+                a.firstChild.nodeValue = 'Converting…';
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', a.href + (a.href.indexOf('?') < 0 ? '?' : '&') + 'warm=1');
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState !== 4) { return; }
+                    if (xhr.status === 200 && (xhr.responseText || '').indexOf('done') >= 0) {
+                        a.firstChild.nodeValue = 'EPUB ↓';
+                        a.setAttribute('data-ready', '1');
+                    } else if (xhr.status === 200 || xhr.status === 202) {
+                        setTimeout(function () { poll(a); }, POLL_MS);
+                    } else {
+                        a.firstChild.nodeValue = 'Convert (retry)';
+                    }
+                };
+                xhr.send();
+            }
             var links = document.querySelectorAll('a[data-warm]');
             for (var i = 0; i < links.length; i++) {
                 (function (a) {
                     a.addEventListener('click', function (e) {
                         if (a.getAttribute('data-ready') === '1') { return; } // let it download
                         e.preventDefault();
-                        a.firstChild.nodeValue = 'Converting…';
-                        var xhr = new XMLHttpRequest();
-                        xhr.open('GET', a.href + (a.href.indexOf('?') < 0 ? '?' : '&') + 'warm=1');
-                        xhr.onreadystatechange = function () {
-                            if (xhr.readyState !== 4) { return; }
-                            if (xhr.status === 200) {
-                                a.firstChild.nodeValue = 'EPUB ↓';
-                                a.setAttribute('data-ready', '1');
-                            } else {
-                                a.firstChild.nodeValue = 'Convert (retry)';
-                            }
-                        };
-                        xhr.send();
+                        kick(a);
                     });
+                    if (a.getAttribute('data-poll') === '1' || a.hasAttribute('data-poll')) {
+                        poll(a); // already converting server-side → resume
+                    }
                 })(links[i]);
             }
         } catch (e) {}

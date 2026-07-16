@@ -1,5 +1,9 @@
 @page
 @model Inkshelf.Pages.LibraryModel
+@{
+    Response.Headers["Cache-Control"] = "no-store";
+    if (Model.AnyConverting) { ViewData["MetaRefresh"] = 30; }
+}
 
 <div class="page-head" id="top">
     <h1 class="page-title">
