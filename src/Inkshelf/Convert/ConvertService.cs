@@ -1,55 +1,70 @@
 using Inkshelf.Abs;
+using Inkshelf.Auth;
 
 namespace Inkshelf.Convert;
 
-public enum ConvertResultKind { NotFound, Warmed, File }
+public readonly record struct KickResult(ConvertStatus Status, string? FilePath = null, string? DownloadName = null);
 
-public readonly record struct ConvertOutcome(
-    ConvertResultKind Kind, string? FilePath = null, string? DownloadName = null)
-{
-    public static readonly ConvertOutcome NotFound = new(ConvertResultKind.NotFound);
-    public static readonly ConvertOutcome Warmed = new(ConvertResultKind.Warmed);
-    public static ConvertOutcome File(string path, string downloadName) =>
-        new(ConvertResultKind.File, path, downloadName);
-}
-
-// Orchestrates on-demand CBZ/CBR → fixed-layout EPUB conversion for a single
-// item: fetch detail, validate format, probe the per-device cache, convert on
-// miss, and describe what the caller should return. HTTP-free so it unit-tests
-// without a request context (the endpoint parses the screen cookie and maps the
-// outcome to an IResult).
+// The convert "kick": HTTP-free orchestration that runs IN THE REQUEST SCOPE.
+// It fetches item detail (needs the ABS token), validates the format, computes
+// the per-device cache path, and — on a miss — captures the access token and
+// enqueues a background job. It never downloads or converts; ConvertWorker does
+// that on the app lifetime. Kept HTTP-free so it unit-tests without a request.
 public class ConvertService
 {
     private readonly AbsApiClient _api;
     private readonly EpubCache _cache;
-    private readonly EpubConverter _converter;
-    private readonly ConvertLock _lock;
-    private readonly AbsOptions _options;
+    private readonly ConvertQueue _queue;
+    private readonly TokenStore _tokens;
     private readonly ILogger<ConvertService> _logger;
 
-    public ConvertService(AbsApiClient api, EpubCache cache, EpubConverter converter,
-        ConvertLock convertLock, AbsOptions options, ILogger<ConvertService> logger)
+    public ConvertService(AbsApiClient api, EpubCache cache, ConvertQueue queue,
+        TokenStore tokens, ILogger<ConvertService> logger)
     {
-        _api = api; _cache = cache; _converter = converter;
-        _lock = convertLock; _options = options; _logger = logger;
+        _api = api; _cache = cache; _queue = queue; _tokens = tokens; _logger = logger;
     }
 
-    public async Task<ConvertOutcome> ConvertAsync(string id, bool fresh, bool warm,
-        int maxW, int maxH, double dpr, CancellationToken ct)
+    // Kick a conversion (or serve the cached result). fresh=true regenerates.
+    public async Task<KickResult> KickAsync(string id, bool fresh, int maxW, int maxH, double dpr, CancellationToken ct)
+    {
+        var r = await ResolveAsync(id, maxW, maxH, ct);
+        if (r is null) return new KickResult(ConvertStatus.None);
+        var (path, meta, downloadName) = r.Value;
+
+        if (fresh) _cache.RemoveForItem(id);
+        if (System.IO.File.Exists(path)) return new KickResult(ConvertStatus.Done, path, downloadName);
+
+        var tokens = _tokens.Read();
+        if (tokens is null) return new KickResult(ConvertStatus.None); // no session
+        var status = _queue.Enqueue(new ConvertJob(id, tokens.Access, path, meta, maxW, maxH, dpr));
+        return new KickResult(status);
+    }
+
+    // Poll status WITHOUT enqueuing. Done carries the file path + name to stream.
+    public async Task<KickResult> StatusAsync(string id, int maxW, int maxH, double dpr, CancellationToken ct)
+    {
+        var r = await ResolveAsync(id, maxW, maxH, ct);
+        if (r is null) return new KickResult(ConvertStatus.None);
+        var (path, _, downloadName) = r.Value;
+        var status = _queue.Status(path);
+        return status == ConvertStatus.Done
+            ? new KickResult(ConvertStatus.Done, path, downloadName)
+            : new KickResult(status);
+    }
+
+    // Fetch detail, validate cbz/cbr, and derive (cache path, EPUB metadata,
+    // download filename). null = not found / not a comic.
+    private async Task<(string Path, EbookMeta Meta, string DownloadName)?> ResolveAsync(
+        string id, int maxW, int maxH, CancellationToken ct)
     {
         AbsItemDetail detail;
         try { detail = await _api.GetItemDetailAsync(id, ct); }
-        catch (HttpRequestException) { return ConvertOutcome.NotFound; }
+        catch (HttpRequestException) { return null; }
 
         var ef = detail.Media?.EbookFile;
         var fmt = ef?.EbookFormat;
-        if (ef?.Metadata is null || (fmt != "cbz" && fmt != "cbr")) return ConvertOutcome.NotFound;
+        if (ef?.Metadata is null || (fmt != "cbz" && fmt != "cbr")) return null;
 
-        var size = ef.Metadata.Size; var mtime = ef.Metadata.MtimeMs;
-        if (fresh) _cache.RemoveForItem(id);
-
-        // authorName isn't always populated on uploaded ebooks; fall back to the
-        // authors[] list. Used for both the embedded metadata and the file name.
         var md = detail.Media!.Metadata!;
         var title = md.Title ?? "Untitled";
         var author = md.AuthorName is { Length: > 0 } an ? an
@@ -57,64 +72,15 @@ public class ConvertService
         var seq = md.Series is { Count: > 0 } ? md.Series[0].Sequence : null;
         var seriesName = md.Series is { Count: > 0 } ? md.Series[0].Name : md.SeriesName;
 
-        var path = _cache.PathFor(id, size, mtime, maxW, maxH);
-        if (!System.IO.File.Exists(path))
-        {
-            // Serialize concurrent converts of the SAME target so they don't both
-            // build + write the .tmp. The second waiter re-checks and skips.
-            using (await _lock.AcquireAsync(path, ct))
-            {
-                if (!System.IO.File.Exists(path))
-                {
-                    _logger.LogInformation("Converting {Id} ({Fmt}, {Bytes} bytes, cap {W}x{H} @dpr {Dpr}) to EPUB…", id, fmt, size, maxW, maxH, dpr);
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
-                    var (archive, _) = await _api.GetEbookStreamAsync(id, ct);
-                    using var buffered = new MemoryStream();
-                    await using (archive)
-                    {
-                        if (!await CopyWithLimitAsync(archive, buffered, _options.MaxArchiveBytes, ct))
-                        {
-                            _logger.LogWarning("Archive for {Id} exceeds {Limit} bytes — refusing to convert.", id, _options.MaxArchiveBytes);
-                            return ConvertOutcome.NotFound;
-                        }
-                    }
-                    buffered.Position = 0;
-                    await _converter.ConvertAsync(buffered, new EbookMeta(title, author, seriesName, seq, id), path, maxW, maxH, dpr, ct);
-                    _logger.LogInformation("Converted {Id} in {Ms} ms → {OutBytes} bytes", id, sw.ElapsedMilliseconds, new FileInfo(path).Length);
-                    _cache.EnforceCap(_options.MaxCacheBytes);
-                }
-            }
-        }
-        _cache.Touch(path);   // count this serve as recent use (fresh or cached)
-
-        // warm just ensures the EPUB is built + cached, so the user's next tap
-        // downloads it instantly; it returns OK, not the file.
-        if (warm) return ConvertOutcome.Warmed;
-
-        var fileName = Sanitize($"{author} - {title}") + ".epub";
-        return ConvertOutcome.File(path, fileName);
+        var path = _cache.PathFor(id, ef.Metadata.Size, ef.Metadata.MtimeMs, maxW, maxH);
+        var meta = new EbookMeta(title, author, seriesName, seq, id);
+        var downloadName = Sanitize($"{author} - {title}") + ".epub";
+        return (path, meta, downloadName);
     }
 
     private static string Sanitize(string s)
     {
         foreach (var c in Path.GetInvalidFileNameChars()) s = s.Replace(c, '_');
         return s.Trim();
-    }
-
-    // Copy src → dst, aborting (returning false) as soon as more than `limit` bytes
-    // are read, so a huge/decompression-bomb archive can't be buffered into memory.
-    // limit <= 0 disables the cap.
-    private static async Task<bool> CopyWithLimitAsync(Stream src, Stream dst, long limit, CancellationToken ct)
-    {
-        var buffer = new byte[81920];
-        long total = 0;
-        int read;
-        while ((read = await src.ReadAsync(buffer, ct)) > 0)
-        {
-            total += read;
-            if (limit > 0 && total > limit) return false;
-            await dst.WriteAsync(buffer.AsMemory(0, read), ct);
-        }
-        return true;
     }
 }
