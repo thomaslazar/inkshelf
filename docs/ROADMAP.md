@@ -2,16 +2,14 @@
 
 Outstanding work, mostly follow-ups from the sorting + ebook-delivery feature.
 Nothing here is blocking; the current build (sorting, download, device-sized
-CBZ/CBR→EPUB conversion, cached indicator, search links) works.
+CBZ/CBR→EPUB conversion run in a background worker, cached indicator, search
+links) works.
 
 ## Priority (my current focus)
 
-The rest of this file is unordered backlog; these two are what I want to tackle
-next, in order:
+The rest of this file is unordered backlog; this is what I want to tackle next:
 
-1. **Background conversion** — decouple conversion from the request so a client
-   disconnect on a slow host can't kill it (see *Convert UX / feedback*).
-2. **Settings system + retina toggle** — so converted pages are readable on
+1. **Settings system + retina toggle** — so converted pages are readable on
    high-DPR screens (see *Settings*).
 
 ## Settings
@@ -59,12 +57,12 @@ settings cookie — fold the existing `scr` / favorite cookies into the same con
 
 - **Conversion memory footprint.** Conversion buffers the whole archive in a
   `MemoryStream` and holds every page as bytes (peak ~600 MB on a 223 MB comic).
-  Logs from a low-power self-hosted box show this running slowly, **not** OOMing —
-  the real failure there is the request-cancellation described under *Convert UX /
-  feedback* — but the high peak (and the slowness it brings) is what widens that
-  cancellation window, so lowering it still matters: spool the archive to a temp
-  file instead of RAM, and release each page after it's written into the EPUB.
-  More important once retina (heavier pages) is an option.
+  Logs from a low-power self-hosted box show this running slowly, **not** OOMing.
+  The request-cancellation that used to make a slow convert never finish is now
+  cured (conversion runs detached in a background worker), but the high peak (and
+  the slowness it brings) still matters: spool the archive to a temp file instead
+  of RAM, and release each page after it's written into the EPUB. More important
+  once retina (heavier pages) is an option.
 - **Conversion speed.** First conversion of a big comic is ~60–90 s (ImageSharp
   resizing ~280 pages, serially). Parallelise page processing.
 - **Cover image.** The converted EPUB currently declares **no cover**, so Apple
@@ -77,29 +75,6 @@ settings cookie — fold the existing `scr` / favorite cookies into the same con
      entry) when ABS has a cover that's present and large enough to look good.
   2. **Fall back to the first page** when ABS has no usable cover — flag the first
      page image as the cover instead.
-
-## Convert UX / feedback
-
-- **Background conversion (decouple from the request) — required, not cosmetic.**
-  *Confirmed root cause of "it never converts" on a slow host* (from real logs on a
-  low-power self-hosted box): the conversion runs **inside** the `/convert` request
-  and is threaded with
-  the request's `CancellationToken`, so when the client disconnects before it
-  finishes — the warm-XHR timing out, or the user navigating away — `RequestAborted`
-  cancels and tears the conversion down mid-flight. The `.tmp` is discarded, nothing
-  is cached, and the next attempt starts from scratch (re-downloading the whole
-  archive). On a small box a large comic takes minutes, well past the client's
-  patience, so it can **never** complete. Fix: run the conversion **detached from
-  the request** (a background worker keyed by the cache path, reusing `ConvertLock`),
-  so a disconnect can't kill it, plus a cheap status endpoint the listing polls to
-  flip "Converting…" → "EPUB ✓" when it's done. The memory/speed items only shrink
-  the window; this is the actual cure.
-- **Listing freshness.** Complementary to the above: `Cache-Control: no-store` on
-  the listing (and/or a `<meta refresh>` while a convert is pending) so a normal
-  reload reliably shows the server-rendered "EPUB ✓" once the background convert has
-  finished, instead of a stale cached page.
-- **Regen (↻) feedback.** The regenerate link is a plain direct link with no
-  progress feedback; align it with whatever feedback approach is chosen.
 
 ## Browsing & reading
 
