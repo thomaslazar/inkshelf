@@ -67,8 +67,16 @@ settings cookie — fold the existing `scr` / favorite cookies into the same con
   More important once retina (heavier pages) is an option.
 - **Conversion speed.** First conversion of a big comic is ~60–90 s (ImageSharp
   resizing ~280 pages, serially). Parallelise page processing.
-- **Cover image.** Add a cover (`<meta name="cover">` + first page) to the
-  converted EPUB for nicer library display.
+- **Cover image.** The converted EPUB currently declares **no cover**, so Apple
+  Books shows a blank placeholder and lenient readers just fall back to rendering
+  page 1. Declare a real cover, using **both** cover mechanisms for compatibility:
+  the EPUB3 manifest flag `properties="cover-image"` **and** the legacy EPUB2
+  `<meta name="cover" content="…"/>`. Source the image with a fallback:
+  1. **Prefer the ABS cover art** — we already proxy it (`GetCoverAsync` / `/cover`);
+     embed it as a dedicated cover image (optionally a `cover.xhtml` first spine
+     entry) when ABS has a cover that's present and large enough to look good.
+  2. **Fall back to the first page** when ABS has no usable cover — flag the first
+     page image as the cover instead.
 
 ## Convert UX / feedback
 
