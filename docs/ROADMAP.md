@@ -45,6 +45,46 @@ CBZ/CBR→EPUB conversion, cached indicator, search links) works.
 - **Regen (↻) feedback.** The regenerate link is a plain direct link with no
   progress feedback; align it with whatever feedback approach is chosen.
 
+## Browsing & reading
+
+- **Item detail page.** A per-item page showing the full metadata ABS exposes —
+  title, series (+ sequence), author(s), narrator, genre, tags, description,
+  publisher/published date — plus **all** downloadable ebook files, not just the
+  primary. Some items carry several formats of the same book (e.g. EPUB *and*
+  PDF); the detail page lists each with its own download link, and for CBZ/CBR
+  files shows the Convert action (or the EPUB download / "✓ converted" link when a
+  conversion already exists for this device). Keep the **listing rows lean** —
+  they still show only the primary file's download and/or the convert option — and
+  make the detail page the one place that exposes every file. Layout should stay
+  nice within the near-zero-JS / defensive-CSS constraints (cover, metadata block,
+  formats list). *Note:* enumerating all ebook files likely needs the **expanded**
+  item (`libraryFiles[]`), not just `media.ebookFile`; verify against the ABS
+  source.
+- **Per-library "already converted" view.** A page, per library, listing the
+  books that are already converted and cached **for this device** (the cache is
+  keyed by item + size + mtime + device dimensions, so filter to variants matching
+  the current `scr`). Use case: "ah, I already converted that — click the series
+  to grab the next volume." Show title/series/author with links (series → filtered
+  listing) and a direct EPUB download. *Note:* needs a way to map cache entries
+  back to items — either reverse-map the item id from the cache filename and
+  re-fetch metadata, or keep a small sidecar index alongside the cache.
+- **Screenful pagination (investigation).** Spike whether we can size a page to
+  exactly one screenful instead of a fixed 10. The `scr` cookie already reports
+  the viewport (CSS w×h×dpr), so server-side we could compute
+  `pageSize ≈ floor((viewportHeight − chrome) / rowHeight)`. Motivation: a typical
+  e-ink reader fits only ~7 rows and scrolling is cumbersome, so "one page = one
+  screen, no scroll" would be much nicer. Open questions: variable row heights
+  (multi-author/series wrap), the first load before the cookie is set, and how
+  this interacts with search results. Decide feasibility + approach before
+  committing.
+- **Read-state toggle.** Let the user mark an item read/unread from **both** the
+  listing rows and the detail page. Reading happens offline on the device, so ABS
+  never sees progress; at minimum we want a manual "read" mark. *Design question:*
+  where does the state live — local to Inkshelf (cookie/small store, simple but
+  unsynced), or pushed to ABS via its media-progress / "finished" API so it
+  reflects everywhere? Prefer syncing to ABS if the API supports it (verify the
+  endpoint against the ABS source).
+
 ## Security
 
 Follow-ups from the hardening work (all non-blocking; the shipped controls are in
