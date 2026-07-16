@@ -141,6 +141,33 @@ settings cookie — fold the existing `scr` / favorite cookies into the same con
   reflects everywhere? Prefer syncing to ABS if the API supports it (verify the
   endpoint against the ABS source).
 
+## Runtime footprint
+
+- **Idle memory (~500 MB).** The container sits at ~500 MB while doing nothing —
+  far more than a thin Razor Pages sidecar should need. Goal: get idle usage
+  *much* lower (well under ~150 MB feels realistic for this app). Leads, roughly
+  in order:
+  1. **Measure before tuning.** Pin down what the 500 MB actually is: compare the
+     container stat (cgroup v2 counts page cache, which is reclaimable and mostly
+     harmless) against the process working set and `GC.GetGCMemoryInfo()`. Also
+     distinguish *fresh-start* idle from *post-conversion* idle — after a
+     ~600 MB-peak conversion (see **Conversion memory footprint**) the GC keeps
+     large-object-heap segments committed, so "idle" after one convert can look
+     like a leak when it's really retained heap. Fixing the conversion item
+     (temp-file spooling, per-page release) may fix much of this for free.
+  2. **GC mode.** ASP.NET Core defaults to Server GC, which commits per-core
+     heaps sized for throughput — wrong trade-off for a mostly-idle single-user
+     sidecar. Try Workstation GC (`<ServerGarbageCollection>false</…>`),
+     `GCConserveMemory`, and/or a heap hard limit — either
+     `DOTNET_GCHeapHardLimit*` or simply a container memory limit, which the GC
+     respects. Verify a capped heap still survives a worst-case conversion
+     (another reason the spool-to-disk work matters).
+  3. **Baseline trim.** Smaller wins: `InvariantGlobalization` (drops ICU —
+     verify title sorting for non-ASCII libraries first), disabling unused
+     ASP.NET Core features/logging providers, `PublishTrimmed`. Native AOT is
+     deliberately off the table (see CLAUDE.md), and shouldn't be needed —
+     GC configuration is where the bulk of this lives.
+
 ## Security
 
 Follow-ups from the hardening work (all non-blocking; the shipped controls are in
