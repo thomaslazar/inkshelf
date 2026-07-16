@@ -42,9 +42,10 @@ public class ConvertWorkerTests
         return services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
     }
 
-    private static ConvertWorker Worker(ConvertQueue queue, IServiceScopeFactory scopes, EpubCache cache) =>
+    private static ConvertWorker Worker(ConvertQueue queue, IServiceScopeFactory scopes, EpubCache cache,
+        long maxArchiveBytes = long.MaxValue) =>
         new(queue, scopes, new EpubConverter(), new ConvertLock(), cache,
-            new AbsOptions { MaxConcurrentConversions = 1, MaxArchiveBytes = long.MaxValue, MaxCacheBytes = long.MaxValue },
+            new AbsOptions { MaxConcurrentConversions = 1, MaxArchiveBytes = maxArchiveBytes, MaxCacheBytes = long.MaxValue },
             NullLogger<ConvertWorker>.Instance);
 
     private static ConvertJob Job(string path) =>
@@ -85,6 +86,26 @@ public class ConvertWorkerTests
         var scopes = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
 
         var worker = Worker(queue, scopes, cache);
+        await worker.StartAsync(default);
+        await WaitUntil(() => queue.Status(path) == ConvertStatus.Failed, TimeSpan.FromSeconds(10));
+        await worker.StopAsync(default);
+
+        Assert.Equal(ConvertStatus.Failed, queue.Status(path));
+        Assert.False(File.Exists(path));
+    }
+
+    [Fact]
+    public async Task An_over_ceiling_archive_marks_Failed_and_writes_no_file()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        var queue = new ConvertQueue();
+        var path = cache.PathFor("item1", 1, 2, 0, 0);
+        queue.Enqueue(Job(path));
+
+        // Ceiling far below the CBZ the download returns → CopyWithLimitAsync
+        // trips, the worker marks Failed and never converts.
+        var worker = Worker(queue, ScopeFactoryReturning(Cbz()), cache, maxArchiveBytes: 8);
         await worker.StartAsync(default);
         await WaitUntil(() => queue.Status(path) == ConvertStatus.Failed, TimeSpan.FromSeconds(10));
         await worker.StopAsync(default);
