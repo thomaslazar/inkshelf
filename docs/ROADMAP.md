@@ -4,28 +4,56 @@ Outstanding work, mostly follow-ups from the sorting + ebook-delivery feature.
 Nothing here is blocking; the current build (sorting, download, device-sized
 CBZ/CBR→EPUB conversion, cached indicator, search links) works.
 
-## Conversion / rendering
+## Settings
 
-- **Retina toggle (configurable).** Pages are currently hard-coded to
-  **non-retina** (`ScreenTarget.Retina = false`) because full-resolution
-  ("retina") pages crash some e-ink readers on large comics (their Adobe-based
-  engines are memory-limited and EPUB3/fixed-layout-flaky). Make it configurable —
-  ideally per-device via the `scr` cookie or a user setting — so apps, the
-  webreader, and higher-memory devices can opt into crisp retina pages.
-- **User-defined resolution override.** Let the user hand-set the conversion
-  resolution per device (via the cookie), for when the browser-reported screen
-  size isn't ideal. Pairs with the retina toggle.
-- **Grayscale / monochrome option.** Optionally convert pages to grayscale to
-  shrink files on e-ink. Auto-detecting a mono display via
-  `matchMedia('(monochrome)')` is unreliable on e-ink (the browser reports its
-  colour rendering surface, not the panel), so make it a manual per-device
-  toggle; keep colour for colour e-ink readers.
+Inkshelf has no settings system yet — rendering knobs are hard-coded
+(`ScreenTarget.Retina = false`) and the only per-device state is ad-hoc cookies
+(the `scr` screen-size probe, the favorite-library cookie). Introduce a **proper
+per-device settings system** and consolidate the rendering options below under it.
+Settings are inherently per-device (they depend on the screen and the reader's
+capabilities), and Inkshelf is stateless with no DB, so they live in a per-device
+settings cookie — fold the existing `scr` / favorite cookies into the same concept.
+
+**System + UI concept:**
+- A dedicated **Settings page**, reachable from the header, built as a plain-HTML
+  `<form>` (near-zero JS, defensive CSS) that writes the per-device settings
+  cookie; sensible defaults when unset.
+- Framed clearly as **"applies to this device/browser."** A readout of what the
+  device reports (e.g. "detected 375×812 @dpr 3") helps the user understand the
+  resolution choices.
+- The server reads the cookie wherever these knobs are consumed (conversion,
+  rendering), replacing the hard-coded constants.
+
+**Settings to expose** (consolidated from Conversion / rendering):
+- **Retina toggle.** *(Priority — confirmed low-res: on a high-DPR phone the
+  hard-coded non-retina pages are upscaled and hardly readable.)* Pages are
+  generated at CSS pixels and forced to dpr 1; let the user opt into
+  full-resolution ("retina") pages per device. Guard the cost — retina pages are
+  ~dpr² heavier to generate and hold, which is exactly what strains a small host
+  (see **Conversion memory footprint**), so pair the toggle with that memory work.
+- **Resolution override.** Let the user hand-set the conversion resolution per
+  device, for when the browser-reported screen size isn't ideal. Pairs with the
+  retina toggle.
+- **Grayscale / monochrome.** Optionally convert pages to grayscale to shrink
+  files on e-ink. Auto-detecting a mono panel via `matchMedia('(monochrome)')` is
+  unreliable on e-ink (the browser reports its rendering surface, not the panel),
+  so make it a manual toggle; keep colour for colour e-ink readers.
 - **EPUB2 reflowable fallback.** Fixed-layout (EPUB3) is flagged by some older
   e-ink eReaders ("Das Öffnen dieses Buches kann zu Fehlern führen") and can crash
-  them, as their Adobe engines are EPUB2-only. Offer a reflowable EPUB2 mode — works
-  everywhere but has reader-imposed margins (not full-bleed) — as a per-device
-  option for devices that can't do fixed-layout. (Our EPUB is already
-  epubcheck-clean; the warning is the device's EPUB3 limitation, not our bug.)
+  them, as their Adobe engines are EPUB2-only. Offer a reflowable EPUB2 mode —
+  works everywhere but has reader-imposed margins (not full-bleed) — for devices
+  that can't do fixed-layout. (Our EPUB is already epubcheck-clean; the warning is
+  the device's EPUB3 limitation, not our bug.)
+
+## Conversion / rendering
+
+- **Conversion memory footprint.** Conversion buffers the whole archive in a
+  `MemoryStream` and holds every page as bytes (peak ~600 MB on a 223 MB comic),
+  which can OOM a small host (a low-power self-hosted box / single-board computer
+  is a confirmed real-world pain point). Lower the peak — stream/spool the archive
+  to a temp file instead of
+  RAM, and release each page after it's written into the EPUB. Gets more important
+  once retina (heavier pages) is an option.
 - **Conversion speed.** First conversion of a big comic is ~60–90 s (ImageSharp
   resizing ~280 pages, serially). Parallelise page processing.
 - **Cover image.** Add a cover (`<meta name="cover">` + first page) to the
