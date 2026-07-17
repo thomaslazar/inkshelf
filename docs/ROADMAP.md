@@ -7,46 +7,19 @@ device-sized CBZ/CBR→EPUB conversion, cached indicator, search links) works.
 
 ## Priority (my current focus)
 
-The rest of this file is unordered backlog; this is what I want to tackle next:
-
-1. **Settings system + retina toggle** — so converted pages are readable on
-   high-DPR screens (see *Settings*).
+The settings system shipped (per-device cookie, Settings page, retina +
+grayscale toggles — see **Done**). The rest of this file is unordered backlog;
+nothing here is currently in focus.
 
 ## Settings
 
-Inkshelf has no settings system yet — rendering knobs are hard-coded
-(`ScreenTarget.Retina = false`) and the only per-device state is ad-hoc cookies
-(the `scr` screen-size probe, the favorite-library cookie). Introduce a **proper
-per-device settings system** and consolidate the rendering options below under it.
-Settings are inherently per-device (they depend on the screen and the reader's
-capabilities), and Inkshelf is stateless with no DB, so they live in a per-device
-settings cookie — fold the existing `scr` / favorite cookies into the same concept.
+Inkshelf's per-device settings system (a settings cookie + a Settings page,
+replacing the old hard-coded rendering constants) is in place — see **Done**.
+Remaining settings to add to it:
 
-**System + UI concept:**
-- A dedicated **Settings page**, reachable from the header, built as a plain-HTML
-  `<form>` (near-zero JS, defensive CSS) that writes the per-device settings
-  cookie; sensible defaults when unset.
-- Framed clearly as **"applies to this device/browser."** A readout of what the
-  device reports (e.g. "detected 375×812 @dpr 3") helps the user understand the
-  resolution choices.
-- The server reads the cookie wherever these knobs are consumed (conversion,
-  rendering), replacing the hard-coded constants.
-
-**Settings to expose** (consolidated from Conversion / rendering):
-- **Retina toggle.** *(Priority — confirmed low-res: on a high-DPR phone the
-  hard-coded non-retina pages are upscaled and hardly readable.)* Pages are
-  generated at CSS pixels and forced to dpr 1; let the user opt into
-  full-resolution ("retina") pages per device. Guard the cost — retina pages are
-  ~dpr² heavier to generate and hold, which is exactly what strains a small host —
-  the low-memory conversion work (see **Done**) helps, but verify retina against
-  the per-conversion peak on a small box before enabling it by default.
 - **Resolution override.** Let the user hand-set the conversion resolution per
   device, for when the browser-reported screen size isn't ideal. Pairs with the
   retina toggle.
-- **Grayscale / monochrome.** Optionally convert pages to grayscale to shrink
-  files on e-ink. Auto-detecting a mono panel via `matchMedia('(monochrome)')` is
-  unreliable on e-ink (the browser reports its rendering surface, not the panel),
-  so make it a manual toggle; keep colour for colour e-ink readers.
 - **EPUB2 reflowable fallback.** Fixed-layout (EPUB3) is flagged by some older
   e-ink eReaders ("Das Öffnen dieses Buches kann zu Fehlern führen") and can crash
   them, as their Adobe engines are EPUB2-only. Offer a reflowable EPUB2 mode —
@@ -136,10 +109,6 @@ place — these tighten test coverage and one latent edge):
 - **`Favorites` force-secure test.** `TokenStore` has forced-vs-default
   `Secure`-flag tests; `Favorites.Set` applies the same rule but is untested — add
   the mirror pair for symmetry.
-- **Retina dpr clamp.** `ScreenTarget` clamps dimensions to `MaxDimension` *before*
-  multiplying by the client-supplied `dpr`, and `dpr` itself is unbounded —
-  harmless while `Retina = false`, but when the retina toggle (see Conversion /
-  rendering) lands, clamp *after* the multiply and bound `dpr`.
 
 ## Done
 
@@ -157,3 +126,9 @@ Shipped; kept as a short record (full detail in git history / the PR).
   the image; measured on-box (resting ~897 → ~554 MiB from GC alone, streaming
   + pool-release cut the rest); container memory-limit guidance added. Baseline
   trim remains (see backlog).
+- **Per-device settings + retina/grayscale** — a server-written
+  `inkshelf_settings` cookie (`DeviceSettings`) with a plain-`<form>` Settings
+  page (cog link in the Index/Library heads) exposing a **retina** toggle
+  (replaces the hard-coded `ScreenTarget.Retina`) and a **grayscale** toggle.
+  Both flow through a `RenderTarget` into conversion + the cache key (grayscale
+  `-g` marker); includes the retina dpr clamp-after-multiply + dpr bound fix.

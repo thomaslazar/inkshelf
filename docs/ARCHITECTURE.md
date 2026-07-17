@@ -27,20 +27,22 @@ src/Inkshelf/
     AbsModels.cs          Response DTOs (three separate metadata shapes — see below).
     AbsFilter.cs          Encodes ABS facet filters (authors.<b64>, series.<b64>).
     AbsExceptions.cs      AbsAuthException / AbsUnauthorizedException / AbsLoginFailedException.
-  Auth/                 TokenStore (encrypted cookie), Tokens, Favorites (fav-library cookie).
+  Auth/                 TokenStore (encrypted cookie), Tokens, Favorites (fav-library
+                        cookie), DeviceSettings (per-device settings cookie).
   Convert/              CBZ/CBR → fixed-layout EPUB.
     ConvertService.cs     Orchestrates the /convert kick (detail → validate → cache → enqueue).
     ConvertQueue.cs       In-memory job registry + Channel producer (singleton).
     ConvertWorker.cs      BackgroundService: drains the queue on the app lifetime, downloads + converts.
     EpubConverter.cs      Thin orchestrator: reader → processor → writer.
     ComicArchiveReader.cs Yields image entries in ordinal order (IAsyncEnumerable).
-    PageImageProcessor.cs Decode + downscale-to-cap + WebP→JPEG transcode.
+    PageImageProcessor.cs Decode + downscale-to-cap + WebP→JPEG transcode + optional grayscale.
     EpubWriter.cs         Writes the EPUB zip (string-built XML).
-    EpubCache.cs          File cache keyed by item+size+mtime+screen size.
-    ScreenTarget.cs       Parses the "scr" device-size cookie into a page cap + dpr.
+    EpubCache.cs          File cache keyed by item+size+mtime+screen size+grayscale.
+    ScreenTarget.cs       Parses the "scr" probe + settings flags into a RenderTarget.
+    RenderTarget.cs       Resolved per-device render knobs (cap, dpr, grayscale).
   Endpoints/            Minimal-API groups, one static MapXxxEndpoints() each:
-                        Cover, Download, Convert, Session (logout+favorite), Diag.
-  Pages/                Razor Pages: Index, Login, Library (+ models); Shared/ partials.
+                        Cover, Download, Convert, Session (logout+favorite), Settings, Diag.
+  Pages/                Razor Pages: Index, Login, Library, Settings (+ models); Shared/ partials.
     Support/            Non-page helper types: LibraryLinks, ItemRowModel, Pager, SortLinks.
 ```
 
@@ -105,6 +107,13 @@ repo root (inside the devcontainer) must stay green.
   listing if not ready yet); `?warm=1` is the JS kick, answered with a 202 and a
   status body while queued/running; `?status=1` polls without enqueuing, returning
   the status as plain text; `?fresh=1` discards the cached EPUB and reconverts.
+- **Two device cookies, two purposes.** `scr` is JS-written device *truth* (the
+  screen probe); `inkshelf_settings` (`DeviceSettings`) is server-written user
+  *choice* (retina, grayscale). Wherever conversion is computed —
+  `ConvertEndpoints` and the Library row-state — read **both** and combine them
+  via `ScreenTarget.FromCookie(scr, retina, grayscale)` into a `RenderTarget`, so
+  a real conversion and the "✓ converted" badge agree. Grayscale is part of the
+  cache key (`-g` marker); retina already changes `maxW/maxH`.
 - **Conversion is serialized and resource-bounded.** `ConvertService` and
   `ConvertWorker` share `ConvertLock` (a singleton keyed by cache-output path)
   with a double-checked `File.Exists`, so concurrent jobs for the same target
@@ -166,6 +175,11 @@ URL-escaped and EPUB metadata is XML-escaped; the unauthenticated `/diag` probe 
 bounded, sanitized, and gateable; and conversion is bounded against
 resource-exhaustion (archive size, cache size, screen-dimension inputs) — all tuned
 through Configuration.
+
+`/settings` (the GET page and `POST /settings`) sits outside the `AbsAuthException`→
+`/login` gate by design: it only reads/writes the per-device `inkshelf_settings`
+cookie and never calls `AbsApiClient`, so there's no ABS session to lose and
+nothing that throws `AbsAuthException` in the first place.
 
 By design, `/login` relies on Audiobookshelf's own brute-force protection rather
 than a local rate limit, and Data-Protection keys are stored unencrypted on their
