@@ -9,18 +9,18 @@ public static class ConvertEndpoints
         app.MapGet("/convert/{id}", async (string id, string? fresh, string? warm,
             string? status, string? @return, HttpContext httpContext, ConvertService convert, CancellationToken ct) =>
         {
-            var (maxW, maxH, dpr) = ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"]);
+            var t = ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"]);
 
             // JS poll: report status, no enqueue.
             if (status is "1")
             {
-                var s = await convert.StatusAsync(id, maxW, maxH, dpr, ct);
+                var s = await convert.StatusAsync(id, t.MaxW, t.MaxH, t.Dpr, ct);
                 return s.Status == ConvertStatus.None
                     ? Results.NotFound()
                     : Results.Text(Text(s.Status));
             }
 
-            var result = await convert.KickAsync(id, fresh is "1" or "true", maxW, maxH, dpr, ct);
+            var result = await convert.KickAsync(id, fresh is "1" or "true", t.MaxW, t.MaxH, t.Dpr, ct);
             if (result.Status == ConvertStatus.None) return Results.NotFound();
 
             // JS kick (warm): return the status as text; 202 while not yet done.

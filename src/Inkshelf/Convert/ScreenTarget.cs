@@ -4,31 +4,26 @@ namespace Inkshelf.Convert;
 
 public static class ScreenTarget
 {
-    // TODO(configurable): whether converted pages are "retina". Hard-coded to
-    // non-retina for now because full-resolution pages can crash the tolino
-    // epos's reader (memory) on large comics. Make this a setting later — ideally
-    // per-device via the cookie, alongside the planned user-defined resolution
-    // override — so higher-memory devices / the app / webreader can opt into
-    // crisp retina pages.
-    //   retina  = true  → image at physical px (css × dpr), viewport = css  (crisp, heavy)
-    //   retina  = false → image at css px,                  viewport = css  (softer, ~3.5× lighter)
-    public const bool Retina = false;
-
     // Upper bound on a page dimension fed into the converter + cache key, so a
     // client-set "scr" cookie can't mint absurd sizes (disk exhaustion / OOM).
     public const int MaxDimension = 4096;
 
-    // Parse the "scr" cookie (the layout script reports "<cssW>x<cssH>x<dpr>")
-    // into a page-image cap (MaxW/MaxH) and the pixel ratio the converter uses to
-    // derive each page's CSS viewport (viewport = image px / Dpr). The Tolino
-    // reader lays fixed-layout pages out in CSS pixels, so the viewport must be
-    // the CSS size to fill the screen.
+    // Upper bound on the client-supplied device-pixel-ratio. Bounded because it
+    // multiplies the page dimensions under retina — an unbounded dpr would blow
+    // past MaxDimension's intent.
+    public const double MaxDpr = 4.0;
+
+    // Parse the "scr" cookie ("<cssW>x<cssH>x<dpr>", written by the layout script)
+    // into a RenderTarget. The Tolino reader lays fixed-layout pages out in CSS
+    // pixels, so the viewport must be the CSS size to fill the screen.
     //
-    // Non-retina (current): cap = CSS size, Dpr = 1 → image == page == CSS size.
-    // Retina: cap = physical (css × dpr), Dpr = dpr → physical image in a CSS page.
+    //   retina = false → cap = CSS size,        Dpr = 1   (image == page == CSS; softer, light)
+    //   retina = true  → cap = CSS size × dpr,  Dpr = dpr (physical image in a CSS page; crisp, heavy)
     //
-    // Returns (0,0,1) when absent/unparseable → no downscaling, viewport = image.
-    public static (int MaxW, int MaxH, double Dpr) FromCookie(string? scr)
+    // dpr is bounded to MaxDpr, and dimensions are clamped to MaxDimension AFTER
+    // the dpr multiply (a raw cssW × dpr must not exceed the cap). Returns
+    // (0, 0, 1, grayscale) when absent/unparseable → no downscaling.
+    public static RenderTarget FromCookie(string? scr, bool retina = false, bool grayscale = false)
     {
         if (!string.IsNullOrEmpty(scr))
         {
@@ -38,16 +33,19 @@ public static class ScreenTarget
                 && double.TryParse(p[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var dpr)
                 && cw > 0 && ch > 0 && dpr > 0)
             {
-                cw = Math.Min(cw, MaxDimension);
-                ch = Math.Min(ch, MaxDimension);
-                return Retina
-                    ? ((int)Math.Round(cw * dpr), (int)Math.Round(ch * dpr), dpr)
-                    : (cw, ch, 1);
+                if (retina)
+                {
+                    dpr = Math.Min(dpr, MaxDpr);
+                    var w = Math.Min((int)Math.Round(cw * dpr), MaxDimension);
+                    var h = Math.Min((int)Math.Round(ch * dpr), MaxDimension);
+                    return new RenderTarget(w, h, dpr, grayscale);
+                }
+                return new RenderTarget(Math.Min(cw, MaxDimension), Math.Min(ch, MaxDimension), 1, grayscale);
             }
             // Legacy 2-part physical cookie, transient until the script rewrites it.
             if (p.Length == 2 && int.TryParse(p[0], out var w2) && int.TryParse(p[1], out var h2) && w2 > 0 && h2 > 0)
-                return (Math.Min(w2, MaxDimension), Math.Min(h2, MaxDimension), 1);
+                return new RenderTarget(Math.Min(w2, MaxDimension), Math.Min(h2, MaxDimension), 1, grayscale);
         }
-        return (0, 0, 1);
+        return new RenderTarget(0, 0, 1, grayscale);
     }
 }

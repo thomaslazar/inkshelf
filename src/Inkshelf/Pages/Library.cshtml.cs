@@ -100,11 +100,11 @@ public class LibraryModel : PageModel
 
     private void ComputeConvertStates()
     {
-        var (w, h, _) = ScreenTarget.FromCookie(Request.Cookies["scr"]);
+        var t = ScreenTarget.FromCookie(Request.Cookies["scr"]);
         foreach (var item in Items)
         {
             _structured.TryGetValue(item.Id, out var media);
-            var state = RowState(item, media, w, h);
+            var state = RowState(item, media, t.MaxW, t.MaxH);
             _states[item.Id] = state;
             if (state == ConvertRowState.Converting) AnyConverting = true;
         }
