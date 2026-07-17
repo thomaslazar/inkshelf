@@ -3,7 +3,7 @@
 <div class="page-head">
     <h1 class="page-title"><img src="~/img/icon-black.png" alt="" class="title-icon" /> Libraries</h1>
     <form class="logout-form" method="post" action="/logout">@Html.AntiForgeryToken()<button type="submit">Log out</button></form>
-    <a class="settings-link" href="/settings" title="Settings" aria-label="Settings">⚙</a>
+    <a class="settings-link" href="/settings" title="Settings"><img src="~/img/gear-black.png" alt="Settings" class="settings-icon" width="24" height="24" /></a>
 </div>
 <ul>
 @foreach (var lib in Model.Libraries)
