@@ -71,13 +71,17 @@ public class ListingRenderTests
             });
         });
 
-    private static HttpRequestMessage LibraryRequest(WebApplicationFactory<Program> factory)
+    // settings: raw "inkshelf_settings" cookie value (DeviceSettings.Serialize's
+    // "<retina><grayscale>" digit pair, e.g. "01"), omitted when null.
+    private static HttpRequestMessage LibraryRequest(WebApplicationFactory<Program> factory, string? settings = null)
     {
         var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
         var protector = dp.CreateProtector("inkshelf.session.v1");
         var sessionCookie = protector.Protect("access\nrefresh");
         var req = new HttpRequestMessage(HttpMethod.Get, $"/library/{LibId}");
-        req.Headers.Add("Cookie", $"inkshelf_session={Uri.EscapeDataString(sessionCookie)}; scr={W}x{H}x1");
+        var cookie = $"inkshelf_session={Uri.EscapeDataString(sessionCookie)}; scr={W}x{H}x1";
+        if (settings is not null) cookie += $"; inkshelf_settings={settings}";
+        req.Headers.Add("Cookie", cookie);
         return req;
     }
 
@@ -151,5 +155,38 @@ public class ListingRenderTests
         Assert.DoesNotContain("<meta http-equiv=\"refresh\"", html);
 
         Assert.DoesNotContain("data-warm", RegenAnchor(html));
+    }
+
+    // Task 6: row-state must be keyed on the SAME RenderTarget (scr probe + the
+    // inkshelf_settings cookie's grayscale flag) the real conversion uses — a
+    // grayscale-variant cache file only counts as "converted" when the request
+    // carries grayscale=on; the same file is not this request's cache path
+    // otherwise, so the row must still offer plain "Convert".
+    [Fact]
+    public async Task Grayscale_cache_hit_is_converted_only_with_settings_cookie_on()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        var path = cache.PathFor(ItemId, Size, Mtime, W, H, grayscale: true);
+        File.WriteAllText(path, "epub");
+
+        // retina=0, grayscale=1 → target matches the pre-seeded "-g" file.
+        var grayResponse = await client.SendAsync(LibraryRequest(factory, settings: "01"));
+        var grayHtml = await grayResponse.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, grayResponse.StatusCode);
+        Assert.Contains("EPUB &#10003;", grayHtml);
+        Assert.DoesNotContain("data-warm", PrimaryConvertAnchor(grayHtml));
+
+        // No settings cookie → default (colour) target; the "-g" file isn't its
+        // cache path, so the row is still plain "Convert".
+        var colourResponse = await client.SendAsync(LibraryRequest(factory));
+        var colourHtml = await colourResponse.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, colourResponse.StatusCode);
+        Assert.DoesNotContain("EPUB &#10003;", colourHtml);
+        Assert.Contains("data-warm>Convert</a>", PrimaryConvertAnchor(colourHtml));
     }
 }

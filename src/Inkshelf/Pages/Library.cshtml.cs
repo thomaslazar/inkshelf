@@ -100,23 +100,24 @@ public class LibraryModel : PageModel
 
     private void ComputeConvertStates()
     {
-        var t = ScreenTarget.FromCookie(Request.Cookies["scr"]);
+        var s = DeviceSettings.Read(Request);
+        var t = ScreenTarget.FromCookie(Request.Cookies["scr"], s.Retina, s.Grayscale);
         foreach (var item in Items)
         {
             _structured.TryGetValue(item.Id, out var media);
-            var state = RowState(item, media, t.MaxW, t.MaxH);
+            var state = RowState(item, media, t);
             _states[item.Id] = state;
             if (state == ConvertRowState.Converting) AnyConverting = true;
         }
     }
 
-    private ConvertRowState RowState(AbsItem item, AbsBatchMedia? media, int w, int h)
+    private ConvertRowState RowState(AbsItem item, AbsBatchMedia? media, RenderTarget target)
     {
         var fmt = item.Media?.EbookFormat;
         if (fmt != "cbz" && fmt != "cbr") return ConvertRowState.NotConvertible;
         var efm = media?.EbookFile?.Metadata;
         if (efm is null) return ConvertRowState.NotConvertible; // can't key the cache
-        var path = _cache.PathFor(item.Id, efm.Size, efm.MtimeMs, w, h);
+        var path = _cache.PathFor(item.Id, efm.Size, efm.MtimeMs, target.MaxW, target.MaxH, target.Grayscale);
         return _queue.Status(path) switch
         {
             ConvertStatus.Done => ConvertRowState.Cached,

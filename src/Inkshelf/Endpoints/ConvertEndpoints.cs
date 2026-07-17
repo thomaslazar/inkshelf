@@ -1,3 +1,4 @@
+using Inkshelf.Auth;
 using Inkshelf.Convert;
 
 namespace Inkshelf.Endpoints;
@@ -9,7 +10,8 @@ public static class ConvertEndpoints
         app.MapGet("/convert/{id}", async (string id, string? fresh, string? warm,
             string? status, string? @return, HttpContext httpContext, ConvertService convert, CancellationToken ct) =>
         {
-            var t = ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"]);
+            var ds = DeviceSettings.Read(httpContext.Request);
+            var t = ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"], ds.Retina, ds.Grayscale);
 
             // JS poll: report status, no enqueue.
             if (status is "1")
