@@ -133,6 +133,14 @@ so the pooled unmanaged pixel buffers return to the OS. (Pooling still helps
 These are the cheap reclaim wins; §1–§3 are what make them stick by not
 allocating the mountain in the first place.
 
+**Validated on-box (2026-07-17, applied as Cosmos env, to be baked in here):**
+`gcServer=0` + `GCConserveMemory=5` took **resting 897 → ~554 MiB (−38%)** and
+made idle memory *decay and return* to the OS instead of pinning; the transient
+peak barely moved (1190 → ~936 MiB, −21%) — that's genuine allocation for §1/§2
+to cut. A **residual ~500 MiB anon persists at idle** even with GC on; the on-box
+test did not exercise ImageSharp's **unmanaged** pool, which GC config cannot
+reclaim, so §3 is expected to account for a real slice of that residual.
+
 ## 5. Deployment ceiling (docs + example)
 
 - `docker-compose.example.yml`: add a memory limit sized above the **new** peak
@@ -144,10 +152,15 @@ allocating the mountain in the first place.
 
 ## Success criteria
 
+Measured against the **post-§4 baseline** (GC already on: resting ~554 MiB, peak
+~936 MiB) — the code work (§1–§3) must close the remaining gap:
+
 - Resting idle after an N-conversion batch stays within ~2× fresh
-  (target ≲ ~150–200 MiB), not ratcheting to ~900 MiB.
-- Transient peak per conversion in low-hundreds MiB (target < ~400 MiB), enabling
-  a ~512 MiB container limit with headroom.
+  (target ≲ ~150–200 MiB), down from ~554 MiB — i.e. §3 + streaming reclaim the
+  residual anon that GC alone left behind.
+- Transient peak per conversion in low-hundreds MiB (target < ~400 MiB), down
+  from ~936 MiB, enabling a ~512 MiB container limit with headroom (vs the
+  1.5 GiB the report says to keep until the peak drops).
 - **EPUB output byte-identical**; full `dotnet test` green.
 - Verified by re-measuring on the Zimaboard with the existing method (cgroup
   `memory.current` + `memory.stat` anon/file split, before/after a fixed batch).
