@@ -16,6 +16,10 @@ services:
       - inkshelf-cache:/cache
     ports:
       - "8080:8080"
+    # Cap the sidecar so a conversion can't balloon the host. Sized above the
+    # per-conversion peak; conversions run one at a time (MaxConcurrentConversions=1).
+    # Re-tune after measuring on your host.
+    mem_limit: 1536m
 volumes:
   inkshelf-keys:
   inkshelf-cache:

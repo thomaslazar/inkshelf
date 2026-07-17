@@ -112,6 +112,8 @@ Mount a volume for each of these so state survives restarts:
 - `CachePath` (e.g. `/cache`) — converted EPUBs; without persistence they're
   rebuilt on demand.
 
+Set a **container memory limit** (start with 1.5 GiB) so conversions can't pressure the host. Inkshelf's memory peaks during a conversion (bounded, one at a time), and .NET reads the cgroup limit to self-tune.
+
 ### Image tags
 
 `ghcr.io/thomaslazar/inkshelf`

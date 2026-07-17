@@ -114,6 +114,36 @@ public class ConvertWorkerTests
         Assert.False(File.Exists(path));
     }
 
+    [Fact]
+    public async Task Deletes_the_archive_temp_file_after_a_successful_conversion()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        var queue = new ConvertQueue();
+        var path = cache.PathFor("item1", 1, 2, 0, 0);
+        queue.Enqueue(Job(path));
+
+        var worker = Worker(queue, ScopeFactoryReturning(Cbz()), cache);
+        await worker.StartAsync(default);
+        await WaitUntil(() => File.Exists(path), TimeSpan.FromSeconds(10));
+        await worker.StopAsync(default);
+
+        Assert.True(File.Exists(path));                                  // epub produced
+        Assert.Empty(Directory.GetFiles(dir.Path, "*.dl.tmp"));          // archive temp cleaned up
+    }
+
+    [Fact]
+    public void SweepTemp_also_removes_orphaned_dl_tmp()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        File.WriteAllText(Path.Combine(dir.Path, "abc.dl.tmp"), "partial download");
+        File.WriteAllText(Path.Combine(dir.Path, "keep.epub"), "real");
+        cache.SweepTemp();
+        Assert.Empty(Directory.GetFiles(dir.Path, "*.dl.tmp"));
+        Assert.True(File.Exists(Path.Combine(dir.Path, "keep.epub")));
+    }
+
     private static async Task WaitUntil(Func<bool> cond, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;

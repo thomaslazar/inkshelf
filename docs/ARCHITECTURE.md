@@ -111,6 +111,21 @@ repo root (inside the devcontainer) must stay green.
   don't double-convert or corrupt the `.tmp`. Client-influenced inputs are
   bounded (archive size, total cache size, `scr` dimensions) via `AbsOptions` — see
   Configuration.
+- **Conversion is streamed, not buffered.** The downloaded archive is spooled to
+  a temp file rather than a `MemoryStream`. `EpubConverter` yields pages lazily,
+  and `EpubWriter.WriteAsync` consumes that `IAsyncEnumerable<Page>`, writing
+  each page's image and xhtml straight into the file-backed zip and keeping only
+  lightweight per-page metadata — one page's bytes are held at a time, never the
+  whole book. `ConvertWorker` releases ImageSharp's retained (unmanaged) memory
+  pool after each conversion so peak usage doesn't compound across jobs. This is
+  what keeps the sidecar's memory footprint roughly independent of archive size.
+- **Workstation GC, not Server GC.** `Inkshelf.csproj` pins
+  `ServerGarbageCollection=false` (plus `ConcurrentGarbageCollection=false` and
+  `System.GC.ConserveMemory=5`), overriding the ASP.NET Core default. A
+  single-user sidecar doing sequential, CPU-bound conversions doesn't benefit
+  from Server GC's per-core heaps sized for throughput; Workstation GC keeps one
+  compact heap and hands memory back to the OS, which is what a mostly-idle
+  sidecar needs. Don't "fix" this back to Server GC.
 
 ## Adding a new X
 
