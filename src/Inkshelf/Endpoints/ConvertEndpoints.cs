@@ -14,13 +14,13 @@ public static class ConvertEndpoints
             // JS poll: report status, no enqueue.
             if (status is "1")
             {
-                var s = await convert.StatusAsync(id, t.MaxW, t.MaxH, t.Dpr, ct);
+                var s = await convert.StatusAsync(id, t, ct);
                 return s.Status == ConvertStatus.None
                     ? Results.NotFound()
                     : Results.Text(Text(s.Status));
             }
 
-            var result = await convert.KickAsync(id, fresh is "1" or "true", t.MaxW, t.MaxH, t.Dpr, ct);
+            var result = await convert.KickAsync(id, fresh is "1" or "true", t, ct);
             if (result.Status == ConvertStatus.None) return Results.NotFound();
 
             // JS kick (warm): return the status as text; 202 while not yet done.

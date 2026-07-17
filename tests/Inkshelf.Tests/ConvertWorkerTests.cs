@@ -49,7 +49,7 @@ public class ConvertWorkerTests
             NullLogger<ConvertWorker>.Instance);
 
     private static ConvertJob Job(string path) =>
-        new("item1", "tok", path, new EbookMeta("T", "A", null, null, "item1"), 0, 0, 1.0);
+        new("item1", "tok", path, new EbookMeta("T", "A", null, null, "item1"), new RenderTarget(0, 0, 1.0, false));
 
     [Fact]
     public async Task Processes_a_job_to_a_cached_epub()

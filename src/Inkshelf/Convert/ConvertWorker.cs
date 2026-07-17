@@ -78,7 +78,7 @@ public sealed class ConvertWorker : BackgroundService
                 }
 
                 await using (var read = new FileStream(dlTmp, FileMode.Open, FileAccess.Read))
-                    await _converter.ConvertAsync(read, job.Meta, job.CachePath, job.MaxW, job.MaxH, job.Dpr, ct);
+                    await _converter.ConvertAsync(read, job.Meta, job.CachePath, job.Target, ct);
 
                 _cache.EnforceCap(_options.MaxCacheBytes);
                 _logger.LogInformation("Converted {Id} in {Ms} ms", job.ItemId, sw.ElapsedMilliseconds);

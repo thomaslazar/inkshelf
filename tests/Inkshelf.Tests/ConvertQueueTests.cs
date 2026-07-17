@@ -8,7 +8,7 @@ public class ConvertQueueTests
         Path.Combine(Path.GetTempPath(), "cq-" + Guid.NewGuid().ToString("N") + ".epub");
 
     private static ConvertJob Job(string path) =>
-        new("item1", "tok", path, new EbookMeta("T", "A", null, null, "item1"), 100, 200, 1.0);
+        new("item1", "tok", path, new EbookMeta("T", "A", null, null, "item1"), new RenderTarget(100, 200, 1.0, false));
 
     [Fact]
     public void Enqueue_new_path_returns_Queued_and_writes_one_channel_item()

@@ -112,7 +112,7 @@ public class ListingRenderTests
         var queue = factory.Services.GetRequiredService<ConvertQueue>();
         var cache = factory.Services.GetRequiredService<EpubCache>();
         var path = cache.PathFor(ItemId, Size, Mtime, W, H);
-        queue.Enqueue(new ConvertJob(ItemId, "tok", path, new EbookMeta("T", "A", null, null, ItemId), W, H, 1.0));
+        queue.Enqueue(new ConvertJob(ItemId, "tok", path, new EbookMeta("T", "A", null, null, ItemId), new RenderTarget(W, H, 1.0, false)));
 
         var response = await client.SendAsync(LibraryRequest(factory));
         var html = await response.Content.ReadAsStringAsync();
