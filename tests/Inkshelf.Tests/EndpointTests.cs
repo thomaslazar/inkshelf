@@ -151,4 +151,36 @@ public class EndpointTests
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Settings_get_renders_form_with_checkboxes()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+
+        var html = await (await client.GetAsync("/settings")).Content.ReadAsStringAsync();
+
+        Assert.Contains("name=\"retina\"", html);
+        Assert.Contains("name=\"grayscale\"", html);
+        Assert.Contains("action=\"/settings\"", html);
+        Assert.Contains("__RequestVerificationToken", html);
+    }
+
+    [Fact]
+    public async Task Settings_get_checks_boxes_from_cookie()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+
+        var req = new HttpRequestMessage(HttpMethod.Get, "/settings");
+        // "10" is DeviceSettings.Serialize()'s positional-flags format: retina=1, grayscale=0.
+        req.Headers.Add("Cookie", "inkshelf_settings=10");
+        var html = await (await client.SendAsync(req)).Content.ReadAsStringAsync();
+
+        // retina checkbox is checked, grayscale is not. Assert the retina input carries "checked".
+        var retinaInput = System.Text.RegularExpressions.Regex.Match(html, "<input[^>]*name=\"retina\"[^>]*>").Value;
+        Assert.Contains("checked", retinaInput);
+        var grayInput = System.Text.RegularExpressions.Regex.Match(html, "<input[^>]*name=\"grayscale\"[^>]*>").Value;
+        Assert.DoesNotContain("checked", grayInput);
+    }
 }
