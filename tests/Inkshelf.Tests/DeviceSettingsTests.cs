@@ -31,9 +31,9 @@ public class DeviceSettingsTests
     [Fact]
     public void Read_parses_both_flags()
     {
-        Assert.Equal(new DeviceSettings(true, false), DeviceSettings.Read(RequestWithCookie("r=1&g=0")));
-        Assert.Equal(new DeviceSettings(false, true), DeviceSettings.Read(RequestWithCookie("r=0&g=1")));
-        Assert.Equal(new DeviceSettings(true, true), DeviceSettings.Read(RequestWithCookie("r=1&g=1")));
+        Assert.Equal(new DeviceSettings(true, false), DeviceSettings.Read(RequestWithCookie("10")));
+        Assert.Equal(new DeviceSettings(false, true), DeviceSettings.Read(RequestWithCookie("01")));
+        Assert.Equal(new DeviceSettings(true, true), DeviceSettings.Read(RequestWithCookie("11")));
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class DeviceSettingsTests
         var ctx = new DefaultHttpContext();
         DeviceSettings.Set(ctx.Response, new DeviceSettings(true, true));
         var setCookie = ctx.Response.Headers.SetCookie.ToString();
-        Assert.Contains($"{DeviceSettings.Cookie}=r=1&g=1", setCookie);
+        Assert.Contains($"{DeviceSettings.Cookie}=11", setCookie);
         Assert.Contains("path=/", setCookie, StringComparison.OrdinalIgnoreCase);
     }
 

@@ -936,7 +936,7 @@ public async Task Settings_post_sets_cookie_and_redirects()
     Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
     Assert.Equal("/settings", response.Headers.Location?.OriginalString);
     var setCookie = response.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
-    Assert.Contains("inkshelf_settings=r=1&g=0", setCookie);
+    Assert.Contains("inkshelf_settings=10", setCookie); // retina on, grayscale off → "10"
 }
 
 [Fact]
