@@ -26,7 +26,7 @@ public class EpubConverter
         {
             ct.ThrowIfCancellationRequested();
             var ext = Path.GetExtension(raw.Key).ToLowerInvariant();
-            var img = await PageImageProcessor.ProcessAsync(raw.Bytes, ext, maxWidth, maxHeight, ct);
+            var img = await PageImageProcessor.ProcessAsync(raw.Bytes, ext, maxWidth, maxHeight, grayscale: false, ct);
             idx++;
             yield return new EpubWriter.Page($"page-{idx:D4}{img.Extension}", img.Bytes, img.Width, img.Height);
         }
