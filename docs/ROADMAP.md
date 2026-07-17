@@ -55,16 +55,11 @@ settings cookie — fold the existing `scr` / favorite cookies into the same con
 
 ## Conversion / rendering
 
-- **Conversion memory footprint.** Conversion buffers the whole archive in a
-  `MemoryStream` and holds every page as bytes (peak ~600 MB on a 223 MB comic).
-  Logs from a low-power self-hosted box show this running slowly, **not** OOMing.
-  The request-cancellation that used to make a slow convert never finish is now
-  cured (conversion runs detached in a background worker), but the high peak (and
-  the slowness it brings) still matters: spool the archive to a temp file instead
-  of RAM, and release each page after it's written into the EPUB. More important
-  once retina (heavier pages) is an option.
 - **Conversion speed.** First conversion of a big comic is ~60–90 s (ImageSharp
-  resizing ~280 pages, serially). Parallelise page processing.
+  resizing ~280 pages, serially). Parallelise page processing. Trades against
+  memory, though: parallelising raises the per-conversion peak (more pages held
+  at once), so this is deferred in favour of the low-memory serial path shipped
+  under Runtime footprint.
 - **Cover image.** The converted EPUB currently declares **no cover**, so Apple
   Books shows a blank placeholder and lenient readers just fall back to rendering
   page 1. Declare a real cover, using **both** cover mechanisms for compatibility:
@@ -118,30 +113,11 @@ settings cookie — fold the existing `scr` / favorite cookies into the same con
 
 ## Runtime footprint
 
-- **Idle memory (~500 MB).** The container sits at ~500 MB while doing nothing —
-  far more than a thin Razor Pages sidecar should need. Goal: get idle usage
-  *much* lower (well under ~150 MB feels realistic for this app). Leads, roughly
-  in order:
-  1. **Measure before tuning.** Pin down what the 500 MB actually is: compare the
-     container stat (cgroup v2 counts page cache, which is reclaimable and mostly
-     harmless) against the process working set and `GC.GetGCMemoryInfo()`. Also
-     distinguish *fresh-start* idle from *post-conversion* idle — after a
-     ~600 MB-peak conversion (see **Conversion memory footprint**) the GC keeps
-     large-object-heap segments committed, so "idle" after one convert can look
-     like a leak when it's really retained heap. Fixing the conversion item
-     (temp-file spooling, per-page release) may fix much of this for free.
-  2. **GC mode.** ASP.NET Core defaults to Server GC, which commits per-core
-     heaps sized for throughput — wrong trade-off for a mostly-idle single-user
-     sidecar. Try Workstation GC (`<ServerGarbageCollection>false</…>`),
-     `GCConserveMemory`, and/or a heap hard limit — either
-     `DOTNET_GCHeapHardLimit*` or simply a container memory limit, which the GC
-     respects. Verify a capped heap still survives a worst-case conversion
-     (another reason the spool-to-disk work matters).
-  3. **Baseline trim.** Smaller wins: `InvariantGlobalization` (drops ICU —
-     verify title sorting for non-ASCII libraries first), disabling unused
-     ASP.NET Core features/logging providers, `PublishTrimmed`. Native AOT is
-     deliberately off the table (see CLAUDE.md), and shouldn't be needed —
-     GC configuration is where the bulk of this lives.
+- **Baseline trim.** Smaller idle wins beyond the GC + streaming work already
+  shipped: `InvariantGlobalization` (drops ICU — verify title sorting for
+  non-ASCII libraries first), disabling unused ASP.NET Core features / logging
+  providers, `PublishTrimmed`. Native AOT is off the table (CLAUDE.md); GC
+  configuration carried the bulk.
 
 ## Security
 
@@ -173,3 +149,10 @@ Shipped; kept as a short record (full detail in git history / the PR).
   it; JS polls a status endpoint, no-JS gets a `<noscript>` meta-refresh.
 - **Listing freshness** — `Cache-Control: no-store` on the listing.
 - **Regen (↻) feedback** — rides the same status poll as Convert.
+- **Conversion memory footprint** — archive spooled to a temp file (not a
+  `MemoryStream`) and pages streamed into the EPUB one at a time (only one
+  page's bytes held); ImageSharp's pool released per conversion.
+- **Runtime footprint (idle)** — Workstation GC + `ConserveMemory` baked into
+  the image; measured on-box (resting ~897 → ~554 MiB from GC alone, streaming
+  + pool-release cut the rest); container memory-limit guidance added. Baseline
+  trim remains (see backlog).
