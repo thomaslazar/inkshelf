@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <!-- Single-user sidecar with sequential CPU-bound conversions: Workstation GC
          (one heap, returns memory to the OS) beats Server GC's per-core heaps.
          Validated on-box: resting footprint −38%. See the memory-footprint spec. -->

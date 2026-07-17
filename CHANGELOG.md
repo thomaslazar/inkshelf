@@ -3,6 +3,29 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.1.2 — 2026-07-17
+
+### Highlights
+- **Much lower memory use during and after conversions.** Comic conversion no
+  longer buffers the whole archive and every page in RAM — the download is
+  spooled to a temp file and pages are streamed into the EPUB one at a time, so
+  only a single page is held. Combined with Workstation GC (which hands memory
+  back to the OS), the sidecar no longer ratchets up to ~900 MiB and stay there
+  after a batch; it returns to near-idle.
+- **The per-conversion peak is bounded by one page**, so even large comics stay
+  modest — safe on a memory-constrained host.
+- Operators can now set a **container memory limit** (see the compose example /
+  README); with the lower footprint it can be kept tight.
+- No change to converted-EPUB output — byte-identical to before.
+
+### Performance
+- perf: stream pages into the EPUB instead of buffering all
+- perf: spool archive to temp file and release ImageSharp pool per job
+- perf: use Workstation GC + conserve memory for the sidecar
+
+### Fixes
+- fix: make convert temp-file cleanup best-effort in finally
+
 ## v0.1.1 — 2026-07-16
 
 ### Highlights
