@@ -49,6 +49,8 @@ public sealed class ConvertWorker : BackgroundService
 
     private async Task ProcessAsync(ConvertJob job, CancellationToken ct)
     {
+        var dlTmp = Path.Combine(Path.GetDirectoryName(job.CachePath)!,
+            Guid.NewGuid().ToString("N") + ".dl.tmp");
         try
         {
             if (File.Exists(job.CachePath)) { _queue.MarkDone(job.CachePath); return; }
@@ -62,16 +64,22 @@ public sealed class ConvertWorker : BackgroundService
                 using var scope = _scopes.CreateScope();
                 var download = scope.ServiceProvider.GetRequiredService<AbsDownloadClient>();
 
-                await using var archive = await download.DownloadEbookAsync(job.ItemId, job.AccessToken, ct);
-                using var buffered = new MemoryStream();
-                if (!await CopyWithLimitAsync(archive, buffered, _options.MaxArchiveBytes, ct))
+                // Spool the download to a temp FILE (not a MemoryStream) so the ~220 MiB
+                // archive never sits in the managed heap. Ceiling enforced during the copy.
+                await using (var archive = await download.DownloadEbookAsync(job.ItemId, job.AccessToken, ct))
+                await using (var spool = new FileStream(dlTmp, FileMode.Create, FileAccess.Write))
                 {
-                    _logger.LogWarning("Archive for {Id} exceeds {Limit} bytes — refusing.", job.ItemId, _options.MaxArchiveBytes);
-                    _queue.MarkFailed(job.CachePath);
-                    return;
+                    if (!await CopyWithLimitAsync(archive, spool, _options.MaxArchiveBytes, ct))
+                    {
+                        _logger.LogWarning("Archive for {Id} exceeds {Limit} bytes — refusing.", job.ItemId, _options.MaxArchiveBytes);
+                        _queue.MarkFailed(job.CachePath);
+                        return;
+                    }
                 }
-                buffered.Position = 0;
-                await _converter.ConvertAsync(buffered, job.Meta, job.CachePath, job.MaxW, job.MaxH, job.Dpr, ct);
+
+                await using (var read = new FileStream(dlTmp, FileMode.Open, FileAccess.Read))
+                    await _converter.ConvertAsync(read, job.Meta, job.CachePath, job.MaxW, job.MaxH, job.Dpr, ct);
+
                 _cache.EnforceCap(_options.MaxCacheBytes);
                 _logger.LogInformation("Converted {Id} in {Ms} ms", job.ItemId, sw.ElapsedMilliseconds);
             }
@@ -79,14 +87,20 @@ public sealed class ConvertWorker : BackgroundService
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // App stopping mid-convert: leave the .tmp for the next startup sweep,
-            // don't mark Failed (a restart re-queues on the next tap anyway).
-            throw;
+            throw; // app stopping — leave .tmp for the next startup sweep, don't mark Failed
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Conversion failed for {Id}", job.ItemId);
             _queue.MarkFailed(job.CachePath);
+        }
+        finally
+        {
+            try { if (File.Exists(dlTmp)) File.Delete(dlTmp); } catch (IOException) { }
+            // Return ImageSharp's retained UNMANAGED pool to the OS between jobs
+            // (GC config can't reclaim it). Safe across jobs — trims free buffers,
+            // not ones a concurrent convert is renting.
+            SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.ReleaseRetainedResources();
         }
     }
 
