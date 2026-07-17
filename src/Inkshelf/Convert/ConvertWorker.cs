@@ -96,7 +96,9 @@ public sealed class ConvertWorker : BackgroundService
         }
         finally
         {
-            try { if (File.Exists(dlTmp)) File.Delete(dlTmp); } catch (IOException) { }
+            // Best-effort cleanup: never let deleting our own temp file throw out of
+            // finally (it would mask a real conversion exception and skip the release).
+            try { if (File.Exists(dlTmp)) File.Delete(dlTmp); } catch { }
             // Return ImageSharp's retained UNMANAGED pool to the OS between jobs
             // (GC config can't reclaim it). Safe across jobs — trims free buffers,
             // not ones a concurrent convert is renting.
