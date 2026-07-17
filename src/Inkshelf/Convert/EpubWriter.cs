@@ -12,12 +12,18 @@ public static class EpubWriter
     // and the image's pixel size (the fixed-layout viewport is derived from it).
     public sealed record Page(string Name, byte[] Bytes, int Width, int Height);
 
+    // Lightweight per-page record kept for the manifest/spine after the page's
+    // bytes have already been streamed into the zip and released.
+    private sealed record PageMeta(string Name);
+
     // maxWidth/maxHeight are applied upstream (PageImageProcessor). dpr converts
     // image pixels to the CSS viewport (viewport = px / dpr) so the reader lays
     // each page out full-screen while the image stays physical. Caller passes dpr ≥ 1.
-    public static void Write(string outPath, EbookMeta meta, IReadOnlyList<Page> pages, double dpr)
+    public static async Task WriteAsync(string outPath, EbookMeta meta,
+        IAsyncEnumerable<Page> pages, double dpr, CancellationToken ct)
     {
         var tmp = outPath + ".tmp";
+        var metas = new List<PageMeta>();
         using (var fs = new FileStream(tmp, FileMode.Create))
         using (var zip = new ZipArchive(fs, ZipArchiveMode.Create))
         {
@@ -31,20 +37,21 @@ public static class EpubWriter
             Write("META-INF/container.xml",
                 "<?xml version=\"1.0\"?><container version=\"1.0\" xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles><rootfile full-path=\"OEBPS/content.opf\" media-type=\"application/oebps-package+xml\"/></rootfiles></container>");
 
-            // page images + xhtml
-            for (var i = 0; i < pages.Count; i++)
+            var i = 0;
+            await foreach (var p in pages.WithCancellation(ct))
             {
-                var p = pages[i];
+                // Write the image + its xhtml, then keep only the light metadata so
+                // the page's bytes become collectable — one page live at a time.
                 using (var s = zip.CreateEntry($"OEBPS/img/{p.Name}").Open()) s.Write(p.Bytes);
-                // Viewport is the page's CSS size (image pixels ÷ dpr) so the
-                // reader lays it out to fill the screen; the image stays physical.
                 var vw = Math.Max(1, (int)Math.Round(p.Width / dpr));
                 var vh = Math.Max(1, (int)Math.Round(p.Height / dpr));
-                Write($"OEBPS/page-{i + 1:D4}.xhtml", PageXhtml(p.Name, vw, vh, i + 1));
+                i++;
+                Write($"OEBPS/page-{i:D4}.xhtml", PageXhtml(p.Name, vw, vh, i));
+                metas.Add(new PageMeta(p.Name));
             }
-            Write("OEBPS/content.opf", Opf(meta, pages));
-            Write("OEBPS/nav.xhtml", Nav(pages.Count));
-            Write("OEBPS/toc.ncx", Ncx(meta, pages.Count));
+            Write("OEBPS/content.opf", Opf(meta, metas));
+            Write("OEBPS/nav.xhtml", Nav(metas.Count));
+            Write("OEBPS/toc.ncx", Ncx(meta, metas.Count));
         }
         if (File.Exists(outPath)) File.Delete(outPath);
         File.Move(tmp, outPath);
@@ -65,7 +72,7 @@ public static class EpubWriter
         return sb.ToString();
     }
 
-    private static string Opf(EbookMeta m, IReadOnlyList<Page> pages)
+    private static string Opf(EbookMeta m, IReadOnlyList<PageMeta> pages)
     {
         var sb = new StringBuilder();
         sb.Append("<?xml version=\"1.0\" encoding=\"utf-8\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"bookid\" prefix=\"rendition: http://www.idpf.org/vocab/rendition/#\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">");
