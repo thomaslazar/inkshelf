@@ -37,8 +37,9 @@ settings cookie — fold the existing `scr` / favorite cookies into the same con
   hard-coded non-retina pages are upscaled and hardly readable.)* Pages are
   generated at CSS pixels and forced to dpr 1; let the user opt into
   full-resolution ("retina") pages per device. Guard the cost — retina pages are
-  ~dpr² heavier to generate and hold, which is exactly what strains a small host
-  (see **Conversion memory footprint**), so pair the toggle with that memory work.
+  ~dpr² heavier to generate and hold, which is exactly what strains a small host —
+  the low-memory conversion work (see **Done**) helps, but verify retina against
+  the per-conversion peak on a small box before enabling it by default.
 - **Resolution override.** Let the user hand-set the conversion resolution per
   device, for when the browser-reported screen size isn't ideal. Pairs with the
   retina toggle.
