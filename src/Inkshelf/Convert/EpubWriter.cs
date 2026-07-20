@@ -12,6 +12,10 @@ public static class EpubWriter
     // and the image's pixel size (the fixed-layout viewport is derived from it).
     public sealed record Page(string Name, byte[] Bytes, int Width, int Height);
 
+    // A processed cover image: its bytes and in-zip extension (with dot, e.g. ".jpg").
+    // Metadata-only — declared as the cover, never added to the spine.
+    public sealed record Cover(byte[] Bytes, string Ext);
+
     // Lightweight per-page record kept for the manifest/spine after the page's
     // bytes have already been streamed into the zip and released.
     private sealed record PageMeta(string Name);
@@ -20,7 +24,7 @@ public static class EpubWriter
     // image pixels to the CSS viewport (viewport = px / dpr) so the reader lays
     // each page out full-screen while the image stays physical. Caller passes dpr ≥ 1.
     public static async Task WriteAsync(string outPath, EbookMeta meta,
-        IAsyncEnumerable<Page> pages, double dpr, CancellationToken ct)
+        IAsyncEnumerable<Page> pages, double dpr, CancellationToken ct, Cover? cover = null)
     {
         var tmp = outPath + ".tmp";
         var metas = new List<PageMeta>();
@@ -37,6 +41,11 @@ public static class EpubWriter
             Write("META-INF/container.xml",
                 "<?xml version=\"1.0\"?><container version=\"1.0\" xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles><rootfile full-path=\"OEBPS/content.opf\" media-type=\"application/oebps-package+xml\"/></rootfiles></container>");
 
+            // Dedicated cover image (ABS cover), when present. Order after mimetype
+            // is flexible; the manifest item + <meta> are emitted in Opf below.
+            if (cover is { } cv)
+            { using var s = zip.CreateEntry($"OEBPS/cover{cv.Ext}").Open(); s.Write(cv.Bytes); }
+
             var i = 0;
             await foreach (var p in pages.WithCancellation(ct))
             {
@@ -49,7 +58,7 @@ public static class EpubWriter
                 Write($"OEBPS/page-{i:D4}.xhtml", PageXhtml(p.Name, vw, vh, i));
                 metas.Add(new PageMeta(p.Name));
             }
-            Write("OEBPS/content.opf", Opf(meta, metas));
+            Write("OEBPS/content.opf", Opf(meta, metas, cover));
             Write("OEBPS/nav.xhtml", Nav(metas.Count));
             Write("OEBPS/toc.ncx", Ncx(meta, metas.Count));
         }
@@ -58,6 +67,13 @@ public static class EpubWriter
     }
 
     private static string Esc(string s) => System.Security.SecurityElement.Escape(s) ?? s;
+
+    private static string MimeFor(string ext) => ext.ToLowerInvariant() switch
+    {
+        ".png" => "image/png",
+        ".gif" => "image/gif",
+        _ => "image/jpeg",
+    };
 
     // Fixed-layout page: the viewport is the page's CSS size and the image fills
     // it full-bleed (no reader margins).
@@ -72,8 +88,12 @@ public static class EpubWriter
         return sb.ToString();
     }
 
-    private static string Opf(EbookMeta m, IReadOnlyList<PageMeta> pages)
+    private static string Opf(EbookMeta m, IReadOnlyList<PageMeta> pages, Cover? cover)
     {
+        // The manifest id used as the cover: a dedicated cover item when an ABS
+        // cover was embedded, else the first page image (fallback), else none.
+        var coverId = cover is not null ? "cover-img" : (pages.Count > 0 ? "img1" : null);
+
         var sb = new StringBuilder();
         sb.Append("<?xml version=\"1.0\" encoding=\"utf-8\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"bookid\" prefix=\"rendition: http://www.idpf.org/vocab/rendition/#\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">");
         sb.Append($"<dc:identifier id=\"bookid\">{Esc(Uid(m))}</dc:identifier><dc:title>{Esc(m.Title)}</dc:title><dc:language>en</dc:language><dc:creator>{Esc(m.Author)}</dc:creator>");
@@ -83,13 +103,19 @@ public static class EpubWriter
         sb.Append("<meta property=\"rendition:layout\">pre-paginated</meta><meta property=\"rendition:spread\">none</meta>");
         if (!string.IsNullOrEmpty(m.Series)) sb.Append($"<meta name=\"calibre:series\" content=\"{Esc(m.Series)}\"/>");
         if (!string.IsNullOrEmpty(m.Sequence)) sb.Append($"<meta name=\"calibre:series_index\" content=\"{Esc(m.Sequence)}\"/>");
+        // EPUB2 cover pointer (references the manifest item id). Paired with the
+        // EPUB3 properties="cover-image" flag on that same item in the manifest.
+        if (coverId is not null) sb.Append($"<meta name=\"cover\" content=\"{coverId}\"/>");
         // NCX (EPUB2) alongside the EPUB3 nav for older readers (e.g. Tolino).
         sb.Append("</metadata><manifest><item id=\"ncx\" href=\"toc.ncx\" media-type=\"application/x-dtbncx+xml\"/><item id=\"nav\" href=\"nav.xhtml\" media-type=\"application/xhtml+xml\" properties=\"nav\"/>");
+        // Dedicated cover image (ABS cover), when present.
+        if (cover is { } c)
+            sb.Append($"<item id=\"cover-img\" href=\"cover{c.Ext}\" media-type=\"{MimeFor(c.Ext)}\" properties=\"cover-image\"/>");
         for (var i = 0; i < pages.Count; i++)
         {
-            var mime = Path.GetExtension(pages[i].Name).ToLowerInvariant() == ".png" ? "image/png"
-                : Path.GetExtension(pages[i].Name).ToLowerInvariant() == ".gif" ? "image/gif" : "image/jpeg";
-            sb.Append($"<item id=\"img{i + 1}\" href=\"img/{pages[i].Name}\" media-type=\"{mime}\"/>");
+            // Fallback: flag the FIRST page image as the cover when no ABS cover.
+            var props = (cover is null && i == 0) ? " properties=\"cover-image\"" : "";
+            sb.Append($"<item id=\"img{i + 1}\" href=\"img/{pages[i].Name}\" media-type=\"{MimeFor(Path.GetExtension(pages[i].Name))}\"{props}/>");
             sb.Append($"<item id=\"pg{i + 1}\" href=\"page-{i + 1:D4}.xhtml\" media-type=\"application/xhtml+xml\"/>");
         }
         sb.Append("</manifest><spine toc=\"ncx\">");

@@ -106,4 +106,37 @@ public class EpubConverterTests
         Assert.Equal(400, info.Width); // image itself stays physical
         File.Delete(outPath);
     }
+
+    [Fact]
+    public async Task Convert_embeds_supplied_cover_transcoding_webp_to_jpg()
+    {
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        await new EpubConverter().ConvertAsync(Cbz(), new EbookMeta("T", "A", null, null),
+            outPath, new RenderTarget(0, 0, 1, false), default,
+            (Img(300, 450, new WebpEncoder()), ".webp"));
+
+        using var epub = ZipFile.OpenRead(outPath);
+        var names = epub.Entries.Select(e => e.FullName).ToList();
+        Assert.Contains("OEBPS/cover.jpg", names);              // webp transcoded to jpg
+        Assert.DoesNotContain(names, n => n == "OEBPS/cover.webp");
+        var opf = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("content.opf")).Open()).ReadToEnd();
+        Assert.Contains("id=\"cover-img\"", opf);
+        Assert.Contains("<meta name=\"cover\" content=\"cover-img\"/>", opf);
+        File.Delete(outPath);
+    }
+
+    [Fact]
+    public async Task Convert_with_undecodable_cover_falls_back_to_first_page()
+    {
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        await new EpubConverter().ConvertAsync(Cbz(), new EbookMeta("T", "A", null, null),
+            outPath, new RenderTarget(0, 0, 1, false), default,
+            (new byte[] { 1, 2, 3, 4 }, ".jpg"));               // not a real image
+
+        using var epub = ZipFile.OpenRead(outPath);
+        Assert.DoesNotContain(epub.Entries.Select(e => e.FullName), n => n.StartsWith("OEBPS/cover"));
+        var opf = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("content.opf")).Open()).ReadToEnd();
+        Assert.Contains("<meta name=\"cover\" content=\"img1\"/>", opf);
+        File.Delete(outPath);
+    }
 }

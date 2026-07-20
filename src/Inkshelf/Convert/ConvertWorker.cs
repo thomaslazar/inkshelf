@@ -77,8 +77,12 @@ public sealed class ConvertWorker : BackgroundService
                     }
                 }
 
+                // Best-effort cover (small; never fails the job). Uses the same
+                // captured token as the ebook download.
+                var cover = await TryFetchCoverAsync(download, job, ct);
+
                 await using (var read = new FileStream(dlTmp, FileMode.Open, FileAccess.Read))
-                    await _converter.ConvertAsync(read, job.Meta, job.CachePath, job.Target, ct);
+                    await _converter.ConvertAsync(read, job.Meta, job.CachePath, job.Target, ct, cover);
 
                 _cache.EnforceCap(_options.MaxCacheBytes);
                 _logger.LogInformation("Converted {Id} in {Ms} ms", job.ItemId, sw.ElapsedMilliseconds);
@@ -105,6 +109,46 @@ public sealed class ConvertWorker : BackgroundService
             SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.ReleaseRetainedResources();
         }
     }
+
+    // Thumbnail-appropriate cover width requested from ABS. Not the device page cap:
+    // the cover is only ever a thumbnail, so page-resolution art would just bloat the
+    // file. The device cap still bounds it on the way through PageImageProcessor.
+    private const int CoverWidth = 600;
+
+    // Best-effort ABS cover fetch. Any failure (no cover / 404 / transient, including
+    // an HttpClient request timeout, which surfaces as TaskCanceledException) yields
+    // null and the converter falls back to the first page — never fails the job.
+    // Only a genuine app-shutdown cancellation (ct.IsCancellationRequested) propagates.
+    private static async Task<(byte[] Bytes, string Ext)?> TryFetchCoverAsync(
+        AbsDownloadClient download, ConvertJob job, CancellationToken ct)
+    {
+        try
+        {
+            var (stream, contentType) = await download.DownloadCoverAsync(job.ItemId, job.AccessToken, CoverWidth, ct);
+            await using (stream)
+            {
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms, ct);
+                return (ms.ToArray(), CoverExt(contentType));
+            }
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return null; // e.g. HttpClient request timeout — not app shutdown; fall back to first page
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
+    }
+
+    private static string CoverExt(string contentType) => contentType switch
+    {
+        "image/png" => ".png",
+        "image/webp" => ".webp",
+        "image/gif" => ".gif",
+        _ => ".jpg",
+    };
 
     // Copy src→dst, returning false as soon as more than `limit` bytes are read
     // (decompression-bomb / OOM guard). limit <= 0 disables the cap.

@@ -32,4 +32,33 @@ public class AbsDownloadClientTests
         await Assert.ThrowsAsync<HttpRequestException>(
             () => client.DownloadEbookAsync("item9", "stale", default));
     }
+
+    [Fact]
+    public async Task DownloadCover_sends_bearer_and_width_and_returns_stream_and_type()
+    {
+        var stub = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(new byte[] { 9, 8, 7 })
+            { Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png") } }
+        });
+        var client = Client(stub);
+
+        var (stream, type) = await client.DownloadCoverAsync("item9", "TOKEN123", 600, default);
+        await using var _ = stream;
+
+        Assert.Equal("/api/items/item9/cover", stub.Last!.RequestUri!.AbsolutePath);
+        Assert.Equal("width=600", stub.Last!.RequestUri!.Query.TrimStart('?'));
+        Assert.Equal("Bearer", stub.Last!.Headers.Authorization!.Scheme);
+        Assert.Equal("TOKEN123", stub.Last!.Headers.Authorization!.Parameter);
+        Assert.Equal("image/png", type);
+        Assert.Equal(3, stream.Length);
+    }
+
+    [Fact]
+    public async Task DownloadCover_throws_on_404()
+    {
+        var client = Client(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.NotFound)));
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => client.DownloadCoverAsync("item9", "tok", 600, default));
+    }
 }
