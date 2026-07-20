@@ -162,4 +162,42 @@ public class AbsApiClientTests
         var body = await h.Last!.Content!.ReadAsStringAsync();
         Assert.Contains("\"isFinished\":false", body);
     }
+
+    [Fact]
+    public async Task GetItemsBatchAsync_posts_ids_and_parses_expanded_fields()
+    {
+        var h = new StubHandler(_ => StubHandler.Json(
+            """{"libraryItems":[{"id":"i1","libraryId":"lib1","media":{"metadata":{"title":"My Comic","authors":[{"id":"a1","name":"Author One"}],"series":[{"id":"s1","name":"The Sandman","sequence":"2"}]},"coverPath":"/covers/i1.jpg","ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"x.cbz","size":123,"mtimeMs":456}}}}]}"""));
+        var items = await Client(h).GetItemsBatchAsync(new[] { "i1" });
+
+        Assert.Equal("/api/items/batch/get", h.Last!.RequestUri!.AbsolutePath);
+        Assert.Equal(HttpMethod.Post, h.Last!.Method);
+        var it = Assert.Single(items);
+        Assert.Equal("i1", it.Id);
+        Assert.Equal("lib1", it.LibraryId);
+        Assert.Equal("My Comic", it.Media!.Metadata!.Title);
+        Assert.Equal("/covers/i1.jpg", it.Media!.CoverPath);
+        Assert.Equal("The Sandman", it.Media!.Metadata!.Series![0].Name);
+        Assert.Equal("cbz", it.Media!.EbookFile!.EbookFormat);
+        Assert.Equal(123, it.Media!.EbookFile!.Metadata!.Size);
+    }
+
+    [Fact]
+    public async Task GetItemsBatchAsync_empty_ids_makes_no_call()
+    {
+        var h = new StubHandler(_ => StubHandler.Json("""{"libraryItems":[]}"""));
+        var items = await Client(h).GetItemsBatchAsync(System.Array.Empty<string>());
+        Assert.Empty(items);
+        Assert.Null(h.Last); // no request issued
+    }
+
+    [Fact]
+    public async Task GetItemsMetadataBatchAsync_still_returns_media_dict()
+    {
+        var h = new StubHandler(_ => StubHandler.Json(
+            """{"libraryItems":[{"id":"i1","media":{"metadata":{"series":[{"id":"s1","name":"S"}]}}}]}"""));
+        var map = await Client(h).GetItemsMetadataBatchAsync(new[] { "i1" });
+        Assert.True(map.ContainsKey("i1"));
+        Assert.Equal("S", map["i1"].Metadata!.Series![0].Name);
+    }
 }

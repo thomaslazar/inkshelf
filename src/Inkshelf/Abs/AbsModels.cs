@@ -45,15 +45,18 @@ public record AbsBatchItems(
     [property: JsonPropertyName("libraryItems")] List<AbsBatchItem> LibraryItems);
 public record AbsBatchItem(
     [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("media")] AbsBatchMedia? Media);
+    [property: JsonPropertyName("media")] AbsBatchMedia? Media,
+    [property: JsonPropertyName("libraryId")] string? LibraryId = null);
 public record AbsBatchMedia(
     [property: JsonPropertyName("metadata")] AbsBatchMetadata? Metadata,
     // Present on the expanded shape; lets the listing tell whether a convert is
     // already cached (needs the ebook file's size + mtime for the cache key).
-    [property: JsonPropertyName("ebookFile")] AbsEbookFile? EbookFile = null);
+    [property: JsonPropertyName("ebookFile")] AbsEbookFile? EbookFile = null,
+    [property: JsonPropertyName("coverPath")] string? CoverPath = null);
 public record AbsBatchMetadata(
     [property: JsonPropertyName("authors")] List<AbsRef>? Authors = null,
-    [property: JsonPropertyName("series")] List<AbsSeriesRef>? Series = null);
+    [property: JsonPropertyName("series")] List<AbsSeriesRef>? Series = null,
+    [property: JsonPropertyName("title")] string? Title = null);
 
 // Item detail (GET /api/items/{id})
 public record AbsItemDetail(

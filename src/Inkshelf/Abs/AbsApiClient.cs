@@ -34,17 +34,25 @@ public class AbsApiClient
             ?? new AbsItemsPage(new(), 0, limit, page);
     }
 
-    // Fetch expanded metadata (structured authors/series) for a page of items in
-    // one call, so listing rows can render accurate per-author/per-series links.
+    // Fetch expanded items (id, libraryId, structured metadata, coverPath,
+    // ebookFile) for a set of ids in ONE call. Cross-library — batch/get queries
+    // by id only, not scoped to a library.
+    public async Task<List<AbsBatchItem>> GetItemsBatchAsync(
+        IReadOnlyCollection<string> itemIds, CancellationToken ct = default)
+    {
+        if (itemIds.Count == 0) return new();
+        using var content = JsonContent.Create(new { libraryItemIds = itemIds });
+        using var res = await SendAsync(HttpMethod.Post, "/api/items/batch/get", ct, content);
+        var body = await res.Content.ReadFromJsonAsync<AbsBatchItems>(ct);
+        return body?.LibraryItems ?? new();
+    }
+
+    // Expanded metadata keyed by item id, for the listing's per-row links/state.
     public async Task<Dictionary<string, AbsBatchMedia>> GetItemsMetadataBatchAsync(
         IReadOnlyCollection<string> itemIds, CancellationToken ct = default)
     {
         var map = new Dictionary<string, AbsBatchMedia>();
-        if (itemIds.Count == 0) return map;
-        using var content = JsonContent.Create(new { libraryItemIds = itemIds });
-        using var res = await SendAsync(HttpMethod.Post, "/api/items/batch/get", ct, content);
-        var body = await res.Content.ReadFromJsonAsync<AbsBatchItems>(ct);
-        foreach (var it in body?.LibraryItems ?? new())
+        foreach (var it in await GetItemsBatchAsync(itemIds, ct))
             if (it.Media is not null) map[it.Id] = it.Media;
         return map;
     }

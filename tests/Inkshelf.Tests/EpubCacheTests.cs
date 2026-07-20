@@ -108,4 +108,36 @@ public class EpubCacheTests
         }
         finally { Directory.Delete(dir, true); }
     }
+
+    [Fact]
+    public void ListVariants_round_trips_PathFor_including_hyphenated_id_and_grayscale()
+    {
+        var dir = TempDirPath();
+        var c = new EpubCache(dir);
+        // A UUID-style id contains hyphens — must survive right-to-left parsing.
+        var idA = "3f2a1b6c-dead-beef-0001-abcdef123456";
+        File.WriteAllText(c.PathFor(idA, 100, 200, 1730, 2246), "e");
+        File.WriteAllText(c.PathFor("i2", 55, 66, 800, 1000, grayscale: true), "e");
+
+        var v = c.ListVariants().ToList();
+        Assert.Equal(2, v.Count);
+
+        var a = v.Single(x => x.ItemId == idA);
+        Assert.Equal(100, a.Size); Assert.Equal(200, a.MtimeMs);
+        Assert.Equal(1730, a.MaxW); Assert.Equal(2246, a.MaxH); Assert.False(a.Grayscale);
+
+        var b = v.Single(x => x.ItemId == "i2");
+        Assert.Equal(55, b.Size); Assert.Equal(66, b.MtimeMs);
+        Assert.Equal(800, b.MaxW); Assert.Equal(1000, b.MaxH); Assert.True(b.Grayscale);
+    }
+
+    [Fact]
+    public void ListVariants_skips_files_that_dont_match_the_scheme()
+    {
+        var dir = TempDirPath();
+        var c = new EpubCache(dir);
+        File.WriteAllText(Path.Combine(dir, "garbage.epub"), "e");
+        File.WriteAllText(Path.Combine(dir, "i1-100-200-1730x2246.epub"), "e"); // valid
+        Assert.Single(c.ListVariants());
+    }
 }
