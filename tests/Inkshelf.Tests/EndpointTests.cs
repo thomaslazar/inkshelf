@@ -183,4 +183,39 @@ public class EndpointTests
         var grayInput = System.Text.RegularExpressions.Regex.Match(html, "<input[^>]*name=\"grayscale\"[^>]*>").Value;
         Assert.DoesNotContain("checked", grayInput);
     }
+
+    [Fact]
+    public async Task Read_post_without_antiforgery_returns_bad_request()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var response = await client.PostAsync("/read/item1", content: null);
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Read_post_with_token_but_no_session_redirects_to_login()
+    {
+        // Valid antiforgery token (the client stores the matching cookie from /login),
+        // but no session. Antiforgery passes → handler calls SetReadAsync → AbsAuthHandler
+        // finds no token → AbsAuthException → the auth middleware redirects to /login.
+        // A 302→/login (not a 400) proves the endpoint is mapped, antiforgery validated,
+        // and the handler reached the ABS call path. Mirrors Cover_WithoutSession.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var token = await GetAntiforgeryTokenAsync(client);
+        var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["read"] = "1",
+        });
+
+        var response = await client.PostAsync("/read/item1", content);
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/login", response.Headers.Location?.OriginalString);
+    }
 }

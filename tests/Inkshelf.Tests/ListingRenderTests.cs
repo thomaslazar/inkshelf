@@ -36,7 +36,7 @@ public class ListingRenderTests
         """;
 
     private static string BatchJson() => $$"""
-        {"libraryItems":[{"id":"{{ItemId}}","media":{"metadata":{"authors":[{"id":"a1","name":"Author One"}],"series":[]},
+        {"libraryItems":[{"id":"{{ItemId}}","media":{"metadata":{"authors":[{"id":"a1","name":"Author One"}],"series":[{"id":"s1","name":"The Sandman"} ]},
          "ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"x.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } }]}
         """;
 
@@ -49,13 +49,14 @@ public class ListingRenderTests
 
     private const string LibrariesJson = """{"libraries":[{"id":"lib1","name":"Test Library","mediaType":"book"}]}""";
 
-    private static StubHandler MakeStub() => new(req =>
+    private static StubHandler MakeStub(string? meJson = null) => new(req =>
     {
         var path = req.RequestUri!.AbsolutePath;
         if (path == "/api/libraries") return StubHandler.Json(LibrariesJson);
         if (path == $"/api/libraries/{LibId}/items") return StubHandler.Json(ItemsJson());
         if (path == "/api/items/batch/get" && req.Method == HttpMethod.Post) return StubHandler.Json(BatchJson());
         if (path == $"/api/libraries/{LibId}/search") return StubHandler.Json(SearchJson());
+        if (path == "/api/me") return StubHandler.Json(meJson ?? """{"mediaProgress":[]}""");
         return new HttpResponseMessage(HttpStatusCode.NotFound);
     });
 
@@ -240,5 +241,103 @@ public class ListingRenderTests
         Assert.Contains("Results for", html);
         Assert.Contains("EPUB &#10003;", html);
         Assert.DoesNotContain("data-warm", PrimaryConvertAnchor(html));
+    }
+
+    [Fact]
+    public async Task Unread_row_shows_mark_read_toggle()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        Assert.Contains($"action=\"/read/{ItemId}\"", html);
+        Assert.Contains(">Mark read</button>", html);
+        Assert.Contains("name=\"read\" value=\"1\"", html);
+    }
+
+    [Fact]
+    public async Task Read_row_shows_checked_toggle_that_unmarks()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        var me = $$"""{"mediaProgress":[{"libraryItemId":"{{ItemId}}","isFinished":true} ]}""";
+        using var factory = CreateFactory(MakeStub(me), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        Assert.Contains("&#10003; Read</button>", html);        // "✓ Read" (entity-encoded in markup)
+        Assert.Contains("name=\"read\" value=\"0\"", html);     // tapping unmarks
+    }
+
+    [Fact]
+    public async Task Search_row_shows_read_toggle_too()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        var me = $$"""{"mediaProgress":[{"libraryItemId":"{{ItemId}}","isFinished":true} ]}""";
+        using var factory = CreateFactory(MakeStub(me), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var req = LibraryRequest(factory);
+        req.RequestUri = new Uri($"/library/{LibId}?q=comic", UriKind.Relative);
+        var html = await (await client.SendAsync(req)).Content.ReadAsStringAsync();
+
+        Assert.Contains("Results for", html);
+        Assert.Contains($"action=\"/read/{ItemId}\"", html);
+        Assert.Contains("&#10003; Read</button>", html);
+    }
+
+    // A facet filter (?filter=series.<b64-id>, as the structured row links build)
+    // must show the facet TYPE and the resolved NAME, not the literal "filter".
+    [Fact]
+    public async Task Filter_by_series_shows_type_and_resolved_name()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var req = LibraryRequest(factory);
+        req.RequestUri = new Uri($"/library/{LibId}?filter=series.czE=", UriKind.Relative); // base64("s1")
+        var html = await (await client.SendAsync(req)).Content.ReadAsStringAsync();
+
+        Assert.Contains("Filtered by <strong>Series: The Sandman</strong>", html);
+    }
+
+    [Fact]
+    public async Task Filter_by_author_shows_type_and_resolved_name()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var req = LibraryRequest(factory);
+        req.RequestUri = new Uri($"/library/{LibId}?filter=authors.YTE=", UriKind.Relative); // base64("a1")
+        var html = await (await client.SendAsync(req)).Content.ReadAsStringAsync();
+
+        Assert.Contains("Filtered by <strong>Author: Author One</strong>", html);
+    }
+
+    // Nothing in the page matches the filtered id → fall back to just the type,
+    // never the bare "filter".
+    [Fact]
+    public async Task Filter_with_unresolved_id_falls_back_to_type()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var req = LibraryRequest(factory);
+        req.RequestUri = new Uri($"/library/{LibId}?filter=series.bm9wZQ==", UriKind.Relative); // base64("nope")
+        var html = await (await client.SendAsync(req)).Content.ReadAsStringAsync();
+
+        Assert.Contains("Filtered by <strong>Series</strong>", html);
+        Assert.DoesNotContain(">filter</strong>", html);
     }
 }

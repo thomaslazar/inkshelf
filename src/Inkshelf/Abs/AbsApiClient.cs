@@ -73,6 +73,29 @@ public class AbsApiClient
             ?? new AbsSearchResults(new(), new(), new());
     }
 
+    // Read state lives in ABS as per-user media progress. One call returns the
+    // whole finished-set; we key on libraryItemId (matches AbsItem.Id).
+    public async Task<HashSet<string>> GetFinishedItemIdsAsync(CancellationToken ct = default)
+    {
+        using var res = await SendAsync(HttpMethod.Get, "/api/me", ct);
+        var me = await res.Content.ReadFromJsonAsync<AbsMe>(ct);
+        var set = new HashSet<string>();
+        foreach (var mp in me?.MediaProgress ?? new())
+            if (mp.IsFinished && !string.IsNullOrEmpty(mp.LibraryItemId))
+                set.Add(mp.LibraryItemId);
+        return set;
+    }
+
+    // Mark an item read (isFinished:true) or unread (false). PATCH is symmetric —
+    // unmarking leaves a harmless isFinished:false progress row, so no DELETE / no
+    // need to know the progress-row id.
+    public async Task SetReadAsync(string itemId, bool finished, CancellationToken ct = default)
+    {
+        var content = JsonContent.Create(new { isFinished = finished });
+        using var res = await SendAsync(HttpMethod.Patch,
+            $"/api/me/progress/{Uri.EscapeDataString(itemId)}", ct, content);
+    }
+
     public async Task<(Stream Content, string ContentType)> GetCoverAsync(
         string itemId, int width, CancellationToken ct = default)
     {
