@@ -44,7 +44,7 @@
         <h2 id="books">Books <a class="totop" href="#top">↑</a></h2>
         foreach (var b in books)
         {
-            <partial name="_ItemRow" model="new Inkshelf.Pages.ItemRowModel(b.LibraryItem, Model.Links)" />
+            <partial name="_ItemRow" model="Model.RowFor(b.LibraryItem)" />
         }
     }
     if (series.Count > 0)

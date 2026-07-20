@@ -40,6 +40,13 @@ public class ListingRenderTests
          "ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"x.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } }]}
         """;
 
+    // A search hit for the same cbz item. Search uses ABS's EXPANDED item JSON,
+    // which carries the full ebookFile (format is at media.ebookFile.ebookFormat)
+    // but — unlike the minified listing — NO top-level media.ebookFormat.
+    private static string SearchJson() => $$"""
+        {"book":[{"libraryItem":{"id":"{{ItemId}}","media":{"metadata":{"title":"My Comic"},"ebookFile":{"ebookFormat":"cbz"} } } }],"series":[],"authors":[]}
+        """;
+
     private const string LibrariesJson = """{"libraries":[{"id":"lib1","name":"Test Library","mediaType":"book"}]}""";
 
     private static StubHandler MakeStub() => new(req =>
@@ -48,6 +55,7 @@ public class ListingRenderTests
         if (path == "/api/libraries") return StubHandler.Json(LibrariesJson);
         if (path == $"/api/libraries/{LibId}/items") return StubHandler.Json(ItemsJson());
         if (path == "/api/items/batch/get" && req.Method == HttpMethod.Post) return StubHandler.Json(BatchJson());
+        if (path == $"/api/libraries/{LibId}/search") return StubHandler.Json(SearchJson());
         return new HttpResponseMessage(HttpStatusCode.NotFound);
     });
 
@@ -188,5 +196,49 @@ public class ListingRenderTests
         Assert.Equal(HttpStatusCode.OK, colourResponse.StatusCode);
         Assert.DoesNotContain("EPUB &#10003;", colourHtml);
         Assert.Contains("data-warm>Convert</a>", PrimaryConvertAnchor(colourHtml));
+    }
+
+    // Regression: search-result rows for a cbz/cbr must offer Convert, not just
+    // Download. The search branch previously built ItemRowModel inline (State
+    // defaulting to NotConvertible), suppressing the convert action.
+    [Fact]
+    public async Task Search_result_row_offers_convert_for_cbz()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var req = LibraryRequest(factory);
+        req.RequestUri = new Uri($"/library/{LibId}?q=comic", UriKind.Relative);
+        var response = await client.SendAsync(req);
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Results for", html); // confirm we rendered the search branch
+        Assert.Contains($"/convert/{ItemId}?return=", html);
+        Assert.Contains("data-warm>Convert</a>", PrimaryConvertAnchor(html));
+    }
+
+    // Search rows fetch batch metadata too (hits are capped), so an already-
+    // converted item shows the cached "EPUB ✓" state, not a plain "Convert".
+    [Fact]
+    public async Task Search_result_row_shows_cached_when_already_converted()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H), "epub");
+
+        var req = LibraryRequest(factory);
+        req.RequestUri = new Uri($"/library/{LibId}?q=comic", UriKind.Relative);
+        var html = await (await client.SendAsync(req)).Content.ReadAsStringAsync();
+
+        Assert.Contains("Results for", html);
+        Assert.Contains("EPUB &#10003;", html);
+        Assert.DoesNotContain("data-warm", PrimaryConvertAnchor(html));
     }
 }
