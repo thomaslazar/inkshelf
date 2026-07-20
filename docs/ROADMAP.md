@@ -45,14 +45,6 @@ Settings to add to the per-device settings system:
   near-zero-JS / defensive-CSS constraints (cover, metadata block, formats list).
   *Note:* enumerating all ebook files likely needs the **expanded** item
   (`libraryFiles[]`), not just `media.ebookFile`; verify against the ABS source.
-- **Per-library "already converted" view.** A page, per library, listing the
-  books that are already converted and cached **for this device** (the cache is
-  keyed by item + size + mtime + device dimensions, so filter to variants matching
-  the current `scr`). Use case: "ah, I already converted that — click the series
-  to grab the next volume." Show title/series/author with links (series → filtered
-  listing) and a direct EPUB download. *Note:* needs a way to map cache entries
-  back to items — either reverse-map the item id from the cache filename and
-  re-fetch metadata, or keep a small sidecar index alongside the cache.
 - **Screenful pagination (investigation).** Spike whether we can size a page to
   exactly one screenful instead of a fixed 10. The `scr` cookie already reports
   the viewport (CSS w×h×dpr), so server-side we could compute
@@ -91,6 +83,14 @@ Test-coverage follow-ups from the hardening work (non-blocking):
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Converted (this device) view** — a `/converted` page listing every comic
+  already converted and cached for the current device, across all libraries
+  (the cache is enumerated by reverse-parsing filenames and filtered to the
+  device's render target). Reuses the listing row (`_ItemRow`), with a metadata
+  batch fetch for title/series/author + a series link into each item's library.
+  Reached from a link on the home page. Shipped as a single combined view (not
+  per-library): `POST /api/items/batch/get` is not library-scoped, so one call
+  covers every library and carries `libraryId` per item.
 - **Cover image** — the converted EPUB declares a real cover (EPUB3
   `properties="cover-image"` + EPUB2 `<meta name="cover">`), so Apple Books and
   other strict readers show a thumbnail. Prefers the ABS cover art (fetched at

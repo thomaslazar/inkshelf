@@ -42,8 +42,8 @@ src/Inkshelf/
     RenderTarget.cs       Resolved per-device render knobs (cap, dpr, grayscale).
   Endpoints/            Minimal-API groups, one static MapXxxEndpoints() each:
                         Cover, Download, Convert, Read, Session (logout+favorite), Settings, Diag.
-  Pages/                Razor Pages: Index, Login, Library, Settings (+ models); Shared/ partials.
-    Support/            Non-page helper types: LibraryLinks, ItemRowModel, Pager, SortLinks.
+  Pages/                Razor Pages: Index, Login, Library, Converted, Settings (+ models); Shared/ partials.
+    Support/            Non-page helper types: LibraryLinks, ItemRowModel, Pager, SortLinks, ConvertRowStateResolver.
 ```
 
 Tests live in `tests/Inkshelf.Tests/`, one file per unit. `dotnet test` from the
@@ -92,6 +92,13 @@ repo root (inside the devcontainer) must stay green.
 - **`LibraryLinks` is the single URL authority.** Every library listing/row/sort
   URL is built there, used by both the page model (`LibraryModel.Links`) and the
   row partial (`ItemRowModel.Links`). Don't re-implement URL building in a view.
+- **Convert-row state is computed in one place.** `ConvertRowStateResolver.Resolve`
+  turns (item, batch media, device `RenderTarget`, cache, queue) into a
+  `ConvertRowState`. Both the library listing and the `/converted` view call it, so
+  a "converted" badge always agrees across pages. The `/converted` view is the EPUB
+  cache read back: `EpubCache.ListVariants` reverse-parses filenames into item ids,
+  filtered to the current device's target, then one cross-library
+  `GET /api/items/batch/get` supplies metadata.
 - **Near-zero JS.** The two inline scripts in `_Layout.cshtml` (screen-size cookie,
   convert-warm XHR) are deliberate and tested on a real e-ink reader. Anything
   touching them needs a real-device test before merge; defensive CSS only (no
