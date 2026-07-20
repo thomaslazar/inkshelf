@@ -86,4 +86,55 @@ public class EpubWriterTests
         Assert.True(sizesWhenAsked[2] > sizesWhenAsked[1], $"expected growth, got {string.Join(",", sizesWhenAsked)}");
         File.Delete(outPath);
     }
+
+    [Fact]
+    public async Task WriteAsync_with_cover_declares_cover_image_both_ways()
+    {
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        await EpubWriter.WriteAsync(outPath, new EbookMeta("T", "A", null, null),
+            Stream(new EpubWriter.Page("page-0001.jpg", Jpg(80, 120), 80, 120)),
+            dpr: 1, default, new EpubWriter.Cover(Jpg(600, 900), ".jpg"));
+
+        using var epub = ZipFile.OpenRead(outPath);
+        var names = epub.Entries.Select(e => e.FullName).ToList();
+        Assert.Contains("OEBPS/cover.jpg", names);
+        var opf = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("content.opf")).Open()).ReadToEnd();
+        Assert.Contains("id=\"cover-img\"", opf);
+        Assert.Contains("href=\"cover.jpg\"", opf);
+        Assert.Contains("properties=\"cover-image\"", opf);
+        Assert.Contains("<meta name=\"cover\" content=\"cover-img\"/>", opf);
+        File.Delete(outPath);
+    }
+
+    [Fact]
+    public async Task WriteAsync_without_cover_flags_first_page_as_cover()
+    {
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        await EpubWriter.WriteAsync(outPath, new EbookMeta("T", "A", null, null),
+            Stream(new EpubWriter.Page("page-0001.jpg", Jpg(80, 120), 80, 120),
+                   new EpubWriter.Page("page-0002.jpg", Jpg(80, 120), 80, 120)),
+            dpr: 1, default);
+
+        using var epub = ZipFile.OpenRead(outPath);
+        Assert.DoesNotContain(epub.Entries.Select(e => e.FullName), n => n.StartsWith("OEBPS/cover"));
+        var opf = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("content.opf")).Open()).ReadToEnd();
+        Assert.Contains("<meta name=\"cover\" content=\"img1\"/>", opf);
+        Assert.Contains("id=\"img1\" href=\"img/page-0001.jpg\" media-type=\"image/jpeg\" properties=\"cover-image\"/>", opf);
+        Assert.DoesNotContain("id=\"img2\" href=\"img/page-0002.jpg\" media-type=\"image/jpeg\" properties=\"cover-image\"", opf);
+        File.Delete(outPath);
+    }
+
+    [Fact]
+    public async Task WriteAsync_with_no_pages_and_no_cover_declares_no_cover()
+    {
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        await EpubWriter.WriteAsync(outPath, new EbookMeta("T", "A", null, null),
+            Stream(), dpr: 1, default);
+
+        using var epub = ZipFile.OpenRead(outPath);
+        var opf = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("content.opf")).Open()).ReadToEnd();
+        Assert.DoesNotContain("cover-image", opf);
+        Assert.DoesNotContain("name=\"cover\"", opf);
+        File.Delete(outPath);
+    }
 }
