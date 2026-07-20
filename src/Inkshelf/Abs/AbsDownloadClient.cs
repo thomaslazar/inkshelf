@@ -32,4 +32,22 @@ public sealed class AbsDownloadClient
         }
         return await res.Content.ReadAsStreamAsync(ct);
     }
+
+    // The worker's token-less cover fetch. Mirrors DownloadEbookAsync: handler-free,
+    // caller-supplied bearer, NO 401 refresh. Caller owns (and must dispose) the stream.
+    public async Task<(Stream Content, string ContentType)> DownloadCoverAsync(
+        string itemId, string accessToken, int width, CancellationToken ct)
+    {
+        var url = $"/api/items/{Uri.EscapeDataString(itemId)}/cover?width={width}";
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        var res = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (!res.IsSuccessStatusCode)
+        {
+            res.Dispose();
+            throw new HttpRequestException($"cover download failed for {itemId}: {(int)res.StatusCode}");
+        }
+        var type = res.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
+        return (await res.Content.ReadAsStreamAsync(ct), type);
+    }
 }
