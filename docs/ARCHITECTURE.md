@@ -82,6 +82,12 @@ repo root (inside the devcontainer) must stay green.
   failing the page.
 - **String-built EPUB XML** in `EpubWriter`. Verbose but dependency-free and
   epubcheck-clean. Do not swap in an XML library.
+- **The EPUB declares a cover.** `EpubWriter` emits both the EPUB3
+  `properties="cover-image"` manifest flag and the EPUB2 `<meta name="cover">`.
+  The worker prefers the ABS cover art (`AbsDownloadClient.DownloadCoverAsync`,
+  600px) and the converter falls back to flagging the first page when ABS has no
+  usable cover. Metadata only — the cover is never a spine entry, so reading opens
+  on page 1. It is not part of the cache key (it derives from the item).
 - **Razor Pages for HTML, minimal APIs for streams/actions.** Keep the split.
 - **`LibraryLinks` is the single URL authority.** Every library listing/row/sort
   URL is built there, used by both the page model (`LibraryModel.Links`) and the

@@ -29,16 +29,6 @@ Settings to add to the per-device settings system:
   memory, though: parallelising raises the per-conversion peak (more pages held
   at once), so this is deferred in favour of the low-memory serial path shipped
   under Runtime footprint.
-- **Cover image.** The converted EPUB currently declares **no cover**, so Apple
-  Books shows a blank placeholder and lenient readers just fall back to rendering
-  page 1. Declare a real cover, using **both** cover mechanisms for compatibility:
-  the EPUB3 manifest flag `properties="cover-image"` **and** the legacy EPUB2
-  `<meta name="cover" content="…"/>`. Source the image with a fallback:
-  1. **Prefer the ABS cover art** — we already proxy it (`GetCoverAsync` / `/cover`);
-     embed it as a dedicated cover image (optionally a `cover.xhtml` first spine
-     entry) when ABS has a cover that's present and large enough to look good.
-  2. **Fall back to the first page** when ABS has no usable cover — flag the first
-     page image as the cover instead.
 
 ## Browsing & reading
 
@@ -101,6 +91,11 @@ Test-coverage follow-ups from the hardening work (non-blocking):
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Cover image** — the converted EPUB declares a real cover (EPUB3
+  `properties="cover-image"` + EPUB2 `<meta name="cover">`), so Apple Books and
+  other strict readers show a thumbnail. Prefers the ABS cover art (fetched at
+  600px), falling back to the first page when ABS has no usable cover. Metadata
+  only — reading still opens on page 1.
 - **Background conversion** (PR #9) — conversion runs detached in a background
   worker (app lifetime, keyed by cache path), so a client disconnect can't kill
   it; JS polls a status endpoint, no-JS gets a `<noscript>` meta-refresh.
