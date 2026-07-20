@@ -50,11 +50,11 @@ Settings to add to the per-device settings system:
   files shows the Convert action (or the EPUB download / "✓ converted" link when a
   conversion already exists for this device). Keep the **listing rows lean** —
   they still show only the primary file's download and/or the convert option — and
-  make the detail page the one place that exposes every file. Layout should stay
-  nice within the near-zero-JS / defensive-CSS constraints (cover, metadata block,
-  formats list). *Note:* enumerating all ebook files likely needs the **expanded**
-  item (`libraryFiles[]`), not just `media.ebookFile`; verify against the ABS
-  source.
+  make the detail page the one place that exposes every file. It also carries the
+  read/unread toggle (as the listing rows do). Layout should stay nice within the
+  near-zero-JS / defensive-CSS constraints (cover, metadata block, formats list).
+  *Note:* enumerating all ebook files likely needs the **expanded** item
+  (`libraryFiles[]`), not just `media.ebookFile`; verify against the ABS source.
 - **Per-library "already converted" view.** A page, per library, listing the
   books that are already converted and cached **for this device** (the cache is
   keyed by item + size + mtime + device dimensions, so filter to variants matching
@@ -72,13 +72,6 @@ Settings to add to the per-device settings system:
   (multi-author/series wrap), the first load before the cookie is set, and how
   this interacts with search results. Decide feasibility + approach before
   committing.
-- **Read-state toggle.** Let the user mark an item read/unread from **both** the
-  listing rows and the detail page. Reading happens offline on the device, so ABS
-  never sees progress; at minimum we want a manual "read" mark. *Design question:*
-  where does the state live — local to Inkshelf (cookie/small store, simple but
-  unsynced), or pushed to ABS via its media-progress / "finished" API so it
-  reflects everywhere? Prefer syncing to ABS if the API supports it (verify the
-  endpoint against the ABS source).
 
 ## Runtime footprint
 
@@ -126,3 +119,6 @@ Shipped; kept as a short record (full detail in git history / the PR).
   (replaces the hard-coded `ScreenTarget.Retina`) and a **grayscale** toggle.
   Both flow through a `RenderTarget` into conversion + the cache key (grayscale
   `-g` marker); includes the retina dpr clamp-after-multiply + dpr bound fix.
+- **Read-state toggle** — per-row Mark read / ✓ Read on listing + search rows,
+  synced to ABS media progress (`GET /api/me` finished-set; `PATCH
+  /api/me/progress/{id}` `{isFinished}`).

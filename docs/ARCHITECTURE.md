@@ -21,7 +21,7 @@ src/Inkshelf/
   AbsOptions.cs         Typed view of config (ABS_URL, CachePath, DataProtectionKeysPath).
   Abs/                  ABS API access.
     AbsAuthClient.cs      Login + refresh. Handler-FREE typed client.
-    AbsApiClient.cs       The 7 data methods. Typed client WITH AbsAuthHandler.
+    AbsApiClient.cs       The 9 data methods. Typed client WITH AbsAuthHandler.
     AbsAuthHandler.cs     DelegatingHandler: injects Bearer, refresh-on-401-retry.
     AbsDownloadClient.cs  Handler-free authenticated ebook download for ConvertWorker.
     AbsModels.cs          Response DTOs (three separate metadata shapes — see below).
@@ -41,7 +41,7 @@ src/Inkshelf/
     ScreenTarget.cs       Parses the "scr" probe + settings flags into a RenderTarget.
     RenderTarget.cs       Resolved per-device render knobs (cap, dpr, grayscale).
   Endpoints/            Minimal-API groups, one static MapXxxEndpoints() each:
-                        Cover, Download, Convert, Session (logout+favorite), Settings, Diag.
+                        Cover, Download, Convert, Read, Session (logout+favorite), Settings, Diag.
   Pages/                Razor Pages: Index, Login, Library, Settings (+ models); Shared/ partials.
     Support/            Non-page helper types: LibraryLinks, ItemRowModel, Pager, SortLinks.
 ```
@@ -75,6 +75,11 @@ repo root (inside the devcontainer) must stay green.
 - **Three separate ABS metadata shapes** (`AbsMetadata`, `AbsBatchMetadata`,
   `AbsDetailMetadata`). ABS reuses the `series` JSON key with different types per
   endpoint (object vs array); unifying them reintroduces a deserialization bug.
+- **Read state is ABS media progress, not local.** The listing/search reads the
+  finished-set from `GET /api/me` once per render (keyed by `libraryItemId`),
+  and the per-row toggle POSTs to `/read/{id}` → `PATCH /api/me/progress/{id}`
+  `{isFinished}`. A failed read-state fetch degrades to "all unread" rather than
+  failing the page.
 - **String-built EPUB XML** in `EpubWriter`. Verbose but dependency-free and
   epubcheck-clean. Do not swap in an XML library.
 - **Razor Pages for HTML, minimal APIs for streams/actions.** Keep the split.
