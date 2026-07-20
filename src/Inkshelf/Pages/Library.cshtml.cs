@@ -139,22 +139,7 @@ public class LibraryModel : PageModel
     }
 
     private ConvertRowState RowState(AbsItem item, AbsBatchMedia? media, RenderTarget target)
-    {
-        // Listing items (minified) carry media.ebookFormat; search items (expanded)
-        // carry the format only on the ebookFile. Check both, plus the batch's.
-        var fmt = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat ?? media?.EbookFile?.EbookFormat;
-        if (fmt != "cbz" && fmt != "cbr") return ConvertRowState.NotConvertible;
-        var efm = media?.EbookFile?.Metadata;
-        if (efm is null) return ConvertRowState.NotConvertible; // can't key the cache
-        var path = _cache.PathFor(item.Id, efm.Size, efm.MtimeMs, target.MaxW, target.MaxH, target.Grayscale);
-        return _queue.Status(path) switch
-        {
-            ConvertStatus.Done => ConvertRowState.Cached,
-            ConvertStatus.Queued or ConvertStatus.Running => ConvertRowState.Converting,
-            ConvertStatus.Failed => ConvertRowState.Failed,
-            _ => ConvertRowState.Convert,
-        };
-    }
+        => ConvertRowStateResolver.Resolve(item, media, target, _cache, _queue);
 
     // Turn ?filter / ?author / ?series into an ABS filter string. Author/series
     // names are resolved to ids via one search call (the row links only carry
