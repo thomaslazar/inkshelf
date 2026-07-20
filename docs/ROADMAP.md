@@ -1,21 +1,16 @@
 # Roadmap
 
-Planned and in-progress work, mostly follow-ups from the sorting + ebook-delivery
-feature; shipped items are recorded under **Done** at the bottom rather than
-deleted. Nothing here is blocking; the current build (sorting, download,
-device-sized CBZ/CBR→EPUB conversion, cached indicator, search links) works.
+An unordered backlog of work to build. Shipped items move to **Done** at the
+bottom as a short record; the changelog is the authoritative history of what
+has shipped.
 
 ## Priority (my current focus)
 
-The settings system shipped (per-device cookie, Settings page, retina +
-grayscale toggles — see **Done**). The rest of this file is unordered backlog;
-nothing here is currently in focus.
+No priority features atm.
 
 ## Settings
 
-Inkshelf's per-device settings system (a settings cookie + a Settings page,
-replacing the old hard-coded rendering constants) is in place — see **Done**.
-Remaining settings to add to it:
+Settings to add to the per-device settings system:
 
 - **Resolution override.** Let the user hand-set the conversion resolution per
   device, for when the browser-reported screen size isn't ideal. Pairs with the
@@ -95,8 +90,7 @@ Remaining settings to add to it:
 
 ## Security
 
-Follow-ups from the hardening work (all non-blocking; the shipped controls are in
-place — these tighten test coverage and one latent edge):
+Test-coverage follow-ups from the hardening work (non-blocking):
 
 - **`ConvertLock` cancellation test.** The keyed convert lock's cancellation path
   (a queued `AcquireAsync` that gets canceled) unwinds its ref-count but isn't
