@@ -98,7 +98,7 @@ repo root (inside the devcontainer) must stay green.
   a "converted" badge always agrees across pages. The `/converted` view is the EPUB
   cache read back: `EpubCache.ListVariants` reverse-parses filenames into item ids,
   filtered to the current device's target, then one cross-library
-  `GET /api/items/batch/get` supplies metadata.
+  `POST /api/items/batch/get` supplies metadata.
 - **Near-zero JS.** The two inline scripts in `_Layout.cshtml` (screen-size cookie,
   convert-warm XHR) are deliberate and tested on a real e-ink reader. Anything
   touching them needs a real-device test before merge; defensive CSS only (no
