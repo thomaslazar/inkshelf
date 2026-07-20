@@ -59,7 +59,7 @@ public class AbsApiClient
 
     public async Task<AbsItemDetail> GetItemDetailAsync(string itemId, CancellationToken ct = default)
     {
-        using var res = await SendAsync(HttpMethod.Get, $"/api/items/{Uri.EscapeDataString(itemId)}", ct);
+        using var res = await SendAsync(HttpMethod.Get, $"/api/items/{Uri.EscapeDataString(itemId)}?expanded=1", ct);
         return await res.Content.ReadFromJsonAsync<AbsItemDetail>(ct)
             ?? new AbsItemDetail(null);
     }
@@ -67,6 +67,16 @@ public class AbsApiClient
     public async Task<(Stream Content, string ContentType)> GetEbookStreamAsync(string itemId, CancellationToken ct = default)
     {
         var url = $"/api/items/{Uri.EscapeDataString(itemId)}/ebook";
+        var res = await SendAsync(HttpMethod.Get, url, ct); // caller owns the stream
+        var type = res.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        return (await res.Content.ReadAsStreamAsync(ct), type);
+    }
+
+    // A specific ebook file by its libraryFile ino (multi-format items).
+    public async Task<(Stream Content, string ContentType)> GetEbookFileStreamAsync(
+        string itemId, string fileIno, CancellationToken ct = default)
+    {
+        var url = $"/api/items/{Uri.EscapeDataString(itemId)}/ebook/{Uri.EscapeDataString(fileIno)}";
         var res = await SendAsync(HttpMethod.Get, url, ct); // caller owns the stream
         var type = res.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
         return (await res.Content.ReadAsStreamAsync(ct), type);

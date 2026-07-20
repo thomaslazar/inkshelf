@@ -58,23 +58,44 @@ public record AbsBatchMetadata(
     [property: JsonPropertyName("series")] List<AbsSeriesRef>? Series = null,
     [property: JsonPropertyName("title")] string? Title = null);
 
-// Item detail (GET /api/items/{id})
+// Item detail (GET /api/items/{id}?expanded=1)
 public record AbsItemDetail(
-    [property: JsonPropertyName("media")] AbsDetailMedia? Media);
+    [property: JsonPropertyName("media")] AbsDetailMedia? Media,
+    [property: JsonPropertyName("libraryId")] string? LibraryId = null,
+    [property: JsonPropertyName("libraryFiles")] List<AbsLibraryFile>? LibraryFiles = null);
 public record AbsDetailMedia(
     [property: JsonPropertyName("metadata")] AbsDetailMetadata? Metadata,
-    [property: JsonPropertyName("ebookFile")] AbsEbookFile? EbookFile);
+    [property: JsonPropertyName("ebookFile")] AbsEbookFile? EbookFile,
+    [property: JsonPropertyName("tags")] List<string>? Tags = null,
+    [property: JsonPropertyName("coverPath")] string? CoverPath = null);
 public record AbsDetailMetadata(
     [property: JsonPropertyName("title")] string? Title,
     [property: JsonPropertyName("authorName")] string? AuthorName,
     [property: JsonPropertyName("seriesName")] string? SeriesName,
     [property: JsonPropertyName("authors")] List<AbsRef>? Authors = null,
-    [property: JsonPropertyName("series")] List<AbsSeriesRef>? Series = null);
+    [property: JsonPropertyName("series")] List<AbsSeriesRef>? Series = null,
+    [property: JsonPropertyName("subtitle")] string? Subtitle = null,
+    [property: JsonPropertyName("narrators")] List<string>? Narrators = null,
+    [property: JsonPropertyName("genres")] List<string>? Genres = null,
+    [property: JsonPropertyName("publisher")] string? Publisher = null,
+    [property: JsonPropertyName("publishedYear")] string? PublishedYear = null,
+    [property: JsonPropertyName("language")] string? Language = null,
+    [property: JsonPropertyName("descriptionPlain")] string? DescriptionPlain = null);
 public record AbsEbookFile(
     [property: JsonPropertyName("ebookFormat")] string? EbookFormat,
-    [property: JsonPropertyName("metadata")] AbsEbookFileMetadata? Metadata);
+    [property: JsonPropertyName("metadata")] AbsEbookFileMetadata? Metadata,
+    [property: JsonPropertyName("ino")] string? Ino = null);
 public record AbsEbookFileMetadata(
     [property: JsonPropertyName("filename")] string? Filename,
+    [property: JsonPropertyName("size")] long Size,
+    [property: JsonPropertyName("mtimeMs")] long MtimeMs);
+public record AbsLibraryFile(
+    [property: JsonPropertyName("ino")] string? Ino,
+    [property: JsonPropertyName("fileType")] string? FileType,
+    [property: JsonPropertyName("metadata")] AbsLibraryFileMetadata? Metadata);
+public record AbsLibraryFileMetadata(
+    [property: JsonPropertyName("filename")] string? Filename,
+    [property: JsonPropertyName("ext")] string? Ext,
     [property: JsonPropertyName("size")] long Size,
     [property: JsonPropertyName("mtimeMs")] long MtimeMs);
 
