@@ -115,9 +115,10 @@ public sealed class ConvertWorker : BackgroundService
     // file. The device cap still bounds it on the way through PageImageProcessor.
     private const int CoverWidth = 600;
 
-    // Best-effort ABS cover fetch. Any failure (no cover / 404 / transient) yields
+    // Best-effort ABS cover fetch. Any failure (no cover / 404 / transient, including
+    // an HttpClient request timeout, which surfaces as TaskCanceledException) yields
     // null and the converter falls back to the first page — never fails the job.
-    // Cancellation (app stopping) is allowed to propagate.
+    // Only a genuine app-shutdown cancellation (ct.IsCancellationRequested) propagates.
     private static async Task<(byte[] Bytes, string Ext)?> TryFetchCoverAsync(
         AbsDownloadClient download, ConvertJob job, CancellationToken ct)
     {
@@ -130,6 +131,10 @@ public sealed class ConvertWorker : BackgroundService
                 await stream.CopyToAsync(ms, ct);
                 return (ms.ToArray(), CoverExt(contentType));
             }
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return null; // e.g. HttpClient request timeout — not app shutdown; fall back to first page
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

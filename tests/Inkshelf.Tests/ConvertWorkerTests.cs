@@ -74,6 +74,23 @@ public class ConvertWorkerTests
         return services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
     }
 
+    // A DI provider whose AbsDownloadClient returns `ebook` for /ebook and throws a
+    // timeout-style TaskCanceledException for /cover — simulating an HttpClient
+    // request timeout, NOT an app-shutdown cancellation (the job's ct stays live).
+    private static IServiceScopeFactory ScopeFactoryCoverThrows(byte[] ebook)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(new AbsDownloadClient(
+            new HttpClient(new StubHandler(req =>
+            {
+                if (req.RequestUri!.AbsolutePath.EndsWith("/cover"))
+                    throw new TaskCanceledException();
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(ebook) };
+            }))
+            { BaseAddress = new Uri("http://abs.local") }));
+        return services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+    }
+
     private static ConvertWorker Worker(ConvertQueue queue, IServiceScopeFactory scopes, EpubCache cache,
         long maxArchiveBytes = long.MaxValue) =>
         new(queue, scopes, new EpubConverter(), new ConvertLock(), cache,
@@ -206,6 +223,29 @@ public class ConvertWorkerTests
         queue.Enqueue(Job(path));
 
         var worker = Worker(queue, ScopeFactoryFor(Cbz(), coverStatus: 404), cache);
+        await worker.StartAsync(default);
+        await WaitUntil(() => File.Exists(path), TimeSpan.FromSeconds(10));
+        await worker.StopAsync(default);
+
+        using var epub = ZipFile.OpenRead(path);
+        Assert.DoesNotContain(epub.Entries.Select(e => e.FullName), n => n.StartsWith("OEBPS/cover"));
+        var opf = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("content.opf")).Open()).ReadToEnd();
+        Assert.Contains("<meta name=\"cover\" content=\"img1\"/>", opf);
+    }
+
+    [Fact]
+    public async Task A_cover_fetch_timeout_still_produces_an_epub_with_first_page_cover()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        var queue = new ConvertQueue();
+        var path = cache.PathFor("item1", 1, 2, 0, 0);
+        queue.Enqueue(Job(path));
+
+        // The stub throws TaskCanceledException on /cover — an OperationCanceledException
+        // subtype — but the worker's own token is never cancelled, so this must NOT
+        // fail the job; it must fall back to the first page like a missing cover.
+        var worker = Worker(queue, ScopeFactoryCoverThrows(Cbz()), cache);
         await worker.StartAsync(default);
         await WaitUntil(() => File.Exists(path), TimeSpan.FromSeconds(10));
         await worker.StopAsync(default);
