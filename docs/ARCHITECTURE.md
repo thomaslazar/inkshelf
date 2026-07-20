@@ -42,8 +42,8 @@ src/Inkshelf/
     RenderTarget.cs       Resolved per-device render knobs (cap, dpr, grayscale).
   Endpoints/            Minimal-API groups, one static MapXxxEndpoints() each:
                         Cover, Download, Convert, Read, Session (logout+favorite), Settings, Diag.
-  Pages/                Razor Pages: Index, Login, Library, Converted, Settings (+ models); Shared/ partials.
-    Support/            Non-page helper types: LibraryLinks, ItemRowModel, Pager, SortLinks, ConvertRowStateResolver.
+  Pages/                Razor Pages: Index, Login, Library, Converted, Item, Settings (+ models); Shared/ partials.
+    Support/            Non-page helper types: LibraryLinks, ItemRowModel, Pager, SortLinks, ConvertRowStateResolver, ConvertActionModel.
 ```
 
 Tests live in `tests/Inkshelf.Tests/`, one file per unit. `dotnet test` from the
@@ -99,6 +99,13 @@ repo root (inside the devcontainer) must stay green.
   cache read back: `EpubCache.ListVariants` reverse-parses filenames into item ids,
   filtered to the current device's target, then one cross-library
   `POST /api/items/batch/get` supplies metadata.
+- **Convert is per-file, but the cache key never carries the file ino.** The
+  detail page can convert any cbz/cbr in an item via `/convert/{id}?file={ino}`,
+  but the key stays `{itemId}-{size}-{mtimeMs}-…` using the chosen file's
+  size+mtime. The **primary** ebook uses no `file=` and its own size+mtime, so its
+  cache entry is identical to the one the listing/converted view write — the badge
+  agrees across pages. `_ConvertAction` renders the convert `<span>` (states +
+  plain regen) for both the row and the detail formats list.
 - **Near-zero JS.** The two inline scripts in `_Layout.cshtml` (screen-size cookie,
   convert-warm XHR) are deliberate and tested on a real e-ink reader. Anything
   touching them needs a real-device test before merge; defensive CSS only (no

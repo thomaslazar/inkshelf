@@ -32,19 +32,6 @@ Settings to add to the per-device settings system:
 
 ## Browsing & reading
 
-- **Item detail page.** A per-item page showing the full metadata ABS exposes —
-  title, series (+ sequence), author(s), narrator, genre, tags, description,
-  publisher/published date — plus **all** downloadable ebook files, not just the
-  primary. Some items carry several formats of the same book (e.g. EPUB *and*
-  PDF); the detail page lists each with its own download link, and for CBZ/CBR
-  files shows the Convert action (or the EPUB download / "✓ converted" link when a
-  conversion already exists for this device). Keep the **listing rows lean** —
-  they still show only the primary file's download and/or the convert option — and
-  make the detail page the one place that exposes every file. It also carries the
-  read/unread toggle (as the listing rows do). Layout should stay nice within the
-  near-zero-JS / defensive-CSS constraints (cover, metadata block, formats list).
-  *Note:* enumerating all ebook files likely needs the **expanded** item
-  (`libraryFiles[]`), not just `media.ebookFile`; verify against the ABS source.
 - **Screenful pagination (investigation).** Spike whether we can size a page to
   exactly one screenful instead of a fixed 10. The `scr` cookie already reports
   the viewport (CSS w×h×dpr), so server-side we could compute
@@ -83,6 +70,14 @@ Test-coverage follow-ups from the hardening work (non-blocking):
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Item detail page** — a per-item page at `/item/{id}` (reached by the row
+  title/cover) showing the full metadata (larger cover, multiple authors/series/
+  narrators as filter links, genres, tags, publisher/year, plain description),
+  every ebook file with its own download, and — for cbz/cbr files — the Convert
+  action. Convert is per-file: the primary uses the item's existing cache entry
+  (no `file=`), non-primary files use `/convert/{id}?file={ino}`; the cache key is
+  unchanged. Also carries the read/unread toggle. Genre/tag/narrator links jump to
+  a filtered library listing.
 - **Converted (this device) view** — a `/converted` page listing every comic
   already converted and cached for the current device, across all libraries
   (the cache is enumerated by reverse-parsing filenames and filtered to the
