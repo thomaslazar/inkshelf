@@ -32,7 +32,11 @@ public class LibraryModel : PageModel
 
     public bool IsFavorite { get; private set; }
     public bool IsSearch => !string.IsNullOrWhiteSpace(Q);
-    public string? FilterLabel { get; private set; }
+    // The active facet's humanized type ("Series"/"Author"/…) and, when known,
+    // its display name; FilterDisplay joins them ("Series: The Sandman").
+    public string? FilterType { get; private set; }
+    public string? FilterName { get; private set; }
+    public string FilterDisplay => FilterName is null ? (FilterType ?? "") : $"{FilterType}: {FilterName}";
     public string LibraryName { get; private set; } = "Library";
 
     public List<AbsItem> Items { get; private set; } = new();
@@ -66,6 +70,7 @@ public class LibraryModel : PageModel
         var result = await _api.GetItemsAsync(Id, zeroPage, PageSize, filter, Sort, Desc, ct);
         Items = result.Results;
         _structured = await FetchStructuredAsync(Items, ct);
+        RefineFilterLabel();
         ComputeConvertStates(Items);
         _finished = await FetchFinishedAsync(ct);
         Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
@@ -77,6 +82,9 @@ public class LibraryModel : PageModel
     // empty and rows fall back to the comma-joined name strings.
     private Dictionary<string, AbsBatchMedia> _structured = new();
     private HashSet<string> _finished = new();
+    // Decoded active facet filter (group + value id), for resolving its label.
+    private string? _filterGroup;
+    private string? _filterValue;
 
     private async Task<Dictionary<string, AbsBatchMedia>> FetchStructuredAsync(List<AbsItem> items, CancellationToken ct)
     {
@@ -153,27 +161,70 @@ public class LibraryModel : PageModel
     // names). Returns null when nothing matches (→ empty listing).
     private async Task<string?> ResolveFilterAsync(CancellationToken ct)
     {
-        if (!string.IsNullOrEmpty(Filter)) { FilterLabel = "filter"; return Filter; }
+        // A ready-made facet filter (?filter=series.<b64-id>, as the structured row
+        // links build). Decode the group for the label; the name is resolved from
+        // the fetched items in RefineFilterLabel (no extra API call).
+        if (!string.IsNullOrEmpty(Filter))
+        {
+            if (AbsFilter.Decode(Filter) is { } d)
+            {
+                _filterGroup = d.Group; _filterValue = d.Value;
+                FilterType = Humanize(d.Group);
+            }
+            else { FilterType = "Filter"; }
+            return Filter;
+        }
 
         if (!string.IsNullOrWhiteSpace(Author))
         {
             var r = await _api.SearchAsync(Id, Author!.Trim(), SearchLimit, ct);
             var a = r.Authors.FirstOrDefault(x => string.Equals(x.Name, Author!.Trim(), StringComparison.OrdinalIgnoreCase));
-            if (a is not null) { FilterLabel = a.Name; return AbsFilter.Encode("authors", a.Id); }
-            FilterLabel = Author; return "authors.__none__";
+            FilterType = "Author";
+            if (a is not null) { FilterName = a.Name; return AbsFilter.Encode("authors", a.Id); }
+            FilterName = Author; return "authors.__none__";
         }
         if (!string.IsNullOrWhiteSpace(Series))
         {
             var name = Series!.Trim();
             var r = await _api.SearchAsync(Id, name, SearchLimit, ct);
             var s = r.Series.FirstOrDefault(x => string.Equals(x.Series.Name, name, StringComparison.OrdinalIgnoreCase));
-            if (s is not null) { FilterLabel = s.Series.Name; return AbsFilter.Encode("series", s.Series.Id); }
-            FilterLabel = name; return "series.__none__";
+            FilterType = "Series";
+            if (s is not null) { FilterName = s.Series.Name; return AbsFilter.Encode("series", s.Series.Id); }
+            FilterName = name; return "series.__none__";
         }
         return null;
     }
 
-    public bool IsFiltered => FilterLabel is not null;
+    // Resolve a facet filter's display name from the fetched page's batch metadata
+    // — the filtered items carry the matching series/author ref (id + name), so no
+    // extra call is needed. Leaves FilterName null (→ just the type) when nothing
+    // matches, e.g. an empty result set.
+    private void RefineFilterLabel()
+    {
+        if (_filterValue is null) return;
+        foreach (var media in _structured.Values)
+        {
+            if (_filterGroup == "series")
+            {
+                var s = media.Metadata?.Series?.FirstOrDefault(x => x.Id == _filterValue);
+                if (s is not null) { FilterName = s.Name; return; }
+            }
+            else if (_filterGroup == "authors")
+            {
+                var a = media.Metadata?.Authors?.FirstOrDefault(x => x.Id == _filterValue);
+                if (a is not null) { FilterName = a.Name; return; }
+            }
+        }
+    }
+
+    private static string Humanize(string group) => group switch
+    {
+        "authors" => "Author",
+        "series" => "Series",
+        _ => group.Length > 0 ? char.ToUpperInvariant(group[0]) + group[1..] : group
+    };
+
+    public bool IsFiltered => FilterType is not null;
 
     // One shared builder for every library URL (page + row partial).
     public LibraryLinks Links => new(Id, Filter, Author, Series, Sort, Desc);
