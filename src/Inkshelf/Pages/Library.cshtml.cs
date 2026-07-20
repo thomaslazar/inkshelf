@@ -57,6 +57,7 @@ public class LibraryModel : PageModel
             var books = SearchResults.Book.Select(b => b.LibraryItem).ToList();
             _structured = await FetchStructuredAsync(books, ct);
             ComputeConvertStates(books);
+            _finished = await FetchFinishedAsync(ct);
             return Page();
         }
 
@@ -66,6 +67,7 @@ public class LibraryModel : PageModel
         Items = result.Results;
         _structured = await FetchStructuredAsync(Items, ct);
         ComputeConvertStates(Items);
+        _finished = await FetchFinishedAsync(ct);
         Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
         return Page();
     }
@@ -74,12 +76,22 @@ public class LibraryModel : PageModel
     // page, keyed by item id, from one batch call. A batch failure leaves it
     // empty and rows fall back to the comma-joined name strings.
     private Dictionary<string, AbsBatchMedia> _structured = new();
+    private HashSet<string> _finished = new();
 
     private async Task<Dictionary<string, AbsBatchMedia>> FetchStructuredAsync(List<AbsItem> items, CancellationToken ct)
     {
         var ids = items.Select(i => i.Id).ToList();
         if (ids.Count == 0) return new();
         try { return await _api.GetItemsMetadataBatchAsync(ids, ct); }
+        catch (HttpRequestException) { return new(); }
+    }
+
+    // Read-state is a single GET /api/me. A transient failure degrades to "all
+    // unread" rather than blanking the page; an expired session still propagates
+    // AbsAuthException → /login (only HttpRequestException is swallowed).
+    private async Task<HashSet<string>> FetchFinishedAsync(CancellationToken ct)
+    {
+        try { return await _api.GetFinishedItemIdsAsync(ct); }
         catch (HttpRequestException) { return new(); }
     }
 
@@ -97,7 +109,7 @@ public class LibraryModel : PageModel
             if (f is "cbz" or "cbr") state = ConvertRowState.Convert;
         }
         var ret = Request.Path + Request.QueryString; // exact current listing URL
-        return new ItemRowModel(item, Links, media?.Metadata?.Authors, media?.Metadata?.Series, state, ret);
+        return new ItemRowModel(item, Links, media?.Metadata?.Authors, media?.Metadata?.Series, state, ret, _finished.Contains(item.Id));
     }
 
     // Per-row convert state, precomputed so the head (which renders before the

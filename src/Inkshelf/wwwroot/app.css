@@ -42,3 +42,5 @@ nav.pager a { margin-right: 1rem; }
 .settings-note { color: #555; margin: .4rem 0; }
 .settings-form { margin: 1rem 0; }
 .settings-form label { cursor: pointer; }
+.item .actions .read-form { margin: 0; }
+.item .actions .read-btn { display: block; border: none; background: none; padding: 0; margin-bottom: .35rem; font: inherit; color: #000; text-align: left; cursor: pointer; }

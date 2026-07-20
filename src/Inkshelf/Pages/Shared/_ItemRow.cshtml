@@ -75,6 +75,19 @@
                     <a class="regen" href="/convert/@item.Id?fresh=1&return=@ret" title="Regenerate">&#8635;</a>
                 </span>
             }
+            <form class="read-form" method="post" action="/read/@item.Id">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="read" value="@(Model.Read ? "0" : "1")" />
+                <input type="hidden" name="return" value="@Model.ReturnUrl" />
+                @if (Model.Read)
+                {
+                    <button type="submit" class="read-btn" title="Mark as unread">&#10003; Read</button>
+                }
+                else
+                {
+                    <button type="submit" class="read-btn" title="Mark as read">Mark read</button>
+                }
+            </form>
         </div>
     }
 </div>

@@ -15,4 +15,5 @@ public record ItemRowModel(
     IReadOnlyList<AbsRef>? Authors = null,
     IReadOnlyList<AbsSeriesRef>? Series = null,
     ConvertRowState State = ConvertRowState.NotConvertible,
-    string ReturnUrl = "/");
+    string ReturnUrl = "/",
+    bool Read = false);
