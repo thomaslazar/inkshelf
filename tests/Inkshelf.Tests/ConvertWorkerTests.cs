@@ -31,6 +31,13 @@ public class ConvertWorkerTests
         return ms.ToArray();
     }
 
+    private static byte[] CoverJpg(int w = 300, int h = 450)
+    {
+        using var ms = new MemoryStream();
+        using var img = new Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(w, h);
+        img.Save(ms, new JpegEncoder()); return ms.ToArray();
+    }
+
     // A DI provider exposing an AbsDownloadClient whose HttpClient returns `bytes`.
     private static IServiceScopeFactory ScopeFactoryReturning(byte[] bytes)
     {
@@ -38,6 +45,31 @@ public class ConvertWorkerTests
         services.AddSingleton(new AbsDownloadClient(
             new HttpClient(new StubHandler(_ => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
             { Content = new ByteArrayContent(bytes) }))
+            { BaseAddress = new Uri("http://abs.local") }));
+        return services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+    }
+
+    // A DI provider whose AbsDownloadClient returns `ebook` for /ebook and, for
+    // /cover, either `cover` bytes (status 200) or the given error status.
+    private static IServiceScopeFactory ScopeFactoryFor(
+        byte[] ebook, byte[]? cover = null, string coverType = "image/jpeg", int coverStatus = 200)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(new AbsDownloadClient(
+            new HttpClient(new StubHandler(req =>
+            {
+                if (req.RequestUri!.AbsolutePath.EndsWith("/cover"))
+                {
+                    if (coverStatus != 200 || cover is null)
+                        return new HttpResponseMessage((System.Net.HttpStatusCode)coverStatus);
+                    return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                    {
+                        Content = new ByteArrayContent(cover)
+                        { Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(coverType) } }
+                    };
+                }
+                return new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(ebook) };
+            }))
             { BaseAddress = new Uri("http://abs.local") }));
         return services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
     }
@@ -142,6 +174,46 @@ public class ConvertWorkerTests
         cache.SweepTemp();
         Assert.Empty(Directory.GetFiles(dir.Path, "*.dl.tmp"));
         Assert.True(File.Exists(Path.Combine(dir.Path, "keep.epub")));
+    }
+
+    [Fact]
+    public async Task Embeds_the_ABS_cover_when_available()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        var queue = new ConvertQueue();
+        var path = cache.PathFor("item1", 1, 2, 0, 0);
+        queue.Enqueue(Job(path));
+
+        var worker = Worker(queue, ScopeFactoryFor(Cbz(), CoverJpg(), "image/jpeg"), cache);
+        await worker.StartAsync(default);
+        await WaitUntil(() => File.Exists(path), TimeSpan.FromSeconds(10));
+        await worker.StopAsync(default);
+
+        using var epub = ZipFile.OpenRead(path);
+        Assert.Contains("OEBPS/cover.jpg", epub.Entries.Select(e => e.FullName));
+        var opf = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("content.opf")).Open()).ReadToEnd();
+        Assert.Contains("<meta name=\"cover\" content=\"cover-img\"/>", opf);
+    }
+
+    [Fact]
+    public async Task A_missing_ABS_cover_still_produces_an_epub_with_first_page_cover()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        var queue = new ConvertQueue();
+        var path = cache.PathFor("item1", 1, 2, 0, 0);
+        queue.Enqueue(Job(path));
+
+        var worker = Worker(queue, ScopeFactoryFor(Cbz(), coverStatus: 404), cache);
+        await worker.StartAsync(default);
+        await WaitUntil(() => File.Exists(path), TimeSpan.FromSeconds(10));
+        await worker.StopAsync(default);
+
+        using var epub = ZipFile.OpenRead(path);
+        Assert.DoesNotContain(epub.Entries.Select(e => e.FullName), n => n.StartsWith("OEBPS/cover"));
+        var opf = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("content.opf")).Open()).ReadToEnd();
+        Assert.Contains("<meta name=\"cover\" content=\"img1\"/>", opf);
     }
 
     private static async Task WaitUntil(Func<bool> cond, TimeSpan timeout)
