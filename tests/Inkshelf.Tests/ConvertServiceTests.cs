@@ -52,7 +52,7 @@ public class ConvertServiceTests
         using var dir = new TempDir();
         var svc = Service(DetailClient(DetailJson("epub", "T", "A", 1, 2)),
             new EpubCache(dir.Path), new ConvertQueue(), TokenStoreWith("tok"));
-        var r = await svc.KickAsync("item1", fresh: false, 100, 200, 1.0, default);
+        var r = await svc.KickAsync("item1", fresh: false, new RenderTarget(100, 200, 1.0, false), default);
         Assert.Equal(ConvertStatus.None, r.Status);
     }
 
@@ -64,7 +64,7 @@ public class ConvertServiceTests
         File.WriteAllText(cache.PathFor("item1", 123, 456, 100, 200), "epub");
         var svc = Service(DetailClient(DetailJson("cbz", "My: Comic", "Jane Doe", 123, 456)),
             cache, new ConvertQueue(), TokenStoreWith("tok"));
-        var r = await svc.KickAsync("item1", fresh: false, 100, 200, 1.0, default);
+        var r = await svc.KickAsync("item1", fresh: false, new RenderTarget(100, 200, 1.0, false), default);
         Assert.Equal(ConvertStatus.Done, r.Status);
         Assert.StartsWith("Jane Doe - My", r.DownloadName);
         Assert.EndsWith(".epub", r.DownloadName);
@@ -80,7 +80,7 @@ public class ConvertServiceTests
         File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-2));
         var svc = Service(DetailClient(DetailJson("cbz", "My: Comic", "Jane Doe", 123, 456)),
             cache, new ConvertQueue(), TokenStoreWith("tok"));
-        var r = await svc.KickAsync("item1", fresh: false, 100, 200, 1.0, default);
+        var r = await svc.KickAsync("item1", fresh: false, new RenderTarget(100, 200, 1.0, false), default);
         Assert.Equal(ConvertStatus.Done, r.Status);
         Assert.True(File.GetLastWriteTimeUtc(path) > DateTime.UtcNow.AddMinutes(-1));
     }
@@ -93,7 +93,7 @@ public class ConvertServiceTests
         var queue = new ConvertQueue();
         var svc = Service(DetailClient(DetailJson("cbz", "T", "A", 123, 456)),
             cache, queue, TokenStoreWith("TOKEN123"));
-        var r = await svc.KickAsync("item1", fresh: false, 100, 200, 1.0, default);
+        var r = await svc.KickAsync("item1", fresh: false, new RenderTarget(100, 200, 1.0, false), default);
         Assert.Equal(ConvertStatus.Queued, r.Status);
         Assert.True(queue.Reader.TryRead(out var job));
         Assert.Equal("TOKEN123", job!.AccessToken);
@@ -106,7 +106,7 @@ public class ConvertServiceTests
         using var dir = new TempDir();
         var svc = Service(DetailClient(DetailJson("cbz", "T", "A", 123, 456)),
             new EpubCache(dir.Path), new ConvertQueue(), TokenStoreWith("tok"));
-        var r = await svc.StatusAsync("item1", 100, 200, 1.0, default);
+        var r = await svc.StatusAsync("item1", new RenderTarget(100, 200, 1.0, false), default);
         Assert.Equal(ConvertStatus.None, r.Status);
     }
 }

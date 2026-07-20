@@ -101,6 +101,7 @@ app.MapDownloadEndpoints();
 app.MapConvertEndpoints();
 
 app.MapSessionEndpoints();
+app.MapSettingsEndpoints();
 
 if (absOptions.DiagEnabled) app.MapDiagEndpoints();
 

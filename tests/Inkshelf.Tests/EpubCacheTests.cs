@@ -29,6 +29,23 @@ public class EpubCacheTests
     }
 
     [Fact]
+    public void PathFor_grayscale_differs_from_colour()
+    {
+        var c = new EpubCache(TempDirPath());
+        Assert.NotEqual(
+            c.PathFor("i1", 100, 200, 800, 1000, grayscale: false),
+            c.PathFor("i1", 100, 200, 800, 1000, grayscale: true));
+    }
+
+    [Fact]
+    public void PathFor_grayscale_uses_g_marker()
+    {
+        var c = new EpubCache(TempDirPath());
+        Assert.EndsWith("i1-100-200-800x1000-g.epub", c.PathFor("i1", 100, 200, 800, 1000, grayscale: true));
+        Assert.EndsWith("i1-100-200-800x1000.epub", c.PathFor("i1", 100, 200, 800, 1000, grayscale: false));
+    }
+
+    [Fact]
     public void SweepTemp_deletes_tmp_but_keeps_epub()
     {
         using var dir = new TempDir();
@@ -49,9 +66,9 @@ public class EpubCacheTests
         File.WriteAllText(c.PathFor("i1", 2, 2, 800, 1000), "b");
         File.WriteAllText(c.PathFor("i2", 1, 1, 0, 0), "c");
         c.RemoveForItem("i1");
-        Assert.False(c.TryGet("i1", 1, 1, 0, 0, out _));
-        Assert.False(c.TryGet("i1", 2, 2, 800, 1000, out _));
-        Assert.True(c.TryGet("i2", 1, 1, 0, 0, out _));
+        Assert.False(c.TryGet("i1", 1, 1, 0, 0, false, out _));
+        Assert.False(c.TryGet("i1", 2, 2, 800, 1000, false, out _));
+        Assert.True(c.TryGet("i2", 1, 1, 0, 0, false, out _));
     }
 
     [Fact]

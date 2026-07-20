@@ -34,7 +34,7 @@ public class EpubConverterTests
     {
         var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
         // No cap (0×0), dpr 1 → 80×120 fixtures pass through, viewport = image.
-        await new EpubConverter().ConvertAsync(Cbz(), new EbookMeta("Vol 1", "Artist", "Saga", "1"), outPath, 0, 0, 1, default);
+        await new EpubConverter().ConvertAsync(Cbz(), new EbookMeta("Vol 1", "Artist", "Saga", "1"), outPath, new RenderTarget(0, 0, 1, false), default);
 
         using var epub = ZipFile.OpenRead(outPath);
         var names = epub.Entries.Select(e => e.FullName).ToList();
@@ -75,7 +75,7 @@ public class EpubConverterTests
         ms.Position = 0;
 
         var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
-        await new EpubConverter().ConvertAsync(ms, new EbookMeta("T", "A", null, null), outPath, 200, 200, 1, default);
+        await new EpubConverter().ConvertAsync(ms, new EbookMeta("T", "A", null, null), outPath, new RenderTarget(200, 200, 1, false), default);
 
         using var epub = ZipFile.OpenRead(outPath);
         var imgEntry = epub.Entries.First(e => e.FullName.StartsWith("OEBPS/img/"));
@@ -97,7 +97,7 @@ public class EpubConverterTests
         ms.Position = 0;
 
         var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
-        await new EpubConverter().ConvertAsync(ms, new EbookMeta("T", "A", null, null), outPath, 0, 0, 2, default);
+        await new EpubConverter().ConvertAsync(ms, new EbookMeta("T", "A", null, null), outPath, new RenderTarget(0, 0, 2, false), default);
 
         using var epub = ZipFile.OpenRead(outPath);
         var page = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("page-0001.xhtml")).Open()).ReadToEnd();

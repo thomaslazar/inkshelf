@@ -5,14 +5,15 @@ public class EpubCache
     private readonly string _dir;
     public EpubCache(string dir) { _dir = dir; Directory.CreateDirectory(_dir); }
 
-    // The downscale target (maxW×maxH) is part of the key: two devices with
-    // different screen resolutions must not be served each other's variant.
-    public string PathFor(string itemId, long size, long mtimeMs, int maxW, int maxH) =>
-        Path.Combine(_dir, $"{itemId}-{size}-{mtimeMs}-{maxW}x{maxH}.epub");
+    // The downscale target (maxW×maxH) AND grayscale are part of the key: two
+    // devices with different screen resolutions, or colour vs grayscale, must not be
+    // served each other's variant.
+    public string PathFor(string itemId, long size, long mtimeMs, int maxW, int maxH, bool grayscale = false) =>
+        Path.Combine(_dir, $"{itemId}-{size}-{mtimeMs}-{maxW}x{maxH}{(grayscale ? "-g" : "")}.epub");
 
-    public bool TryGet(string itemId, long size, long mtimeMs, int maxW, int maxH, out string path)
+    public bool TryGet(string itemId, long size, long mtimeMs, int maxW, int maxH, bool grayscale, out string path)
     {
-        path = PathFor(itemId, size, mtimeMs, maxW, maxH);
+        path = PathFor(itemId, size, mtimeMs, maxW, maxH, grayscale);
         return File.Exists(path);
     }
 

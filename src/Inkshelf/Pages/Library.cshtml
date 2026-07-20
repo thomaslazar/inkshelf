@@ -19,6 +19,7 @@
         <input type="search" name="q" value="@Model.Q" placeholder="Search…" />
         <button type="submit">Search</button>
     </form>
+    <a class="settings-link" href="/settings" title="Settings"><img src="~/img/gear-black.png" alt="Settings" class="settings-icon" width="24" height="24" /></a>
 </div>
 
 @if (Model.IsSearch)
@@ -43,7 +44,7 @@
         <h2 id="books">Books <a class="totop" href="#top">↑</a></h2>
         foreach (var b in books)
         {
-            <partial name="_ItemRow" model="new Inkshelf.Pages.ItemRowModel(b.LibraryItem, Model.Links)" />
+            <partial name="_ItemRow" model="Model.RowFor(b.LibraryItem)" />
         }
     }
     if (series.Count > 0)

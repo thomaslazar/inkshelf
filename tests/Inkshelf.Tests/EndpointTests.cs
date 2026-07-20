@@ -118,4 +118,69 @@ public class EndpointTests
         Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
         Assert.Equal("/login", res.Headers.Location?.OriginalString);
     }
+
+    [Fact]
+    public async Task Settings_post_sets_cookie_and_redirects()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var token = await GetAntiforgeryTokenAsync(client);
+        var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["retina"] = "on",
+            // grayscale checkbox unchecked → not sent
+        });
+
+        var response = await client.PostAsync("/settings", content);
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal("/settings", response.Headers.Location?.OriginalString);
+        var setCookie = response.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
+        Assert.Contains("inkshelf_settings=10", setCookie); // retina on, grayscale off → "10"
+    }
+
+    [Fact]
+    public async Task Settings_post_without_antiforgery_returns_bad_request()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var response = await client.PostAsync("/settings", content: null);
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Settings_get_renders_form_with_checkboxes()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+
+        var html = await (await client.GetAsync("/settings")).Content.ReadAsStringAsync();
+
+        Assert.Contains("name=\"retina\"", html);
+        Assert.Contains("name=\"grayscale\"", html);
+        Assert.Contains("action=\"/settings\"", html);
+        Assert.Contains("__RequestVerificationToken", html);
+    }
+
+    [Fact]
+    public async Task Settings_get_checks_boxes_from_cookie()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+
+        var req = new HttpRequestMessage(HttpMethod.Get, "/settings");
+        // "10" is DeviceSettings.Serialize()'s positional-flags format: retina=1, grayscale=0.
+        req.Headers.Add("Cookie", "inkshelf_settings=10");
+        var html = await (await client.SendAsync(req)).Content.ReadAsStringAsync();
+
+        // retina checkbox is checked, grayscale is not. Assert the retina input carries "checked".
+        var retinaInput = System.Text.RegularExpressions.Regex.Match(html, "<input[^>]*name=\"retina\"[^>]*>").Value;
+        Assert.Contains("checked", retinaInput);
+        var grayInput = System.Text.RegularExpressions.Regex.Match(html, "<input[^>]*name=\"grayscale\"[^>]*>").Value;
+        Assert.DoesNotContain("checked", grayInput);
+    }
 }

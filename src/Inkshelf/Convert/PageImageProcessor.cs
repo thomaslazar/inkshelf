@@ -12,13 +12,13 @@ public static class PageImageProcessor
     public sealed record ProcessedImage(byte[] Bytes, string Extension, int Width, int Height);
 
     public static async Task<ProcessedImage> ProcessAsync(byte[] bytes, string extension,
-        int maxWidth, int maxHeight, CancellationToken ct)
+        int maxWidth, int maxHeight, bool grayscale, CancellationToken ct)
     {
         var cap = maxWidth > 0 && maxHeight > 0;
         var info = Image.Identify(bytes);
         var (w, h) = (info.Width, info.Height);
         var oversized = cap && (w > maxWidth || h > maxHeight);
-        if (oversized || extension == ".webp")
+        if (oversized || extension == ".webp" || grayscale)
         {
             using var img = Image.Load(bytes);
             if (oversized)
@@ -27,6 +27,7 @@ public static class PageImageProcessor
                 img.Mutate(x => x.Resize(Math.Max(1, (int)Math.Round(img.Width * scale)),
                                          Math.Max(1, (int)Math.Round(img.Height * scale))));
             }
+            if (grayscale) img.Mutate(x => x.Grayscale());
             using var outMs = new MemoryStream();
             await img.SaveAsJpegAsync(outMs, ct);
             return new ProcessedImage(outMs.ToArray(), ".jpg", img.Width, img.Height);

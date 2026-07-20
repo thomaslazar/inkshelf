@@ -9,4 +9,4 @@ public enum ConvertStatus { None, Queued, Running, Done, Failed }
 // HttpContext to read the session cookie from.
 public sealed record ConvertJob(
     string ItemId, string AccessToken, string CachePath,
-    EbookMeta Meta, int MaxW, int MaxH, double Dpr);
+    EbookMeta Meta, RenderTarget Target);

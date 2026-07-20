@@ -25,9 +25,9 @@ public class ConvertService
     }
 
     // Kick a conversion (or serve the cached result). fresh=true regenerates.
-    public async Task<KickResult> KickAsync(string id, bool fresh, int maxW, int maxH, double dpr, CancellationToken ct)
+    public async Task<KickResult> KickAsync(string id, bool fresh, RenderTarget target, CancellationToken ct)
     {
-        var r = await ResolveAsync(id, maxW, maxH, ct);
+        var r = await ResolveAsync(id, target, ct);
         if (r is null) return new KickResult(ConvertStatus.None);
         var (path, meta, downloadName) = r.Value;
 
@@ -40,14 +40,14 @@ public class ConvertService
 
         var tokens = _tokens.Read();
         if (tokens is null) return new KickResult(ConvertStatus.None); // no session
-        var status = _queue.Enqueue(new ConvertJob(id, tokens.Access, path, meta, maxW, maxH, dpr));
+        var status = _queue.Enqueue(new ConvertJob(id, tokens.Access, path, meta, target));
         return new KickResult(status);
     }
 
     // Poll status WITHOUT enqueuing. Done carries the file path + name to stream.
-    public async Task<KickResult> StatusAsync(string id, int maxW, int maxH, double dpr, CancellationToken ct)
+    public async Task<KickResult> StatusAsync(string id, RenderTarget target, CancellationToken ct)
     {
-        var r = await ResolveAsync(id, maxW, maxH, ct);
+        var r = await ResolveAsync(id, target, ct);
         if (r is null) return new KickResult(ConvertStatus.None);
         var (path, _, downloadName) = r.Value;
         var status = _queue.Status(path);
@@ -59,7 +59,7 @@ public class ConvertService
     // Fetch detail, validate cbz/cbr, and derive (cache path, EPUB metadata,
     // download filename). null = not found / not a comic.
     private async Task<(string Path, EbookMeta Meta, string DownloadName)?> ResolveAsync(
-        string id, int maxW, int maxH, CancellationToken ct)
+        string id, RenderTarget target, CancellationToken ct)
     {
         AbsItemDetail detail;
         try { detail = await _api.GetItemDetailAsync(id, ct); }
@@ -76,7 +76,7 @@ public class ConvertService
         var seq = md.Series is { Count: > 0 } ? md.Series[0].Sequence : null;
         var seriesName = md.Series is { Count: > 0 } ? md.Series[0].Name : md.SeriesName;
 
-        var path = _cache.PathFor(id, ef.Metadata.Size, ef.Metadata.MtimeMs, maxW, maxH);
+        var path = _cache.PathFor(id, ef.Metadata.Size, ef.Metadata.MtimeMs, target.MaxW, target.MaxH, target.Grayscale);
         var meta = new EbookMeta(title, author, seriesName, seq, id);
         var downloadName = Sanitize($"{author} - {title}") + ".epub";
         return (path, meta, downloadName);

@@ -50,6 +50,13 @@ public class LibraryModel : PageModel
         if (IsSearch)
         {
             SearchResults = await _api.SearchAsync(Id, Q!.Trim(), SearchLimit, ct);
+            // Search hits are capped (SearchLimit), so one batch-metadata call is
+            // cheap and lets search rows carry the same convert state as the
+            // listing (structured authors/series + cached/converting), not just a
+            // plain "Convert".
+            var books = SearchResults.Book.Select(b => b.LibraryItem).ToList();
+            _structured = await FetchStructuredAsync(books, ct);
+            ComputeConvertStates(books);
             return Page();
         }
 
@@ -58,7 +65,7 @@ public class LibraryModel : PageModel
         var result = await _api.GetItemsAsync(Id, zeroPage, PageSize, filter, Sort, Desc, ct);
         Items = result.Results;
         _structured = await FetchStructuredAsync(Items, ct);
-        ComputeConvertStates();
+        ComputeConvertStates(Items);
         Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
         return Page();
     }
@@ -98,25 +105,28 @@ public class LibraryModel : PageModel
     public bool AnyConverting { get; private set; }
     private readonly Dictionary<string, ConvertRowState> _states = new();
 
-    private void ComputeConvertStates()
+    private void ComputeConvertStates(IEnumerable<AbsItem> items)
     {
-        var (w, h, _) = ScreenTarget.FromCookie(Request.Cookies["scr"]);
-        foreach (var item in Items)
+        var s = DeviceSettings.Read(Request);
+        var t = ScreenTarget.FromCookie(Request.Cookies["scr"], s.Retina, s.Grayscale);
+        foreach (var item in items)
         {
             _structured.TryGetValue(item.Id, out var media);
-            var state = RowState(item, media, w, h);
+            var state = RowState(item, media, t);
             _states[item.Id] = state;
             if (state == ConvertRowState.Converting) AnyConverting = true;
         }
     }
 
-    private ConvertRowState RowState(AbsItem item, AbsBatchMedia? media, int w, int h)
+    private ConvertRowState RowState(AbsItem item, AbsBatchMedia? media, RenderTarget target)
     {
-        var fmt = item.Media?.EbookFormat;
+        // Listing items (minified) carry media.ebookFormat; search items (expanded)
+        // carry the format only on the ebookFile. Check both, plus the batch's.
+        var fmt = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat ?? media?.EbookFile?.EbookFormat;
         if (fmt != "cbz" && fmt != "cbr") return ConvertRowState.NotConvertible;
         var efm = media?.EbookFile?.Metadata;
         if (efm is null) return ConvertRowState.NotConvertible; // can't key the cache
-        var path = _cache.PathFor(item.Id, efm.Size, efm.MtimeMs, w, h);
+        var path = _cache.PathFor(item.Id, efm.Size, efm.MtimeMs, target.MaxW, target.MaxH, target.Grayscale);
         return _queue.Status(path) switch
         {
             ConvertStatus.Done => ConvertRowState.Cached,

@@ -1,3 +1,4 @@
+using Inkshelf.Auth;
 using Inkshelf.Convert;
 
 namespace Inkshelf.Endpoints;
@@ -9,18 +10,19 @@ public static class ConvertEndpoints
         app.MapGet("/convert/{id}", async (string id, string? fresh, string? warm,
             string? status, string? @return, HttpContext httpContext, ConvertService convert, CancellationToken ct) =>
         {
-            var (maxW, maxH, dpr) = ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"]);
+            var ds = DeviceSettings.Read(httpContext.Request);
+            var t = ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"], ds.Retina, ds.Grayscale);
 
             // JS poll: report status, no enqueue.
             if (status is "1")
             {
-                var s = await convert.StatusAsync(id, maxW, maxH, dpr, ct);
+                var s = await convert.StatusAsync(id, t, ct);
                 return s.Status == ConvertStatus.None
                     ? Results.NotFound()
                     : Results.Text(Text(s.Status));
             }
 
-            var result = await convert.KickAsync(id, fresh is "1" or "true", maxW, maxH, dpr, ct);
+            var result = await convert.KickAsync(id, fresh is "1" or "true", t, ct);
             if (result.Status == ConvertStatus.None) return Results.NotFound();
 
             // JS kick (warm): return the status as text; 202 while not yet done.
