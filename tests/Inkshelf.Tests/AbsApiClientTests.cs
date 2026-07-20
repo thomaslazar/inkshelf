@@ -123,4 +123,43 @@ public class AbsApiClientTests
         var h = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
         await Assert.ThrowsAsync<HttpRequestException>(() => Client(h).GetLibrariesAsync());
     }
+
+    [Fact]
+    public async Task GetFinishedItemIdsAsync_returns_only_finished_with_ids()
+    {
+        var h = new StubHandler(_ => StubHandler.Json(
+            """{"mediaProgress":[{"libraryItemId":"i1","isFinished":true},{"libraryItemId":"i2","isFinished":false},{"libraryItemId":null,"isFinished":true}]}"""));
+        var set = await Client(h).GetFinishedItemIdsAsync();
+        Assert.Equal("/api/me", h.Last!.RequestUri!.AbsolutePath);
+        Assert.Contains("i1", set);
+        Assert.DoesNotContain("i2", set);   // not finished
+        Assert.Single(set);                 // null libraryItemId ignored
+    }
+
+    [Fact]
+    public async Task GetFinishedItemIdsAsync_tolerates_empty_progress()
+    {
+        var h = new StubHandler(_ => StubHandler.Json("""{"mediaProgress":[]}"""));
+        Assert.Empty(await Client(h).GetFinishedItemIdsAsync());
+    }
+
+    [Fact]
+    public async Task SetReadAsync_patches_progress_with_isFinished_true()
+    {
+        var h = new StubHandler(_ => new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.OK));
+        await Client(h).SetReadAsync("item1", finished: true);
+        Assert.Equal(HttpMethod.Patch, h.Last!.Method);
+        Assert.Equal("/api/me/progress/item1", h.Last!.RequestUri!.AbsolutePath);
+        var body = await h.Last!.Content!.ReadAsStringAsync();
+        Assert.Contains("\"isFinished\":true", body);
+    }
+
+    [Fact]
+    public async Task SetReadAsync_patches_isFinished_false_to_unmark()
+    {
+        var h = new StubHandler(_ => new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.OK));
+        await Client(h).SetReadAsync("item1", finished: false);
+        var body = await h.Last!.Content!.ReadAsStringAsync();
+        Assert.Contains("\"isFinished\":false", body);
+    }
 }
