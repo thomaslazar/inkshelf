@@ -8,6 +8,7 @@
     // mistake a comma inside one name for a separator.
 }
 <div class="item">
+    <a class="cover-link" href="/item/@item.Id">
     @if (!string.IsNullOrEmpty(item.Media?.CoverPath))
     {
         <span class="cover"><img src="/cover/@item.Id?w=120" alt="" /></span>
@@ -16,8 +17,9 @@
     {
         <span class="cover placeholder">@(string.IsNullOrEmpty(m?.Title) ? "?" : m!.Title!.Substring(0, 1).ToUpperInvariant())</span>
     }
+    </a>
     <div class="body">
-        <strong>@(m?.Title ?? "(untitled)")</strong><br />
+        <a href="/item/@item.Id"><strong>@(m?.Title ?? "(untitled)")</strong></a><br />
         @if (Model.Authors is { Count: > 0 } authors)
         {
             for (var i = 0; i < authors.Count; i++)
@@ -51,29 +53,7 @@
             <a href="/download/@item.Id">Download</a>
             @if (Model.State != ConvertRowState.NotConvertible)
             {
-                var ret = Uri.EscapeDataString(Model.ReturnUrl);
-                <span class="convert">
-                    @switch (Model.State)
-                    {
-                        case ConvertRowState.Cached:
-                            <a href="/convert/@item.Id?return=@ret" title="Already converted — downloads right away">EPUB &#10003;</a>
-                            break;
-                        case ConvertRowState.Converting:
-                            <a href="/convert/@item.Id?return=@ret" data-warm data-poll>Converting&#8230;</a>
-                            break;
-                        case ConvertRowState.Failed:
-                            <a href="/convert/@item.Id?return=@ret" data-warm>Convert (retry)</a>
-                            break;
-                        default:
-                            <a href="/convert/@item.Id?return=@ret" data-warm>Convert</a>
-                            break;
-                    }
-                    @* Plain link (no data-warm): the ↻ glyph must not become status text.
-                       Full-nav → server RemoveForItem + re-enqueue → 302 back to the listing,
-                       where the PRIMARY anchor re-renders as "Converting…" and the poll script
-                       drives it to "EPUB ✓". A rare action, so one reload is fine. *@
-                    <a class="regen" href="/convert/@item.Id?fresh=1&return=@ret" title="Regenerate">&#8635;</a>
-                </span>
+                <partial name="_ConvertAction" model="new Inkshelf.Pages.ConvertActionModel(item.Id, null, Model.State, Model.ReturnUrl)" />
             }
             <form class="read-form" method="post" action="/read/@item.Id">
                 @Html.AntiForgeryToken()

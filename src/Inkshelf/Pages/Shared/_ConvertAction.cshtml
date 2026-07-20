@@ -1,0 +1,26 @@
+@model Inkshelf.Pages.ConvertActionModel
+@{
+    var ret = Uri.EscapeDataString(Model.ReturnUrl);
+    var fileQ = string.IsNullOrEmpty(Model.FileIno) ? "" : $"file={Uri.EscapeDataString(Model.FileIno)}&";
+    var baseHref = $"/convert/{Model.Id}?{fileQ}return={ret}";
+    var freshHref = $"/convert/{Model.Id}?{fileQ}fresh=1&return={ret}";
+}
+<span class="convert">
+    @switch (Model.State)
+    {
+        case ConvertRowState.Cached:
+            <a href="@baseHref" title="Already converted — downloads right away">EPUB &#10003;</a>
+            break;
+        case ConvertRowState.Converting:
+            <a href="@baseHref" data-warm data-poll>Converting&#8230;</a>
+            break;
+        case ConvertRowState.Failed:
+            <a href="@baseHref" data-warm>Convert (retry)</a>
+            break;
+        default:
+            <a href="@baseHref" data-warm>Convert</a>
+            break;
+    }
+    @* Plain link (no data-warm): the ↻ glyph must not become status text. *@
+    <a class="regen" href="@freshHref" title="Regenerate">&#8635;</a>
+</span>
