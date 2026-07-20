@@ -342,6 +342,21 @@ public class ListingRenderTests
     }
 
     [Fact]
+    public async Task Filter_by_genre_shows_type_and_name()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var req = LibraryRequest(factory);
+        // base64("Fantasy") = "RmFudGFzeQ=="
+        req.RequestUri = new Uri($"/library/{LibId}?filter=genres.RmFudGFzeQ==", UriKind.Relative);
+        var html = await (await client.SendAsync(req)).Content.ReadAsStringAsync();
+        Assert.Contains("Filtered by <strong>Genre: Fantasy</strong>", html);
+    }
+
+    [Fact]
     public async Task Row_title_and_cover_link_to_the_item_detail_page()
     {
         using var cacheDir = new TempDir();
