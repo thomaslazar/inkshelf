@@ -57,4 +57,47 @@ public class EpubCache
             try { total -= f.Length; f.Delete(); } catch (IOException) { }
         }
     }
+
+    // One cached EPUB, decoded back into its cache-key parts. Mirrors PathFor.
+    public sealed record CachedVariant(
+        string ItemId, long Size, long MtimeMs, int MaxW, int MaxH, bool Grayscale, string Path);
+
+    // Enumerate cached EPUBs, parsing each filename back into its parts. Parsed
+    // RIGHT-TO-LEFT (dims, then mtime, then size) so an item id containing '-'
+    // (a UUID) survives intact. Filenames that don't match PathFor are skipped.
+    public IEnumerable<CachedVariant> ListVariants()
+    {
+        foreach (var path in Directory.EnumerateFiles(_dir, "*.epub"))
+        {
+            if (TryParse(path) is { } v) yield return v;
+        }
+    }
+
+    private static CachedVariant? TryParse(string path)
+    {
+        var name = System.IO.Path.GetFileNameWithoutExtension(path); // drops ".epub"
+        var grayscale = name.EndsWith("-g", StringComparison.Ordinal);
+        if (grayscale) name = name[..^2];
+
+        // remaining: {itemId}-{size}-{mtimeMs}-{maxW}x{maxH}
+        var d1 = name.LastIndexOf('-');
+        if (d1 < 0) return null;
+        var dims = name[(d1 + 1)..];
+        var xi = dims.IndexOf('x');
+        if (xi <= 0
+            || !int.TryParse(dims[..xi], out var maxW)
+            || !int.TryParse(dims[(xi + 1)..], out var maxH)) return null;
+
+        name = name[..d1]; // {itemId}-{size}-{mtimeMs}
+        var d2 = name.LastIndexOf('-');
+        if (d2 < 0 || !long.TryParse(name[(d2 + 1)..], out var mtimeMs)) return null;
+
+        name = name[..d2]; // {itemId}-{size}
+        var d3 = name.LastIndexOf('-');
+        if (d3 < 0 || !long.TryParse(name[(d3 + 1)..], out var size)) return null;
+
+        var itemId = name[..d3];
+        if (itemId.Length == 0) return null;
+        return new CachedVariant(itemId, size, mtimeMs, maxW, maxH, grayscale, path);
+    }
 }
