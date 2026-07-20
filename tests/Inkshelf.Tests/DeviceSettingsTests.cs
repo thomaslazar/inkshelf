@@ -29,6 +29,14 @@ public class DeviceSettingsTests
     }
 
     [Fact]
+    public void Read_explicit_00_is_both_off_distinct_from_default()
+    {
+        var v = DeviceSettings.Read(RequestWithCookie("00"));
+        Assert.Equal(new DeviceSettings(false, false), v);
+        Assert.NotEqual(DeviceSettings.Default, v); // absent/malformed default to retina on
+    }
+
+    [Fact]
     public void Read_parses_both_flags()
     {
         Assert.Equal(new DeviceSettings(true, false), DeviceSettings.Read(RequestWithCookie("10")));
