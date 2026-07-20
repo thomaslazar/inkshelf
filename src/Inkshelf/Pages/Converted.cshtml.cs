@@ -28,17 +28,19 @@ public class ConvertedModel : PageModel
         var settings = DeviceSettings.Read(Request);
         var target = ScreenTarget.FromCookie(Request.Cookies["scr"], settings.Retina, settings.Grayscale);
 
-        // Cache entries for THIS device, newest variant per item.
-        var byItem = new Dictionary<string, EpubCache.CachedVariant>();
+        // Cache entries for THIS device. Only the SET of item ids matters here —
+        // state is recomputed below from the current ebook file's size/mtime, so
+        // which cached variant existed is irrelevant.
+        var ids = new HashSet<string>();
         foreach (var v in _cache.ListVariants())
         {
             if (v.MaxW != target.MaxW || v.MaxH != target.MaxH || v.Grayscale != target.Grayscale) continue;
-            if (!byItem.TryGetValue(v.ItemId, out var cur) || v.MtimeMs > cur.MtimeMs) byItem[v.ItemId] = v;
+            ids.Add(v.ItemId);
         }
-        if (byItem.Count == 0) return Page();
+        if (ids.Count == 0) return Page();
 
         List<AbsBatchItem> items;
-        try { items = await _api.GetItemsBatchAsync(byItem.Keys.ToList(), ct); }
+        try { items = await _api.GetItemsBatchAsync(ids.ToList(), ct); }
         catch (HttpRequestException) { LoadError = true; return Page(); }
 
         var finished = await FetchFinishedAsync(ct);

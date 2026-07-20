@@ -134,6 +134,17 @@ head mirrors the others (title + a crumb back to Libraries + settings gear).
   item in the batch, ABS 403s the whole request. Won't bite a single-user
   sidecar (the user converted these items, so they have access); handled as a
   graceful notice, not a crash.
+- **Regen (↻) on `/converted`** hits `/convert/{id}?fresh=1`, which deletes the
+  cached file before re-enqueuing. Because this page is driven by cache-file
+  enumeration (unlike the ABS-driven listing), the row drops out of the list
+  until the reconversion completes, then reappears as "EPUB ✓" on a later
+  reload. Self-healing; accepted for v1.
+- **Empty-cache path returns the page before any ABS call**, so an
+  unauthenticated visitor with an empty cache sees the page chrome +
+  "Nothing converted…" rather than the `/login` redirect the other pages
+  give. No data leaks (the cache is empty by definition on that branch; a
+  non-empty cache still triggers the batch call → 401 → `/login`). Accepted
+  for v1.
 
 ## Non-goals (v1)
 
