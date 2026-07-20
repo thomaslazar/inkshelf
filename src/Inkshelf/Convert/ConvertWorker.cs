@@ -66,7 +66,7 @@ public sealed class ConvertWorker : BackgroundService
 
                 // Spool the download to a temp FILE (not a MemoryStream) so the ~220 MiB
                 // archive never sits in the managed heap. Ceiling enforced during the copy.
-                await using (var archive = await download.DownloadEbookAsync(job.ItemId, job.AccessToken, ct))
+                await using (var archive = await download.DownloadEbookAsync(job.ItemId, job.AccessToken, ct, job.FileIno))
                 await using (var spool = new FileStream(dlTmp, FileMode.Create, FileAccess.Write))
                 {
                     if (!await CopyWithLimitAsync(archive, spool, _options.MaxArchiveBytes, ct))

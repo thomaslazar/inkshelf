@@ -61,4 +61,13 @@ public class AbsDownloadClientTests
         await Assert.ThrowsAsync<HttpRequestException>(
             () => client.DownloadCoverAsync("item9", "tok", 600, default));
     }
+
+    [Fact]
+    public async Task DownloadEbook_with_fileIno_hits_ebook_ino_path()
+    {
+        var stub = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        { Content = new ByteArrayContent(new byte[] { 1 }) });
+        await using var s = await Client(stub).DownloadEbookAsync("item9", "TOK", default, fileIno: "77");
+        Assert.Equal("/api/items/item9/ebook/77", stub.Last!.RequestUri!.AbsolutePath);
+    }
 }

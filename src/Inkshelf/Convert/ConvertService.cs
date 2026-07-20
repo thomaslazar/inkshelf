@@ -1,3 +1,4 @@
+using System.Linq;
 using Inkshelf.Abs;
 using Inkshelf.Auth;
 
@@ -25,29 +26,27 @@ public class ConvertService
     }
 
     // Kick a conversion (or serve the cached result). fresh=true regenerates.
-    public async Task<KickResult> KickAsync(string id, bool fresh, RenderTarget target, CancellationToken ct)
+    public async Task<KickResult> KickAsync(string id, bool fresh, RenderTarget target,
+        CancellationToken ct, string? fileIno = null)
     {
-        var r = await ResolveAsync(id, target, ct);
+        var r = await ResolveAsync(id, target, fileIno, ct);
         if (r is null) return new KickResult(ConvertStatus.None);
         var (path, meta, downloadName) = r.Value;
 
         if (fresh) _cache.RemoveForItem(id);
-        if (System.IO.File.Exists(path))
-        {
-            _cache.Touch(path);
-            return new KickResult(ConvertStatus.Done, path, downloadName);
-        }
+        if (System.IO.File.Exists(path)) { _cache.Touch(path); return new KickResult(ConvertStatus.Done, path, downloadName); }
 
         var tokens = _tokens.Read();
-        if (tokens is null) return new KickResult(ConvertStatus.None); // no session
-        var status = _queue.Enqueue(new ConvertJob(id, tokens.Access, path, meta, target));
+        if (tokens is null) return new KickResult(ConvertStatus.None);
+        var status = _queue.Enqueue(new ConvertJob(id, tokens.Access, path, meta, target, fileIno));
         return new KickResult(status);
     }
 
     // Poll status WITHOUT enqueuing. Done carries the file path + name to stream.
-    public async Task<KickResult> StatusAsync(string id, RenderTarget target, CancellationToken ct)
+    public async Task<KickResult> StatusAsync(string id, RenderTarget target,
+        CancellationToken ct, string? fileIno = null)
     {
-        var r = await ResolveAsync(id, target, ct);
+        var r = await ResolveAsync(id, target, fileIno, ct);
         if (r is null) return new KickResult(ConvertStatus.None);
         var (path, _, downloadName) = r.Value;
         var status = _queue.Status(path);
@@ -59,24 +58,38 @@ public class ConvertService
     // Fetch detail, validate cbz/cbr, and derive (cache path, EPUB metadata,
     // download filename). null = not found / not a comic.
     private async Task<(string Path, EbookMeta Meta, string DownloadName)?> ResolveAsync(
-        string id, RenderTarget target, CancellationToken ct)
+        string id, RenderTarget target, string? fileIno, CancellationToken ct)
     {
         AbsItemDetail detail;
         try { detail = await _api.GetItemDetailAsync(id, ct); }
         catch (HttpRequestException) { return null; }
 
-        var ef = detail.Media?.EbookFile;
-        var fmt = ef?.EbookFormat;
-        if (ef?.Metadata is null || (fmt != "cbz" && fmt != "cbr")) return null;
+        // Pick the file to convert: a specific libraryFile by ino, else the primary.
+        string? fmt; long size; long mtime;
+        if (!string.IsNullOrEmpty(fileIno))
+        {
+            var lf = detail.LibraryFiles?.FirstOrDefault(f => f.Ino == fileIno && f.FileType == "ebook");
+            if (lf?.Metadata is null) return null;
+            fmt = lf.Metadata.Ext?.TrimStart('.').ToLowerInvariant();
+            size = lf.Metadata.Size; mtime = lf.Metadata.MtimeMs;
+        }
+        else
+        {
+            var ef = detail.Media?.EbookFile;
+            if (ef?.Metadata is null) return null;
+            fmt = ef.EbookFormat;
+            size = ef.Metadata.Size; mtime = ef.Metadata.MtimeMs;
+        }
+        if (fmt != "cbz" && fmt != "cbr") return null;
 
-        var md = detail.Media!.Metadata!;
-        var title = md.Title ?? "Untitled";
-        var author = md.AuthorName is { Length: > 0 } an ? an
-            : (md.Authors is { Count: > 0 } ? md.Authors[0].Name : "Unknown");
-        var seq = md.Series is { Count: > 0 } ? md.Series[0].Sequence : null;
-        var seriesName = md.Series is { Count: > 0 } ? md.Series[0].Name : md.SeriesName;
+        var md = detail.Media?.Metadata;
+        var title = md?.Title ?? "Untitled";
+        var author = md?.AuthorName is { Length: > 0 } an ? an
+            : (md?.Authors is { Count: > 0 } ? md.Authors[0].Name : "Unknown");
+        var seq = md?.Series is { Count: > 0 } ? md.Series[0].Sequence : null;
+        var seriesName = md?.Series is { Count: > 0 } ? md.Series[0].Name : md?.SeriesName;
 
-        var path = _cache.PathFor(id, ef.Metadata.Size, ef.Metadata.MtimeMs, target.MaxW, target.MaxH, target.Grayscale);
+        var path = _cache.PathFor(id, size, mtime, target.MaxW, target.MaxH, target.Grayscale);
         var meta = new EbookMeta(title, author, seriesName, seq, id);
         var downloadName = Sanitize($"{author} - {title}") + ".epub";
         return (path, meta, downloadName);
