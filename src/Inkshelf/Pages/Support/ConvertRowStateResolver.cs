@@ -14,10 +14,17 @@ public static class ConvertRowStateResolver
         // Listing items (minified) carry media.ebookFormat; search/batch items
         // (expanded) carry the format only on the ebookFile. Check all.
         var fmt = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat ?? media?.EbookFile?.EbookFormat;
-        if (fmt != "cbz" && fmt != "cbr") return ConvertRowState.NotConvertible;
         var efm = media?.EbookFile?.Metadata;
         if (efm is null) return ConvertRowState.NotConvertible; // can't key the cache
-        var path = cache.PathFor(item.Id, efm.Size, efm.MtimeMs, target.MaxW, target.MaxH, target.Grayscale);
+        return ResolveFor(item.Id, efm.Size, efm.MtimeMs, fmt, target, cache, queue);
+    }
+
+    // Lower-level: state for one specific (itemId, file size+mtime, format).
+    public static ConvertRowState ResolveFor(string itemId, long size, long mtimeMs,
+        string? fmt, RenderTarget target, EpubCache cache, ConvertQueue queue)
+    {
+        if (fmt != "cbz" && fmt != "cbr") return ConvertRowState.NotConvertible;
+        var path = cache.PathFor(itemId, size, mtimeMs, target.MaxW, target.MaxH, target.Grayscale);
         return queue.Status(path) switch
         {
             ConvertStatus.Done => ConvertRowState.Cached,
