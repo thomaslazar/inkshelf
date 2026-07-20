@@ -3,12 +3,6 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## Unreleased
-
-### Added
-- feat: declare a real cover in converted EPUBs (thumbnail in Apple Books etc.),
-  preferring the ABS cover art and falling back to the first page.
-
 ## v0.1.2 — 2026-07-17
 
 ### Highlights
