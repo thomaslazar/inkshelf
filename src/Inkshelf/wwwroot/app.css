@@ -43,4 +43,21 @@ nav.pager a { margin-right: 1rem; }
 .settings-form { margin: 1rem 0; }
 .settings-form label { cursor: pointer; }
 .item .actions .read-form { margin: 0; }
-.item .actions .read-btn { display: block; border: none; background: none; padding: 0; margin-bottom: .35rem; font: inherit; color: #000; text-align: left; text-decoration: underline; cursor: pointer; }
+.read-form .read-btn { display: block; border: none; background: none; padding: 0; margin-bottom: .35rem; font: inherit; color: #000; text-align: left; text-decoration: underline; cursor: pointer; }
+
+/* Item detail page — same defensive rules as .item (no flex gap / object-fit). */
+.detail { display: flex; align-items: flex-start; margin: 1rem 0; }
+.detail-cover { flex: 0 0 160px; width: 160px; margin-right: 1rem; text-align: center; }
+.detail-cover img { max-width: 160px; max-height: 240px; width: auto; height: auto; }
+.cover-link { text-decoration: none; }
+.detail-meta { flex: 1 1 auto; min-width: 0; }
+.detail-meta h2 { margin: 0 0 .25rem; }
+.detail-meta p { margin: .25rem 0; }
+.subtitle { color: #666; }
+.description { margin: 1rem 0; }
+.file-row { display: flex; align-items: baseline; padding: .4rem 0; border-bottom: 1px solid #ccc; }
+.file-name { flex: 1 1 auto; min-width: 0; margin-right: .75rem; word-break: break-word; }
+.file-format { flex: 0 0 auto; margin-right: .75rem; color: #666; }
+.file-row a { margin-right: .75rem; }
+.file-row .convert { white-space: nowrap; }
+.file-row .regen { margin-left: .4rem; }
