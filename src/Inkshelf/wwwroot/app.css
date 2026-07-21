@@ -55,9 +55,13 @@ nav.pager a { margin-right: 1rem; }
 .detail-meta p { margin: .25rem 0; }
 .subtitle { color: #666; }
 .description { margin: 1rem 0; }
-.file-row { display: flex; align-items: baseline; padding: .4rem 0; border-bottom: 1px solid #ccc; }
-.file-name { flex: 1 1 auto; min-width: 0; margin-right: .75rem; word-break: break-word; }
-.file-format { flex: 0 0 auto; margin-right: .75rem; color: #666; }
-.file-row a { margin-right: .75rem; }
+/* Block layout, not flex: the target e-ink engine mishandles flex-shrink of a
+   long text node, overlapping the actions. Filename wraps freely on its own
+   line; actions sit on a line below and never overlap. */
+.file-row { padding: .5rem 0; border-bottom: 1px solid #ccc; }
+.file-name { word-break: break-word; }
+.file-format { margin-left: .5rem; color: #666; }
+.file-actions { margin-top: .25rem; }
+.file-actions a { margin-right: .75rem; }
 .file-row .convert { white-space: nowrap; }
 .file-row .regen { margin-left: .4rem; }

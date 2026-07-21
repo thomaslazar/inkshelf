@@ -102,13 +102,17 @@ else
     foreach (var f in Model.Files)
     {
         <div class="file-row">
-            <span class="file-name">@f.Name</span>
-            <span class="file-format">@f.Format</span>
-            <a href="@f.DownloadHref">Download</a>
-            @if (f.Convert is not null)
-            {
-                <partial name="_ConvertAction" model="f.Convert" />
-            }
+            <div class="file-info">
+                <span class="file-name">@f.Name</span>
+                <span class="file-format">@f.Format</span>
+            </div>
+            <div class="file-actions">
+                <a href="@f.DownloadHref">Download</a>
+                @if (f.Convert is not null)
+                {
+                    <partial name="_ConvertAction" model="f.Convert" />
+                }
+            </div>
         </div>
     }
 }
