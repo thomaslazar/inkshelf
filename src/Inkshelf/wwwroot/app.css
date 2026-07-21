@@ -9,7 +9,11 @@ img { max-width: 100%; height: auto; }
 .item .cover img { max-width: 72px; max-height: 72px; width: auto; height: auto; }
 /* Placeholder shown when an item has no cover (title initial in a grey box). */
 .item .cover.placeholder { background: #eee; color: #999; font-size: 2rem; line-height: 72px; }
-.item .body { flex: 1 1 auto; min-width: 0; }
+/* max-width (not just flex:1 + min-width:0) because the Tolino's old flexbox
+   doesn't reliably reserve the fixed .actions column against a long, wrapping
+   body — without the cap, long titles overflow and render under the actions.
+   Mirrors the row's fixed slots: cover 72px + 1rem, actions 8.5rem + .75rem. */
+.item .body { flex: 1 1 auto; min-width: 0; max-width: calc(100% - 72px - 1rem - 8.5rem - .75rem); }
 nav.pager a { margin-right: 1rem; }
 .sortbar { margin: .5rem 0; }
 /* Fixed-width right column so the middle (title/author) column does all the
