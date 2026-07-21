@@ -149,5 +149,10 @@ public class ConvertedRenderTests
         // ?all=1 so a favorite cookie (none here) wouldn't redirect; renders the hub.
         var html = await (await client.SendAsync(Request(factory, "/?all=1"))).Content.ReadAsStringAsync();
         Assert.Contains("href=\"/converted\"", html);
+        // The title icon is a home link, and the deployed version renders (a real
+        // number, not the literal Razor expression — guards the v@Model email trap).
+        Assert.Contains("<a href=\"/?all=1\" class=\"home-link\"", html);
+        Assert.Matches(@"Inkshelf v\d+\.\d+", html);
+        Assert.DoesNotContain("@Model", html);
     }
 }
