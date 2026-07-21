@@ -3,6 +3,42 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.2.0 — 2026-07-21
+
+### Highlights
+- **Per-device settings** — a Settings page (cog link in every header) with
+  **retina** and **grayscale** toggles that flow through comic conversion and the
+  cache, so each e-reader gets pages tuned to its screen.
+- **Read / unread tracking** — mark items read from the listing, search, and
+  detail rows, synced to your Audiobookshelf progress.
+- **Real EPUB covers** — converted comics embed a proper cover (the ABS cover
+  art, falling back to the first page) instead of a blank placeholder.
+- **Item detail page** — a per-item page with full metadata (author, series,
+  narrators, genres, tags, description — all filterable), every downloadable file,
+  and a per-file convert action.
+- **"Converted on this device" view** — one page listing every comic already
+  converted and cached for the device you're on, across all libraries.
+
+### Features
+- Settings page with per-device retina and grayscale toggles
+- read/unread toggle on the listing, search, and detail rows
+- real cover in converted EPUBs (ABS art, first-page fallback)
+- per-item detail page at `/item/{id}` with all files and metadata
+- every ebook file listed per item with its own download + per-file convert
+- combined "converted on this device" view at `/converted`
+- filter by genre, tag, and narrator (plus author/series)
+- converted-EPUB cache keyed on the grayscale setting
+
+### Fixes
+- long titles no longer overlap the row actions on the e-reader
+- conversion doesn't fail when the cover fetch times out
+- the library is shown in the item-detail breadcrumb
+- the facet type and resolved name are shown in the filter banner
+- accurate convert state on search-result rows
+- detail file rows stack so long filenames don't overlap their actions
+- encoding-safe cookie format for per-device settings
+- settings glyph replaced with a PNG gear icon for old browsers
+
 ## v0.1.2 — 2026-07-17
 
 ### Highlights
