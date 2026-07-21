@@ -33,13 +33,10 @@ elements only.
 ## Screenshots
 
 <p align="center">
-  <a href="docs/img/login.jpg"><img src="docs/img/login.jpg" alt="Login screen" width="200"></a>
-  <a href="docs/img/libraries.jpg"><img src="docs/img/libraries.jpg" alt="Libraries list" width="200"></a>
-  <a href="docs/img/library-listing.jpg"><img src="docs/img/library-listing.jpg" alt="Library listing with download and convert actions" width="200"></a>
-  <a href="docs/img/converted-comic.jpg"><img src="docs/img/converted-comic.jpg" alt="A converted comic being read on the device" width="200"></a>
+  <a href="docs/img/login.jpg"><img src="docs/img/login.jpg" alt="Inkshelf login screen on an e-ink reader" width="220"></a>
 </p>
 
-<p align="center"><sub>Login · libraries · a library listing with download/convert actions · a converted comic being read — on a real e-ink reader. Click any image to enlarge.</sub></p>
+<p align="center"><sub>Inkshelf on a real e-ink reader. <strong><a href="docs/SCREENSHOTS.md">See more screenshots →</a></strong></sub></p>
 
 ## Features
 
