@@ -200,4 +200,35 @@ public class AbsApiClientTests
         Assert.True(map.ContainsKey("i1"));
         Assert.Equal("S", map["i1"].Metadata!.Series![0].Name);
     }
+
+    [Fact]
+    public async Task GetItemDetailAsync_requests_expanded_and_parses_files_and_metadata()
+    {
+        var json = """{"libraryId":"lib1","libraryFiles":[{"ino":"11","fileType":"ebook","metadata":{"filename":"a.cbz","ext":".cbz","size":10,"mtimeMs":20}},{"ino":"12","fileType":"ebook","metadata":{"filename":"a.pdf","ext":".pdf","size":30,"mtimeMs":40}},{"ino":"13","fileType":"image","metadata":{"filename":"cover.jpg","ext":".jpg","size":5,"mtimeMs":6}}],"media":{"coverPath":"/c.jpg","tags":["owned","fav"],"ebookFile":{"ino":"11","ebookFormat":"cbz","metadata":{"filename":"a.cbz","size":10,"mtimeMs":20}},"metadata":{"title":"My Comic","subtitle":"Sub","authors":[{"id":"a1","name":"Auth One"},{"id":"a2","name":"Auth Two"}],"series":[{"id":"s1","name":"S One","sequence":"3"},{"id":"s2","name":"S Two","sequence":"1"}],"narrators":["Nar A","Nar B"],"genres":["Fantasy","Horror"],"publisher":"Pub","publishedYear":"2021","language":"en","descriptionPlain":"Plain desc"}}}""";
+        var h = new StubHandler(_ => StubHandler.Json(json));
+        var d = await Client(h).GetItemDetailAsync("i1");
+
+        Assert.Equal("/api/items/i1", h.Last!.RequestUri!.AbsolutePath);
+        Assert.Equal("1", System.Web.HttpUtility.ParseQueryString(h.Last!.RequestUri!.Query)["expanded"]);
+        Assert.Equal("lib1", d.LibraryId);
+        Assert.Equal(3, d.LibraryFiles!.Count);
+        Assert.Equal("11", d.Media!.EbookFile!.Ino);
+        Assert.Equal(2, d.Media!.Metadata!.Authors!.Count);
+        Assert.Equal(2, d.Media!.Metadata!.Series!.Count);
+        Assert.Equal(new[] { "Nar A", "Nar B" }, d.Media!.Metadata!.Narrators!.ToArray());
+        Assert.Equal(new[] { "Fantasy", "Horror" }, d.Media!.Metadata!.Genres!.ToArray());
+        Assert.Equal(new[] { "owned", "fav" }, d.Media!.Tags!.ToArray());
+        Assert.Equal("Plain desc", d.Media!.Metadata!.DescriptionPlain);
+        Assert.Equal("2021", d.Media!.Metadata!.PublishedYear);
+    }
+
+    [Fact]
+    public async Task GetEbookFileStreamAsync_hits_ebook_ino_path()
+    {
+        var h = new StubHandler(_ => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        { Content = new ByteArrayContent(new byte[] { 1, 2 }) });
+        var (stream, _) = await Client(h).GetEbookFileStreamAsync("i1", "12");
+        await using var _s = stream;
+        Assert.Equal("/api/items/i1/ebook/12", h.Last!.RequestUri!.AbsolutePath);
+    }
 }

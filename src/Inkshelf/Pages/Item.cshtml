@@ -1,0 +1,118 @@
+@page "{id}"
+@model Inkshelf.Pages.ItemModel
+@{
+    Response.Headers["Cache-Control"] = "no-store";
+    var m = Model.Meta;
+}
+<div class="page-head" id="top">
+    <h1 class="page-title">
+        <img src="~/img/icon-black.png" alt="" class="title-icon" />
+        <a href="/?all=1">Libraries</a>
+        @if (!string.IsNullOrEmpty(Model.LibraryName))
+        {
+            <span class="crumb-sep">›</span> <a href="/library/@Model.LibraryId">@Model.LibraryName</a>
+        }
+        <span class="crumb-sep">›</span> @(m?.Title ?? "Item")
+    </h1>
+    <a class="settings-link" href="/settings" title="Settings"><img src="~/img/gear-black.png" alt="Settings" class="settings-icon" width="24" height="24" /></a>
+</div>
+
+<div class="detail">
+    @if (Model.HasCover)
+    {
+        <span class="detail-cover"><img src="/cover/@Model.Id?w=240" alt="" /></span>
+    }
+    <div class="detail-meta">
+        <h2>@(m?.Title ?? "(untitled)")</h2>
+        @if (!string.IsNullOrWhiteSpace(m?.Subtitle)) { <p class="subtitle">@m!.Subtitle</p> }
+
+        @if (m?.Authors is { Count: > 0 } authors)
+        {
+            <p>Authors:
+            @for (var i = 0; i < authors.Count; i++)
+            {
+                if (i > 0) { <text>, </text> }
+                <a href="@Model.Links.FilterHref("authors", authors[i].Id)">@authors[i].Name</a>
+            }
+            </p>
+        }
+        @if (m?.Series is { Count: > 0 } series)
+        {
+            <p>Series:
+            @for (var i = 0; i < series.Count; i++)
+            {
+                if (i > 0) { <text>, </text> }
+                <a href="@Model.Links.FilterHref("series", series[i].Id)">@series[i].Name@(string.IsNullOrEmpty(series[i].Sequence) ? "" : $" #{series[i].Sequence}")</a>
+            }
+            </p>
+        }
+        @if (m?.Narrators is { Count: > 0 } narrators)
+        {
+            <p>Narrators:
+            @for (var i = 0; i < narrators.Count; i++)
+            {
+                if (i > 0) { <text>, </text> }
+                <a href="@Model.Links.FilterHref("narrators", narrators[i])">@narrators[i]</a>
+            }
+            </p>
+        }
+        @{ var pubBits = new List<string>(); if (!string.IsNullOrWhiteSpace(m?.Publisher)) pubBits.Add(m!.Publisher!); if (!string.IsNullOrWhiteSpace(m?.PublishedYear)) pubBits.Add(m!.PublishedYear!); if (!string.IsNullOrWhiteSpace(m?.Language)) pubBits.Add(m!.Language!); }
+        @if (pubBits.Count > 0) { <p>@string.Join(" · ", pubBits)</p> }
+        @if (m?.Genres is { Count: > 0 } genres)
+        {
+            <p>Genres:
+            @foreach (var g in genres) { <a href="@Model.Links.FilterHref("genres", g)">@g</a> <text> </text> }
+            </p>
+        }
+        @if (Model.Tags is { Count: > 0 } tags)
+        {
+            <p>Tags:
+            @foreach (var tg in tags) { <a href="@Model.Links.FilterHref("tags", tg)">@tg</a> <text> </text> }
+            </p>
+        }
+    </div>
+</div>
+
+<form class="read-form" method="post" action="/read/@Model.Id">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="read" value="@(Model.Read ? "0" : "1")" />
+    <input type="hidden" name="return" value="/item/@Model.Id" />
+    @if (Model.Read)
+    {
+        <button type="submit" class="read-btn" title="Mark as unread">&#10003; Read</button>
+    }
+    else
+    {
+        <button type="submit" class="read-btn" title="Mark as read">Mark read</button>
+    }
+</form>
+
+@if (!string.IsNullOrWhiteSpace(m?.DescriptionPlain))
+{
+    <p class="description">@m!.DescriptionPlain</p>
+}
+
+<h2>Files</h2>
+@if (Model.Files.Count == 0)
+{
+    <p>No downloadable files.</p>
+}
+else
+{
+    foreach (var f in Model.Files)
+    {
+        <div class="file-row">
+            <div class="file-info">
+                <span class="file-name">@f.Name</span>
+                <span class="file-format">@f.Format</span>
+            </div>
+            <div class="file-actions">
+                <a href="@f.DownloadHref">Download</a>
+                @if (f.Convert is not null)
+                {
+                    <partial name="_ConvertAction" model="f.Convert" />
+                }
+            </div>
+        </div>
+    }
+}

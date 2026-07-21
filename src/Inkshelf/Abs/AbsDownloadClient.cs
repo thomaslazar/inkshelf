@@ -19,9 +19,10 @@ public sealed class AbsDownloadClient
     public AbsDownloadClient(HttpClient http) => _http = http;
 
     // Caller owns (and must dispose) the returned stream.
-    public async Task<Stream> DownloadEbookAsync(string itemId, string accessToken, CancellationToken ct)
+    public async Task<Stream> DownloadEbookAsync(string itemId, string accessToken, CancellationToken ct, string? fileIno = null)
     {
-        var url = $"/api/items/{Uri.EscapeDataString(itemId)}/ebook";
+        var url = $"/api/items/{Uri.EscapeDataString(itemId)}/ebook"
+            + (string.IsNullOrEmpty(fileIno) ? "" : $"/{Uri.EscapeDataString(fileIno)}");
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         var res = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);

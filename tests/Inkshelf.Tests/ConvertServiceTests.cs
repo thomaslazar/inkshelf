@@ -109,4 +109,33 @@ public class ConvertServiceTests
         var r = await svc.StatusAsync("item1", new RenderTarget(100, 200, 1.0, false), default);
         Assert.Equal(ConvertStatus.None, r.Status);
     }
+
+    [Fact]
+    public async Task KickAsync_with_fileIno_keys_cache_on_that_file()
+    {
+        // Primary ebook is a PDF (ino 1); a non-primary CBZ is ino 2.
+        var detail = """
+        {"libraryId":"lib1",
+         "libraryFiles":[
+            {"ino":"1","fileType":"ebook","metadata":{"filename":"b.pdf","ext":".pdf","size":10,"mtimeMs":20}},
+            {"ino":"2","fileType":"ebook","metadata":{"filename":"b.cbz","ext":".cbz","size":99,"mtimeMs":88}}],
+         "media":{"ebookFile":{"ino":"1","ebookFormat":"pdf","metadata":{"filename":"b.pdf","size":10,"mtimeMs":20}},
+           "metadata":{"title":"T","authorName":"A"}}}
+        """;
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        var queue = new ConvertQueue();
+        var svc = Service(DetailClient(detail), cache, queue, TokenStoreWith("TOK"));
+        var target = new RenderTarget(100, 200, 1.0, false);
+
+        // Primary (pdf) → not convertible.
+        Assert.Equal(ConvertStatus.None, (await svc.KickAsync("i1", false, target, default)).Status);
+
+        // The non-primary cbz (ino 2) → queued, keyed by size 99 / mtime 88, carrying the ino.
+        var r = await svc.KickAsync("i1", false, target, default, fileIno: "2");
+        Assert.Equal(ConvertStatus.Queued, r.Status);
+        Assert.True(queue.Reader.TryRead(out var job));
+        Assert.Equal(cache.PathFor("i1", 99, 88, 100, 200), job!.CachePath);
+        Assert.Equal("2", job.FileIno);
+    }
 }

@@ -155,6 +155,8 @@ public class LibraryModel : PageModel
             {
                 _filterGroup = d.Group; _filterValue = d.Value;
                 FilterType = Humanize(d.Group);
+                // genres/tags/narrators filter by NAME — the decoded value IS the label.
+                if (d.Group is "genres" or "tags" or "narrators") FilterName = d.Value;
             }
             else { FilterType = "Filter"; }
             return Filter;
@@ -206,6 +208,9 @@ public class LibraryModel : PageModel
     {
         "authors" => "Author",
         "series" => "Series",
+        "genres" => "Genre",
+        "tags" => "Tag",
+        "narrators" => "Narrator",
         _ => group.Length > 0 ? char.ToUpperInvariant(group[0]) + group[1..] : group
     };
 

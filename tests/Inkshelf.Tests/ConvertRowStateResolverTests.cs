@@ -48,4 +48,21 @@ public class ConvertRowStateResolverTests
         var r = ConvertRowStateResolver.Resolve(Item("cbz"), Media(), Target, new EpubCache(TempDirPath()), new ConvertQueue());
         Assert.Equal(ConvertRowState.Convert, r);
     }
+
+    [Fact]
+    public void ResolveFor_returns_cached_when_file_present()
+    {
+        var dir = TempDirPath();
+        var cache = new EpubCache(dir);
+        File.WriteAllText(cache.PathFor("i1", 99, 88, 800, 1000), "e");
+        var r = ConvertRowStateResolver.ResolveFor("i1", 99, 88, "cbz", new RenderTarget(800, 1000, 1.0, false), cache, new ConvertQueue());
+        Assert.Equal(ConvertRowState.Cached, r);
+    }
+
+    [Fact]
+    public void ResolveFor_non_comic_is_not_convertible()
+    {
+        var r = ConvertRowStateResolver.ResolveFor("i1", 1, 2, "pdf", new RenderTarget(800, 1000, 1.0, false), new EpubCache(TempDirPath()), new ConvertQueue());
+        Assert.Equal(ConvertRowState.NotConvertible, r);
+    }
 }
