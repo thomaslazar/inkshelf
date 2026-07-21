@@ -42,6 +42,8 @@ nav.pager a { margin-right: 1rem; }
 .tabs { margin: .5rem 0; font-weight: bold; }
 .totop { font-weight: normal; font-size: .8em; text-decoration: none; margin-left: .5rem; }
 .settings-link { margin-left: .4rem; flex: 0 0 auto; text-decoration: none; }
+.home-link { text-decoration: none; }
+.app-version { margin-top: 1.5rem; color: #666; }
 .settings-icon { display: block; height: 1.6em; width: auto; }
 .settings-note { color: #555; margin: .4rem 0; }
 .settings-form { margin: 1rem 0; }
