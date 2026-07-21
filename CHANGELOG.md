@@ -3,6 +3,17 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.2.1 — 2026-07-21
+
+### Highlights
+- The header icon (left of "Libraries") is now a link back to the libraries
+  list, on every page.
+- The libraries page shows the deployed Inkshelf version, so you can tell which
+  build is actually running.
+
+### Features
+- feat: link the header icon to libraries and show the version
+
 ## v0.2.0 — 2026-07-21
 
 ### Highlights
@@ -20,24 +31,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
   converted and cached for the device you're on, across all libraries.
 
 ### Features
-- Settings page with per-device retina and grayscale toggles
-- read/unread toggle on the listing, search, and detail rows
-- real cover in converted EPUBs (ABS art, first-page fallback)
-- per-item detail page at `/item/{id}` with all files and metadata
-- every ebook file listed per item with its own download + per-file convert
-- combined "converted on this device" view at `/converted`
-- filter by genre, tag, and narrator (plus author/series)
-- converted-EPUB cache keyed on the grayscale setting
+- feat: add ABS read-state read/write to AbsApiClient
+- feat: add DeviceSettings per-device settings cookie
+- feat: add POST /read endpoint to toggle read state
+- feat: add POST /settings endpoint to write the settings cookie
+- feat: add read/unread toggle to listing and search rows
+- feat: add Settings page and cog entry links
+- feat: add the converted-this-device view + index link
+- feat: add the item detail page
+- feat: add token-less ABS cover download for the worker
+- feat: apply device settings to conversion and row-state
+- feat: declare an EPUB cover (cover-image + EPUB2 meta) with first-page fallback
+- feat: default retina to on
+- feat: enumerate cached epubs via reverse-parsed filenames
+- feat: expose libraryId/title/cover from the ABS batch fetch
+- feat: fetch expanded item detail + per-file ebook stream
+- feat: fetch the ABS cover in the worker and embed it in the EPUB
+- feat: introduce RenderTarget and parameterize ScreenTarget retina + dpr clamp
+- feat: key the EPUB cache on grayscale
+- feat: label genre/tag/narrator facet filters
+- feat: process and embed the ABS cover during conversion
+- feat: support grayscale page desaturation in PageImageProcessor
+- feat: thread optional file ino through convert and download
 
 ### Fixes
-- long titles no longer overlap the row actions on the e-reader
-- conversion doesn't fail when the cover fetch times out
-- the library is shown in the item-detail breadcrumb
-- the facet type and resolved name are shown in the filter banner
-- accurate convert state on search-result rows
-- detail file rows stack so long filenames don't overlap their actions
-- encoding-safe cookie format for per-device settings
-- settings glyph replaced with a PNG gear icon for old browsers
+- fix: cap listing body width so long titles don't overlap actions
+- fix: don't fail conversion when the cover fetch times out
+- fix: replace settings glyph with a PNG gear icon
+- fix: show accurate convert state on search-result rows
+- fix: show facet type and resolved name in the filter banner
+- fix: show the library in the item detail breadcrumb
+- fix: stack detail file rows so long names don't overlap actions
+- fix: use encoding-safe cookie format and CookieOptions for DeviceSettings
+
+### Refactors
+- refactor: extract _ConvertAction partial; link row title/cover to detail
+- refactor: extract shared convert-row-state resolver
+- refactor: simplify converted-view dedupe to an id set
+- refactor: thread RenderTarget through the conversion pipeline
 
 ## v0.1.2 — 2026-07-17
 
