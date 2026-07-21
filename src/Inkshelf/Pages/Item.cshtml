@@ -7,7 +7,12 @@
 <div class="page-head" id="top">
     <h1 class="page-title">
         <img src="~/img/icon-black.png" alt="" class="title-icon" />
-        <a href="/?all=1">Libraries</a> <span class="crumb-sep">›</span> @(m?.Title ?? "Item")
+        <a href="/?all=1">Libraries</a>
+        @if (!string.IsNullOrEmpty(Model.LibraryName))
+        {
+            <span class="crumb-sep">›</span> <a href="/library/@Model.LibraryId">@Model.LibraryName</a>
+        }
+        <span class="crumb-sep">›</span> @(m?.Title ?? "Item")
     </h1>
     <a class="settings-link" href="/settings" title="Settings"><img src="~/img/gear-black.png" alt="Settings" class="settings-icon" width="24" height="24" /></a>
 </div>

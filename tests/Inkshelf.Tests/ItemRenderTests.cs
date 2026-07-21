@@ -32,6 +32,7 @@ public class ItemRenderTests
         var path = req.RequestUri!.AbsolutePath;
         if (path == $"/api/items/{ItemId}") return StubHandler.Json(DetailJson());
         if (path == "/api/me") return StubHandler.Json("""{"mediaProgress":[]}""");
+        if (path == "/api/libraries") return StubHandler.Json("""{"libraries":[{"id":"lib1","name":"Test Library","mediaType":"book"}]}""");
         return new HttpResponseMessage(HttpStatusCode.NotFound);
     });
 
@@ -57,6 +58,20 @@ public class ItemRenderTests
         var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.Add("Cookie", $"inkshelf_session={Uri.EscapeDataString(protector.Protect("access\nrefresh"))}; scr={W}x{H}x1");
         return req;
+    }
+
+    [Fact]
+    public async Task Breadcrumb_shows_the_actual_library_between_libraries_and_title()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(Request(factory, $"/item/{ItemId}"))).Content.ReadAsStringAsync();
+
+        // Libraries › <actual library, links to the listing> › <book title>
+        Assert.Contains($"href=\"/library/{LibId}\">Test Library</a>", html);
     }
 
     [Fact]

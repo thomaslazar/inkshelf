@@ -20,6 +20,7 @@ public class ItemModel : PageModel
     public record FileRow(string Name, string Format, string DownloadHref, ConvertActionModel? Convert);
 
     public string LibraryId { get; private set; } = "";
+    public string LibraryName { get; private set; } = "";
     public AbsDetailMetadata? Meta { get; private set; }
     public List<string> Tags { get; private set; } = new();
     public bool HasCover { get; private set; }
@@ -36,6 +37,14 @@ public class ItemModel : PageModel
         if (detail.Media is null) return NotFound();
 
         LibraryId = detail.LibraryId ?? "";
+        // Resolve the library's display name for the breadcrumb. A transient
+        // failure just drops the middle crumb (an expired session throws
+        // AbsAuthException, not HttpRequestException, so it still → /login).
+        if (!string.IsNullOrEmpty(LibraryId))
+        {
+            try { LibraryName = (await _api.GetLibrariesAsync(ct)).FirstOrDefault(l => l.Id == LibraryId)?.Name ?? ""; }
+            catch (HttpRequestException) { LibraryName = ""; }
+        }
         Meta = detail.Media.Metadata;
         Tags = detail.Media.Tags ?? new();
         HasCover = !string.IsNullOrEmpty(detail.Media.CoverPath);
