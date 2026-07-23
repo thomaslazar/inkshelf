@@ -81,7 +81,29 @@ real (if minimal) server rather than only unit tests.
   [Localisation](#localisation).
 - **Tests stay green.** `dotnet test` must pass, and `dotnet format --verify-no-changes`
   must be clean, before you open a PR. New behavior needs tests.
+- **Verify UI changes in a browser.** Any change touching views, CSS, or
+  user-facing strings gets a headless-browser pass before the e-reader pass —
+  see [Verifying UI changes](#verifying-ui-changes).
 - **Respect the non-goals** documented in `docs/ARCHITECTURE.md`.
+
+## Verifying UI changes
+
+Two passes, in order:
+
+1. **Browser pass (always, in the container):** run the screenshot harness —
+   ```bash
+   tools/uicheck/run.sh
+   ```
+   It starts the app, drives it in a headless browser, writes full-page
+   screenshots to `tools/uicheck/shots/`, and asserts key strings; it exits
+   non-zero on failure. This catches gross breakage, layout overflow, and
+   untranslated / English-leak strings. First run downloads Chromium (one-time,
+   no root). Extend `tools/uicheck/Program.cs` with a `Check(...)` call when you
+   add a page or language. See [`tools/uicheck/README.md`](tools/uicheck/README.md).
+2. **E-reader pass (mandatory for merge):** the browser above is desktop
+   Chromium and does **not** reproduce the old e-ink engine (no `object-fit`, no
+   flex `gap`), so always confirm the change on a real e-ink e-reader before it
+   merges.
 
 ## Localisation
 
