@@ -33,10 +33,9 @@ public class LibraryModel : PageModel
     public bool IsFavorite { get; private set; }
     public bool IsSearch => !string.IsNullOrWhiteSpace(Q);
     // The active facet's humanized type ("Series"/"Author"/…) and, when known,
-    // its display name; FilterDisplay joins them ("Series: The Sandman").
+    // its display name.
     public string? FilterType { get; private set; }
     public string? FilterName { get; private set; }
-    public string FilterDisplay => FilterName is null ? (FilterType ?? "") : $"{FilterType}: {FilterName}";
     public string LibraryName { get; private set; } = "Library";
 
     public List<AbsItem> Items { get; private set; } = new();

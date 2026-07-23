@@ -116,6 +116,12 @@ public class DeviceSettingsTests
         Assert.Equal("pt-br", DeviceSettings.Read(RequestWithCookie("00pt-br")).Lang);
     }
 
+    [Fact]
+    public void Read_accepts_script_subtag_up_to_eight_chars()
+    {
+        Assert.Equal("zh-hant", DeviceSettings.Read(RequestWithCookie("00zh-hant")).Lang);
+    }
+
     // Minimal IServiceProvider that returns one AbsOptions instance (mirrors how
     // RequestServices.GetService<AbsOptions>() resolves in production).
     private sealed class ServiceCollectionStub(AbsOptions options) : IServiceProvider

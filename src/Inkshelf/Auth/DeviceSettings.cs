@@ -31,7 +31,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // Accept a short lowercase code (letters + dash), else "" (→ resolve from header).
     private static string SanitizeLang(string s)
     {
-        if (s.Length is 0 or > 5) return "";
+        if (s.Length is 0 or > 8) return "";
         foreach (var c in s)
             if (c is not ((>= 'a' and <= 'z') or '-')) return "";
         return s;

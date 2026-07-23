@@ -21,7 +21,17 @@ public sealed class Localizer
     public string this[string key] => _catalog.Get(CurrentLang(), key);
 
     public string this[string key, params object?[] args]
-        => string.Format(_catalog.Get(CurrentLang(), key), args);
+    {
+        get
+        {
+            var template = _catalog.Get(CurrentLang(), key);
+            // A translator can ship a template whose placeholders don't match the
+            // call site (wrong index, missing arg) — don't 500 the page for it,
+            // just show the unformatted template.
+            try { return string.Format(template, args); }
+            catch (FormatException) { return template; }
+        }
+    }
 
     // Explicit cookie choice (incl. "en") → best Accept-Language match among
     // loaded catalogs → null (English). Never writes anything.

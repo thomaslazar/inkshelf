@@ -66,4 +66,11 @@ public class LocalizerTests
         var l = ForRequest(r => r.Headers.Cookie = $"{DeviceSettings.Cookie}=10de");
         Assert.Equal("Seite 2 von 5", l["Page {0} of {1}", 2, 5]);
     }
+
+    [Fact]
+    public void Mismatched_args_return_unformatted_template_instead_of_throwing()
+    {
+        var l = ForRequest(r => r.Headers.Cookie = $"{DeviceSettings.Cookie}=10en");
+        Assert.Equal("Page {0} of {1}", l["Page {0} of {1}", 5]);
+    }
 }
