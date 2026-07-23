@@ -6,19 +6,19 @@
 }
 <div class="page-head" id="top">
     <h1 class="page-title">
-        <a href="/?all=1" class="home-link" title="Libraries"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a>
-        <a href="/?all=1">Libraries</a> <span class="crumb-sep">›</span> Converted
+        <a href="/?all=1" class="home-link" title="@L["Libraries"]"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a>
+        <a href="/?all=1">@L["Libraries"]</a> <span class="crumb-sep">›</span> @L["Converted"]
     </h1>
-    <a class="settings-link" href="/settings" title="Settings"><img src="~/img/gear-black.png" alt="Settings" class="settings-icon" width="24" height="24" /></a>
+    <a class="settings-link" href="/settings" title="@L["Settings"]"><img src="~/img/gear-black.png" alt="@L["Settings"]" class="settings-icon" width="24" height="24" /></a>
 </div>
-<p>Converted &amp; cached on this device.</p>
+<p>@L["Converted & cached on this device."]</p>
 @if (Model.LoadError)
 {
-    <p>Couldn't load details from Audiobookshelf. Try again.</p>
+    <p>@L["Couldn't load details from Audiobookshelf. Try again."]</p>
 }
 else if (Model.Rows.Count == 0)
 {
-    <p>Nothing converted for this device yet.</p>
+    <p>@L["Nothing converted for this device yet."]</p>
 }
 else
 {

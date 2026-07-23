@@ -6,15 +6,15 @@
 }
 <div class="page-head" id="top">
     <h1 class="page-title">
-        <a href="/?all=1" class="home-link" title="Libraries"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a>
-        <a href="/?all=1">Libraries</a>
+        <a href="/?all=1" class="home-link" title="@L["Libraries"]"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a>
+        <a href="/?all=1">@L["Libraries"]</a>
         @if (!string.IsNullOrEmpty(Model.LibraryName))
         {
             <span class="crumb-sep">›</span> <a href="/library/@Model.LibraryId">@Model.LibraryName</a>
         }
-        <span class="crumb-sep">›</span> @(m?.Title ?? "Item")
+        <span class="crumb-sep">›</span> @(m?.Title ?? L["Item"])
     </h1>
-    <a class="settings-link" href="/settings" title="Settings"><img src="~/img/gear-black.png" alt="Settings" class="settings-icon" width="24" height="24" /></a>
+    <a class="settings-link" href="/settings" title="@L["Settings"]"><img src="~/img/gear-black.png" alt="@L["Settings"]" class="settings-icon" width="24" height="24" /></a>
 </div>
 
 <div class="detail">
@@ -23,12 +23,12 @@
         <span class="detail-cover"><img src="/cover/@Model.Id?w=240" alt="" /></span>
     }
     <div class="detail-meta">
-        <h2>@(m?.Title ?? "(untitled)")</h2>
+        <h2>@(m?.Title ?? L["(untitled)"])</h2>
         @if (!string.IsNullOrWhiteSpace(m?.Subtitle)) { <p class="subtitle">@m!.Subtitle</p> }
 
         @if (m?.Authors is { Count: > 0 } authors)
         {
-            <p>Authors:
+            <p>@L["Authors:"]
             @for (var i = 0; i < authors.Count; i++)
             {
                 if (i > 0) { <text>, </text> }
@@ -38,7 +38,7 @@
         }
         @if (m?.Series is { Count: > 0 } series)
         {
-            <p>Series:
+            <p>@L["Series:"]
             @for (var i = 0; i < series.Count; i++)
             {
                 if (i > 0) { <text>, </text> }
@@ -48,7 +48,7 @@
         }
         @if (m?.Narrators is { Count: > 0 } narrators)
         {
-            <p>Narrators:
+            <p>@L["Narrators:"]
             @for (var i = 0; i < narrators.Count; i++)
             {
                 if (i > 0) { <text>, </text> }
@@ -60,13 +60,13 @@
         @if (pubBits.Count > 0) { <p>@string.Join(" · ", pubBits)</p> }
         @if (m?.Genres is { Count: > 0 } genres)
         {
-            <p>Genres:
+            <p>@L["Genres:"]
             @foreach (var g in genres) { <a href="@Model.Links.FilterHref("genres", g)">@g</a> <text> </text> }
             </p>
         }
         @if (Model.Tags is { Count: > 0 } tags)
         {
-            <p>Tags:
+            <p>@L["Tags:"]
             @foreach (var tg in tags) { <a href="@Model.Links.FilterHref("tags", tg)">@tg</a> <text> </text> }
             </p>
         }
@@ -79,11 +79,11 @@
     <input type="hidden" name="return" value="/item/@Model.Id" />
     @if (Model.Read)
     {
-        <button type="submit" class="read-btn" title="Mark as unread">&#10003; Read</button>
+        <button type="submit" class="read-btn" title="@L["Mark as unread"]">&#10003; @L["Read"]</button>
     }
     else
     {
-        <button type="submit" class="read-btn" title="Mark as read">Mark read</button>
+        <button type="submit" class="read-btn" title="@L["Mark as read"]">@L["Mark read"]</button>
     }
 </form>
 
@@ -92,10 +92,10 @@
     <p class="description">@m!.DescriptionPlain</p>
 }
 
-<h2>Files</h2>
+<h2>@L["Files"]</h2>
 @if (Model.Files.Count == 0)
 {
-    <p>No downloadable files.</p>
+    <p>@L["No downloadable files."]</p>
 }
 else
 {
@@ -107,7 +107,7 @@ else
                 <span class="file-format">@f.Format</span>
             </div>
             <div class="file-actions">
-                <a href="@f.DownloadHref">Download</a>
+                <a href="@f.DownloadHref">@L["Download"]</a>
                 @if (f.Convert is not null)
                 {
                     <partial name="_ConvertAction" model="f.Convert" />

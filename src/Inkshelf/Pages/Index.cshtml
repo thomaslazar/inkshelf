@@ -1,11 +1,11 @@
 @page
 @model Inkshelf.Pages.IndexModel
 <div class="page-head">
-    <h1 class="page-title"><a href="/?all=1" class="home-link" title="Libraries"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a> Libraries</h1>
-    <form class="logout-form" method="post" action="/logout">@Html.AntiForgeryToken()<button type="submit">Log out</button></form>
-    <a class="settings-link" href="/settings" title="Settings"><img src="~/img/gear-black.png" alt="Settings" class="settings-icon" width="24" height="24" /></a>
+    <h1 class="page-title"><a href="/?all=1" class="home-link" title="@L["Libraries"]"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a> @L["Libraries"]</h1>
+    <form class="logout-form" method="post" action="/logout">@Html.AntiForgeryToken()<button type="submit">@L["Log out"]</button></form>
+    <a class="settings-link" href="/settings" title="@L["Settings"]"><img src="~/img/gear-black.png" alt="@L["Settings"]" class="settings-icon" width="24" height="24" /></a>
 </div>
-<p class="converted-link"><a href="/converted">Converted on this device &#8594;</a></p>
+<p class="converted-link"><a href="/converted">@L["Converted on this device"] &#8594;</a></p>
 <ul>
 @foreach (var lib in Model.Libraries)
 {

@@ -2,15 +2,15 @@
 @model Inkshelf.Pages.SettingsModel
 <div class="page-head">
     <h1 class="page-title">
-        <a href="/?all=1" class="home-link" title="Libraries"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a>
-        <a href="/?all=1">Libraries</a> <span class="crumb-sep">›</span> Settings
+        <a href="/?all=1" class="home-link" title="@L["Libraries"]"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a>
+        <a href="/?all=1">@L["Libraries"]</a> <span class="crumb-sep">›</span> @L["Settings"]
     </h1>
 </div>
 
-<p class="settings-note">These settings apply to <strong>this device / browser</strong> only.</p>
+<p class="settings-note">@L["These settings apply to this device / browser only."]</p>
 @if (Model.DetectedScreen is not null)
 {
-    <p class="settings-note">Detected screen: @Model.DetectedScreen</p>
+    <p class="settings-note">@L["Detected screen: {0}", Model.DetectedScreen]</p>
 }
 
 <form class="settings-form" method="post" action="/settings">
@@ -18,13 +18,13 @@
     <p>
         <label>
             <input type="checkbox" name="retina" value="on" @(Model.Settings.Retina ? "checked" : "") />
-            Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)
+            @L["Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)"]
         </label>
     </p>
     <p>
         <label>
             <input type="checkbox" name="grayscale" value="on" @(Model.Settings.Grayscale ? "checked" : "") />
-            Grayscale pages (smaller files on e-ink)
+            @L["Grayscale pages (smaller files on e-ink)"]
         </label>
     </p>
     <p>
@@ -37,5 +37,5 @@
             </select>
         </label>
     </p>
-    <p><button type="submit">Save</button></p>
+    <p><button type="submit">@L["Save"]</button></p>
 </form>
