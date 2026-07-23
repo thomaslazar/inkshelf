@@ -76,9 +76,54 @@ real (if minimal) server rather than only unit tests.
   unavoidable (there are two tiny, deliberate inline scripts today).
 - **Defensive CSS.** Assume an old rendering engine: no `object-fit`, no flex
   `gap`, and similar modern-only features. Prefer widely-supported properties.
+- **Localise user-facing strings.** Wrap new chrome text in the injected
+  localizer (`@L["…"]`) instead of hardcoding English — see
+  [Localisation](#localisation).
 - **Tests stay green.** `dotnet test` must pass, and `dotnet format --verify-no-changes`
   must be clean, before you open a PR. New behavior needs tests.
 - **Respect the non-goals** documented in `docs/ARCHITECTURE.md`.
+
+## Localisation
+
+Inkshelf's own UI chrome (nav, buttons, breadcrumbs, empty states) is
+localisable. Audiobookshelf content — titles, author names, descriptions — is
+left in whatever language ABS holds. **English is the source language: the
+English string is itself the lookup key**, so there is no English translation
+file to keep in sync. Full design in
+[`docs/superpowers/specs/2026-07-23-ui-localisation-design.md`](docs/superpowers/specs/2026-07-23-ui-localisation-design.md).
+
+Translations live in `src/Inkshelf/locales/<lang>.json` — one flat JSON file per
+language, mapping the English source string to its translation:
+
+```json
+{
+  "$name": "Deutsch",
+  "Download": "Herunterladen",
+  "Mark read": "Gelesen",
+  "Page {0} of {1}": "Seite {0} von {1}"
+}
+```
+
+- `$name` (optional) is the language's own display name shown in the Settings
+  picker; omit it and the picker shows the bare code.
+- Keep `{0}`, `{1}` placeholders — you may reorder them for grammar.
+- Any string you leave out falls back to English, so a partial translation is
+  fine.
+
+**Add or update a language:**
+
+1. Create or edit `src/Inkshelf/locales/<lang>.json` (e.g. `de.json`, `fr.json`).
+2. Run the app (`ABS_URL=… dotnet run --project src/Inkshelf`), open **Settings**,
+   and pick the language — or set your browser's preferred language, since a
+   first visit with no saved choice honours `Accept-Language`.
+
+No rebuild is needed in a deployed container: drop a `<lang>.json` into the
+directory named by `LOCALES_PATH` (default `<content-root>/locales`) and restart.
+
+**Adding a new UI string in code:** write the English text through the injected
+localizer (`@L["New label"]`); the English string becomes the key automatically.
+Add its translation to each `<lang>.json` — until you do, that language shows the
+English text.
 
 ## Commits
 
