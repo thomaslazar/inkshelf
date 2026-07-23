@@ -2,12 +2,15 @@ namespace Inkshelf;
 
 // Typed view of the app's configuration, bound once at startup so config reads
 // live in one place instead of scattered Configuration["…"] lookups. Config keys:
-// ABS_URL (required), CachePath, DataProtectionKeysPath, DIAG_ENABLED, FORCE_SECURE_COOKIES, TRUSTED_PROXY.
+// ABS_URL (required), CachePath, DataProtectionKeysPath, DIAG_ENABLED, FORCE_SECURE_COOKIES, LOCALES_PATH, TRUSTED_PROXY.
 public sealed class AbsOptions
 {
     public string AbsUrl { get; set; } = "";
     public string? CachePath { get; set; }
     public string? DataProtectionKeysPath { get; set; }
+    // Directory holding <lang>.json UI translation files, scanned at startup.
+    // Null → "<ContentRoot>/locales". Drop a file in + restart to add a language.
+    public string? LocalesPath { get; set; }
     // Force the Secure flag on cookies even when Request.IsHttps is false (the app
     // sits behind a TLS-terminating proxy). Defaults false = derive from IsHttps.
     public bool ForceSecureCookies { get; set; }

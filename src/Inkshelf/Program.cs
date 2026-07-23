@@ -3,6 +3,7 @@ using Inkshelf.Abs;
 using Inkshelf.Auth;
 using Inkshelf.Convert;
 using Inkshelf.Endpoints;
+using Inkshelf.Localization;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -15,6 +16,7 @@ var absOptions = new AbsOptions
     AbsUrl = builder.Configuration["ABS_URL"] ?? "",
     CachePath = builder.Configuration["CachePath"],
     DataProtectionKeysPath = builder.Configuration["DataProtectionKeysPath"],
+    LocalesPath = builder.Configuration["LOCALES_PATH"],
     DiagEnabled = !string.Equals(builder.Configuration["DIAG_ENABLED"], "false", StringComparison.OrdinalIgnoreCase),
     ForceSecureCookies = bool.TryParse(builder.Configuration["FORCE_SECURE_COOKIES"], out var fsc) && fsc,
     TrustedProxy = builder.Configuration["TRUSTED_PROXY"],
@@ -61,6 +63,13 @@ builder.Services.AddSingleton<ConvertLock>();
 builder.Services.AddSingleton<ConvertQueue>();
 builder.Services.AddHostedService<ConvertWorker>();
 builder.Services.AddScoped<ConvertService>();
+// UI localisation: load <lang>.json once at startup; Localizer resolves the
+// per-request language and is injected into every view.
+var localesPath = absOptions.LocalesPath
+    ?? Path.Combine(builder.Environment.ContentRootPath, "locales");
+builder.Services.AddSingleton(sp =>
+    LocalizationCatalog.Load(localesPath, sp.GetService<ILoggerFactory>()?.CreateLogger("Localization")));
+builder.Services.AddSingleton<Localizer>();
 builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AddPageRoute("/Library", "library/{id}");

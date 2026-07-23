@@ -26,4 +26,11 @@
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Ship translation files next to the app; scanned at startup from
+         LOCALES_PATH (default <ContentRoot>/locales). Update (not Include):
+         the Web SDK already globs *.json as content. -->
+    <Content Update="locales\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
