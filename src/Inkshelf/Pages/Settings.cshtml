@@ -27,5 +27,15 @@
             Grayscale pages (smaller files on e-ink)
         </label>
     </p>
+    <p>
+        <label>@L["Language"]<br />
+            <select name="lang">
+                @foreach (var (code, name) in Model.AvailableLanguages)
+                {
+                    <option value="@code" selected="@(code == Model.CurrentLang)">@name</option>
+                }
+            </select>
+        </label>
+    </p>
     <p><button type="submit">Save</button></p>
 </form>
