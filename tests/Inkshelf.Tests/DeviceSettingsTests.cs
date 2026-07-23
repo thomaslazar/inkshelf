@@ -32,22 +32,22 @@ public class DeviceSettingsTests
     public void Read_explicit_00_is_both_off_distinct_from_default()
     {
         var v = DeviceSettings.Read(RequestWithCookie("00"));
-        Assert.Equal(new DeviceSettings(false, false), v);
+        Assert.Equal(new DeviceSettings(false, false, ""), v);
         Assert.NotEqual(DeviceSettings.Default, v); // absent/malformed default to retina on
     }
 
     [Fact]
     public void Read_parses_both_flags()
     {
-        Assert.Equal(new DeviceSettings(true, false), DeviceSettings.Read(RequestWithCookie("10")));
-        Assert.Equal(new DeviceSettings(false, true), DeviceSettings.Read(RequestWithCookie("01")));
-        Assert.Equal(new DeviceSettings(true, true), DeviceSettings.Read(RequestWithCookie("11")));
+        Assert.Equal(new DeviceSettings(true, false, ""), DeviceSettings.Read(RequestWithCookie("10")));
+        Assert.Equal(new DeviceSettings(false, true, ""), DeviceSettings.Read(RequestWithCookie("01")));
+        Assert.Equal(new DeviceSettings(true, true, ""), DeviceSettings.Read(RequestWithCookie("11")));
     }
 
     [Fact]
     public void Serialize_round_trips_through_read()
     {
-        var s = new DeviceSettings(true, false);
+        var s = new DeviceSettings(true, false, "");
         Assert.Equal(s, DeviceSettings.Read(RequestWithCookie(s.Serialize())));
     }
 
@@ -55,7 +55,7 @@ public class DeviceSettingsTests
     public void Set_writes_essential_root_path_cookie_with_value()
     {
         var ctx = new DefaultHttpContext();
-        DeviceSettings.Set(ctx.Response, new DeviceSettings(true, true));
+        DeviceSettings.Set(ctx.Response, new DeviceSettings(true, true, ""));
         var setCookie = ctx.Response.Headers.SetCookie.ToString();
         Assert.Contains($"{DeviceSettings.Cookie}=11", setCookie);
         Assert.Contains("path=/", setCookie, StringComparison.OrdinalIgnoreCase);
@@ -67,7 +67,7 @@ public class DeviceSettingsTests
         var ctx = new DefaultHttpContext(); // IsHttps == false
         var services = new ServiceCollectionStub(new AbsOptions { ForceSecureCookies = true });
         ctx.RequestServices = services;
-        DeviceSettings.Set(ctx.Response, new DeviceSettings(false, false));
+        DeviceSettings.Set(ctx.Response, new DeviceSettings(false, false, ""));
         Assert.Contains("secure", ctx.Response.Headers.SetCookie.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
@@ -75,8 +75,45 @@ public class DeviceSettingsTests
     public void Set_omits_secure_flag_on_http_by_default()
     {
         var ctx = new DefaultHttpContext(); // IsHttps == false, no AbsOptions → ForceSecureCookies false
-        DeviceSettings.Set(ctx.Response, new DeviceSettings(false, false));
+        DeviceSettings.Set(ctx.Response, new DeviceSettings(false, false, ""));
         Assert.DoesNotContain("secure", ctx.Response.Headers.SetCookie.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Serialize_roundtrips_lang()
+    {
+        Assert.Equal("10de", new DeviceSettings(true, false, "de").Serialize());
+        Assert.Equal("11", new DeviceSettings(true, true, "").Serialize());
+    }
+
+    [Fact]
+    public void Read_parses_flags_and_lang()
+    {
+        var s = DeviceSettings.Read(RequestWithCookie("10de"));
+        Assert.True(s.Retina);
+        Assert.False(s.Grayscale);
+        Assert.Equal("de", s.Lang);
+    }
+
+    [Fact]
+    public void Read_legacy_two_char_cookie_has_empty_lang()
+    {
+        var s = DeviceSettings.Read(RequestWithCookie("10"));
+        Assert.True(s.Retina);
+        Assert.Equal("", s.Lang);
+    }
+
+    [Fact]
+    public void Read_junk_lang_sanitises_to_empty()
+    {
+        Assert.Equal("", DeviceSettings.Read(RequestWithCookie("10DE!")).Lang);
+        Assert.Equal("", DeviceSettings.Read(RequestWithCookie("10toolongcode")).Lang);
+    }
+
+    [Fact]
+    public void Read_accepts_region_code()
+    {
+        Assert.Equal("pt-br", DeviceSettings.Read(RequestWithCookie("00pt-br")).Lang);
     }
 
     // Minimal IServiceProvider that returns one AbsOptions instance (mirrors how
