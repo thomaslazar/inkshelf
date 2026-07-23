@@ -39,7 +39,17 @@ public sealed class LocalizationCatalog
         var result = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
         if (Directory.Exists(dir))
         {
-            foreach (var file in Directory.EnumerateFiles(dir, "*.json"))
+            string[] files;
+            try
+            {
+                files = Directory.GetFiles(dir, "*.json");
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Cannot list locale directory {Dir}", dir);
+                files = [];
+            }
+            foreach (var file in files)
             {
                 var lang = Path.GetFileNameWithoutExtension(file);
                 try
