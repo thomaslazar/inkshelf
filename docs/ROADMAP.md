@@ -29,6 +29,15 @@ Settings to add to the per-device settings system:
   memory, though: parallelising raises the per-conversion peak (more pages held
   at once), so this is deferred in favour of the low-memory serial path shipped
   under Runtime footprint.
+- **Disable conversion via config.** An `AbsOptions` flag / env var (e.g.
+  `CONVERSION_ENABLED`, default `true`, mirroring `DIAG_ENABLED`) to turn the
+  whole CBZ/CBR→EPUB system off — for e-readers that read comic archives natively
+  and only want the raw download. When off: hide the Convert / EPUB ✓ / ↻ actions
+  everywhere (rows and the detail page show only Download), skip registering
+  `ConvertWorker`, don't map the `/convert` endpoints, and drop the `/converted`
+  view plus its home-page link. The retina/grayscale settings only affect
+  conversion, so hide those on the Settings page too when it's off. Any
+  already-cached EPUBs are simply unreachable while disabled.
 
 ## Browsing & reading
 
@@ -41,6 +50,22 @@ Settings to add to the per-device settings system:
   (multi-author/series wrap), the first load before the cookie is set, and how
   this interacts with search results. Decide feasibility + approach before
   committing.
+
+## Localisation
+
+- **UI localisation (German first).** Translate the app's own chrome — labels
+  like Libraries / Download / Convert / Mark read / Sort / Search / Settings, the
+  breadcrumbs, and empty-state text — starting with German, but built so more
+  languages drop in without code changes. Use .NET's resource-based localisation
+  (`.resx` + `IStringLocalizer`) with `RequestLocalizationMiddleware`; the
+  server-rendered, near-zero-JS design fits this cleanly (no client i18n). Pick
+  the language as a per-device choice (extend `DeviceSettings` with a language +
+  a dropdown on the Settings page), optionally defaulting from the
+  `Accept-Language` header. Note: ABS content (titles, descriptions) is already
+  in its own language — this covers only Inkshelf's own strings. *Tension:*
+  conflicts with the `InvariantGlobalization` idea under Runtime footprint →
+  Baseline trim (which drops ICU/culture data), so the two can't both be taken
+  as-is; localisation wins if pursued.
 
 ## Runtime footprint
 
