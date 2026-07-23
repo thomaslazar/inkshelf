@@ -135,7 +135,7 @@ public class ListingRenderTests
 
         Assert.Contains($"/convert/{ItemId}?return=", html);
         Assert.Contains("data-warm data-poll", html);
-        Assert.Contains("Converting&#8230;", html);
+        Assert.Contains("Converting&#x2026;", html);
         Assert.Contains("<noscript><meta http-equiv=\"refresh\" content=\"30\" /></noscript>", html);
 
         Assert.DoesNotContain("data-warm", RegenAnchor(html));

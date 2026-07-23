@@ -2,11 +2,11 @@
 <nav class="pager">
     @if (Model.Pager.HasPrev)
     {
-        <a href="@Model.Links.ListingHref(Model.Sort, Model.Desc, Model.Pager.DisplayPage - 1)">&larr; Prev</a>
+        <a href="@Model.Links.ListingHref(Model.Sort, Model.Desc, Model.Pager.DisplayPage - 1)">&larr; @L["Prev"]</a>
     }
-    <span>Page @Model.Pager.DisplayPage of @Math.Max(1, Model.Pager.TotalPages)</span>
+    <span>@L["Page {0} of {1}", Model.Pager.DisplayPage, Math.Max(1, Model.Pager.TotalPages)]</span>
     @if (Model.Pager.HasNext)
     {
-        <a href="@Model.Links.ListingHref(Model.Sort, Model.Desc, Model.Pager.DisplayPage + 1)">Next &rarr;</a>
+        <a href="@Model.Links.ListingHref(Model.Sort, Model.Desc, Model.Pager.DisplayPage + 1)">@L["Next"] &rarr;</a>
     }
 </nav>
