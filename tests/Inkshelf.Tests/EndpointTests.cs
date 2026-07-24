@@ -84,15 +84,20 @@ public class EndpointTests
     }
 
     [Fact]
-    public async Task Index_with_favorite_redirects_to_that_library()
+    public async Task Index_with_favorite_but_no_session_redirects_to_login()
     {
         using var factory = CreateFactory();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         var req = new HttpRequestMessage(HttpMethod.Get, "/");
         req.Headers.Add("Cookie", "inkshelf_fav_library=lib9");
         var res = await client.SendAsync(req);
+        // A favorite is now validated against the current ABS's library list
+        // (so a cookie from a different ABS can't redirect into a missing
+        // library) — that fetch needs a session, so no session -> /login.
+        // The "favorite that exists -> /library/{id}" happy path is covered by
+        // FavoriteLibraryRoutingTests with an authenticated stub client.
         Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
-        Assert.Equal("/library/lib9", res.Headers.Location?.OriginalString);
+        Assert.Equal("/login", res.Headers.Location?.OriginalString);
     }
 
     [Fact]
