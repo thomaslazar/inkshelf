@@ -60,28 +60,14 @@ Settings to add to the per-device settings system:
   this interacts with search results. Decide feasibility + approach before
   committing.
 
-## Localisation
-
-- **UI localisation (German first).** Translate the app's own chrome — labels
-  like Libraries / Download / Convert / Mark read / Sort / Search / Settings, the
-  breadcrumbs, and empty-state text — starting with German, defaulting from the
-  browser's `Accept-Language` on first visit with English as the per-string
-  fallback. A lightweight file-backed catalog: JSON files loaded at startup
-  (`<lang>.json`, the source English string as the key), language chosen
-  per-device via `DeviceSettings` + a Settings dropdown. No
-  `CultureInfo`, no new dependency; a new language drops in as a JSON file plus a
-  restart — no rebuild. ABS content (titles, descriptions) is already in its own
-  language — this covers only Inkshelf's own strings. See the localisation
-  design spec.
-
 ## Runtime footprint
 
 - **Baseline trim.** Smaller idle wins beyond the GC + streaming work already
   shipped: disabling unused ASP.NET Core features / logging providers,
   `PublishTrimmed`. Native AOT is off the table (CLAUDE.md); GC configuration
   carried the bulk. (`InvariantGlobalization` was measured at ~4 MiB resident on
-  this app and dropped — not worth losing `CultureInfo`; UI localisation is
-  pursued instead, see Localisation.)
+  this app and dropped — not worth losing `CultureInfo`; UI localisation was
+  pursued instead, see Done.)
 
 ## Security
 
@@ -151,3 +137,10 @@ Shipped; kept as a short record (full detail in git history / the PR).
   (and the poll-JS auto-nav on failure) opens a plain-HTML `/convert/{id}/why`
   page explaining the failure — actionable for TooLarge ("archive is X, over the
   Y limit"). Failure log lines carry the item title. All strings localized.
+- **UI localisation (German)** — Inkshelf's own chrome (nav, breadcrumbs, row
+  actions, pager, login/settings forms, empty states) is translated via a
+  lightweight file-backed JSON catalog keyed by the source English string, loaded
+  at startup. Language is per-device (`DeviceSettings` + a Settings dropdown),
+  defaulting from the browser's `Accept-Language` with English as the per-string
+  fallback. No `CultureInfo`, no new dependency; a new language is a `<lang>.json`
+  drop-in plus a restart. ABS content (titles, descriptions) is untouched.
