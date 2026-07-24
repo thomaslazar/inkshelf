@@ -57,7 +57,9 @@
                     } else if (xhr.status === 200 && (s === 'queued' || s === 'running')) {
                         setTimeout(function () { poll(a); }, POLL_MS);
                     } else {
-                        // failed, 404/None, or any error → terminal; revert to a tappable link.
+                        // failed → send the watcher to the reason page; else revert to a tappable link.
+                        var why = a.getAttribute('data-why');
+                        if (s === 'failed' && why) { window.location.href = why; return; }
                         a.firstChild.nodeValue = (s === 'failed') ? I18N.retry : I18N.convert;
                     }
                 };
@@ -75,6 +77,8 @@
                     } else if (xhr.status === 200 || xhr.status === 202) {
                         setTimeout(function () { poll(a); }, POLL_MS);
                     } else {
+                        var why = a.getAttribute('data-why');
+                        if (why) { window.location.href = why; return; }
                         a.firstChild.nodeValue = I18N.retry;
                     }
                 };

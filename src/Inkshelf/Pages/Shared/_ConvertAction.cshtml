@@ -4,6 +4,7 @@
     var fileQ = string.IsNullOrEmpty(Model.FileIno) ? "" : $"file={Uri.EscapeDataString(Model.FileIno)}&";
     var baseHref = $"/convert/{Model.Id}?{fileQ}return={ret}";
     var freshHref = $"/convert/{Model.Id}?{fileQ}fresh=1&return={ret}";
+    var whyHref = $"/convert/{Model.Id}/why?{fileQ}return={ret}";
 }
 <span class="convert">
     @switch (Model.State)
@@ -12,13 +13,14 @@
             <a href="@baseHref" title="@L["Already converted — downloads right away"]">EPUB &#10003;</a>
             break;
         case ConvertRowState.Converting:
-            <a href="@baseHref" data-warm data-poll>@L["Converting…"]</a>
+            <a href="@baseHref" data-warm data-poll data-why="@whyHref">@L["Converting…"]</a>
             break;
         case ConvertRowState.Failed:
-            <a href="@baseHref" data-warm>@L["Convert (retry)"]</a>
+            <a href="@baseHref" data-warm data-why="@whyHref">@L["Convert (retry)"]</a>
+            <a class="why" href="@whyHref">@L["why?"]</a>
             break;
         default:
-            <a href="@baseHref" data-warm>@L["Convert"]</a>
+            <a href="@baseHref" data-warm data-why="@whyHref">@L["Convert"]</a>
             break;
     }
     @* Plain link (no data-warm): the ↻ glyph must not become status text. *@
