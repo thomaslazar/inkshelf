@@ -51,6 +51,7 @@ public sealed class ConvertWorker : BackgroundService
     {
         var dlTmp = Path.Combine(Path.GetDirectoryName(job.CachePath)!,
             Guid.NewGuid().ToString("N") + ".dl.tmp");
+        var downloaded = false;
         try
         {
             if (File.Exists(job.CachePath)) { _queue.MarkDone(job.CachePath); return; }
@@ -59,6 +60,14 @@ public sealed class ConvertWorker : BackgroundService
             using (await _lock.AcquireAsync(job.CachePath, ct))
             {
                 if (File.Exists(job.CachePath)) { _queue.MarkDone(job.CachePath); return; }
+
+                if (_options.MaxArchiveBytes > 0 && job.ArchiveBytes > _options.MaxArchiveBytes)
+                {
+                    _logger.LogWarning("Archive for {Id} \"{Title}\" is {Size} bytes, over {Limit} — refusing before download.",
+                        job.ItemId, job.Meta.Title, job.ArchiveBytes, _options.MaxArchiveBytes);
+                    _queue.MarkFailed(job.CachePath, ConvertFailReason.TooLarge, job.ArchiveBytes);
+                    return;
+                }
 
                 var sw = Stopwatch.StartNew();
                 using var scope = _scopes.CreateScope();
@@ -71,11 +80,13 @@ public sealed class ConvertWorker : BackgroundService
                 {
                     if (!await CopyWithLimitAsync(archive, spool, _options.MaxArchiveBytes, ct))
                     {
-                        _logger.LogWarning("Archive for {Id} exceeds {Limit} bytes — refusing.", job.ItemId, _options.MaxArchiveBytes);
-                        _queue.MarkFailed(job.CachePath);
+                        _logger.LogWarning("Archive for {Id} \"{Title}\" exceeds {Limit} bytes — refusing.",
+                            job.ItemId, job.Meta.Title, _options.MaxArchiveBytes);
+                        _queue.MarkFailed(job.CachePath, ConvertFailReason.TooLarge, job.ArchiveBytes);
                         return;
                     }
                 }
+                downloaded = true;
 
                 // Best-effort cover (small; never fails the job). Uses the same
                 // captured token as the ebook download.
@@ -95,8 +106,16 @@ public sealed class ConvertWorker : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Conversion failed for {Id}", job.ItemId);
-            _queue.MarkFailed(job.CachePath);
+            // ponytail: stage flag + type sniff, not an exhaustive exception taxonomy.
+            // Pre-convert failures are download; convert-stage archive-format errors
+            // (SharpCompress / bad zip) are BadArchive; anything else is ConvertError.
+            var reason = !downloaded
+                ? ConvertFailReason.DownloadFailed
+                : (ex is InvalidDataException || (ex.GetType().Namespace?.StartsWith("SharpCompress") ?? false))
+                    ? ConvertFailReason.BadArchive
+                    : ConvertFailReason.ConvertError;
+            _logger.LogWarning(ex, "Conversion failed for {Id} \"{Title}\" ({Reason})", job.ItemId, job.Meta.Title, reason);
+            _queue.MarkFailed(job.CachePath, reason, job.ArchiveBytes);
         }
         finally
         {
