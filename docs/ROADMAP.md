@@ -21,6 +21,15 @@ Settings to add to the per-device settings system:
   works everywhere but has reader-imposed margins (not full-bleed) — for devices
   that can't do fixed-layout. (Our EPUB is already epubcheck-clean; the warning is
   the device's EPUB3 limitation, not our bug.)
+- **Structured settings cookie (refactor).** `DeviceSettings` packs its values into
+  one positional string (e.g. `"10de"` = retina, grayscale, lang). Positional
+  encoding is opaque and gets brittle as settings grow: meaning is by index, only
+  the last field can be variable-length, and every addition is another hand-rolled
+  parse plus a legacy shape to keep reading. Move to a keyed value in the same
+  cookie (JSON `{"retina":1,"lang":"de"}` — ASP.NET URL-encodes cookie values, so
+  braces/quotes round-trip), with backward-compat for existing `"10"`/`"10de"`
+  cookies. Do this *before* adding the settings above. Consider bringing the
+  sibling `Favorites` cookie (same packed pattern) along for consistency.
 
 ## Conversion / rendering
 
