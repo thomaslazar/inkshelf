@@ -13,9 +13,12 @@
 
   // Docker outside of Docker: run docker against the host daemon from inside
   // the container. GitHub CLI: `gh` is not bundled in the dotnet:10.0 image.
+  // Node: the ponytail plugin's Claude Code hooks are Node scripts, and the
+  // dotnet:10.0 image ships no Node runtime.
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/node:1": {}
   },
 
   "remoteUser": "vscode",
