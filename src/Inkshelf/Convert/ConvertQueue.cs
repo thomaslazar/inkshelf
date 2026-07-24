@@ -73,8 +73,9 @@ public sealed class ConvertQueue
         lock (_gate)
         {
             if (Peek(cachePath) != ConvertStatus.Failed) return null;
-            var e = _entries[cachePath];
-            return new ConvertFailure(e.Reason, e.ArchiveBytes);
+            return _entries.TryGetValue(cachePath, out var e)
+                ? new ConvertFailure(e.Reason, e.ArchiveBytes)
+                : null;
         }
     }
 

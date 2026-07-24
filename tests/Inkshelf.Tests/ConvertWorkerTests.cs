@@ -197,6 +197,7 @@ public class ConvertWorkerTests
         await worker.StopAsync(default);
 
         Assert.Equal(ConvertFailReason.TooLarge, queue.FailureFor(path)!.Value.Reason);
+        Assert.Equal(500, queue.FailureFor(path)!.Value.ArchiveBytes);
         Assert.False(File.Exists(path));
     }
 
@@ -215,6 +216,7 @@ public class ConvertWorkerTests
         await worker.StopAsync(default);
 
         Assert.Equal(ConvertFailReason.TooLarge, queue.FailureFor(path)!.Value.Reason);
+        Assert.Null(queue.FailureFor(path)!.Value.ArchiveBytes);
     }
 
     [Fact]

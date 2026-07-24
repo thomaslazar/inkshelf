@@ -82,7 +82,7 @@ public sealed class ConvertWorker : BackgroundService
                     {
                         _logger.LogWarning("Archive for {Id} \"{Title}\" exceeds {Limit} bytes — refusing.",
                             job.ItemId, job.Meta.Title, _options.MaxArchiveBytes);
-                        _queue.MarkFailed(job.CachePath, ConvertFailReason.TooLarge, job.ArchiveBytes);
+                        _queue.MarkFailed(job.CachePath, ConvertFailReason.TooLarge, null);
                         return;
                     }
                 }
