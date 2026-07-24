@@ -22,7 +22,10 @@ nav.pager a, nav.pager span { margin-right: 1rem; }
 .item .actions { flex: 0 0 8.5rem; width: 8.5rem; margin-left: .75rem; text-align: left; }
 .item .actions > a, .item .actions .convert { display: block; margin-bottom: .35rem; }
 .item .actions .regen { margin-left: .4rem; }
-.item .actions .convert { white-space: nowrap; }
+/* No nowrap: a long localized action label ("Konvertieren (erneut)") plus the
+   Failed-state "why?" link must wrap WITHIN the fixed actions column, not run off
+   a narrow e-reader screen. "why?" gets its own line so it stays legible. */
+.item .actions .convert .why { display: block; }
 /* Libraries list: large, full-width, well-separated tap targets so a device tap
    doesn't land on the wrong library. Block links (no flex gap for the Tolino). */
 .libraries { list-style: none; padding: 0; margin: 1rem 0; }
