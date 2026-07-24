@@ -65,6 +65,85 @@ await Check("settings-en", null, "/settings",
     mustContain: ["Settings", "Language", "Save", "Libraries", "English"],
     mustNotContain: []);
 
+// --- Authenticated pages (opt-in; run.sh brings up + seeds the local ABS) ---
+// These are where the real chrome lives — listings, item detail (Kategorien /
+// Schlagwörter / Erzähler), converted — plus a live Convert-button click that
+// exercises the JS label path.
+if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
+{
+    var ctx = await browser.NewContextAsync(new() { ViewportSize = new() { Width = 758, Height = 1024 } });
+    await ctx.AddCookiesAsync([ new() { Name = "inkshelf_settings", Value = "10de", Url = baseUrl } ]);
+    var page = await ctx.NewPageAsync();
+
+    async Task Shot(string label) =>
+        await page.ScreenshotAsync(new() { Path = Path.Combine(outDir, label + ".png"), FullPage = true });
+    void Expect(string label, string body, params string[] needles)
+    {
+        foreach (var s in needles)
+            if (!body.Contains(s, StringComparison.Ordinal))
+                failures.Add($"{label}: expected to see \"{s}\"");
+    }
+
+    try
+    {
+        // Log in through Inkshelf (German context) with the seeded root/root.
+        await page.GotoAsync(baseUrl + "/login");
+        await page.FillAsync("input[name=Username]", "root");
+        await page.FillAsync("input[name=Password]", "root");
+        await page.ClickAsync("button[type=submit]");
+        await page.WaitForSelectorAsync("text=Bibliotheken", new() { Timeout = 15000 });
+
+        await Shot("index-de");
+        Expect("index-de", await page.InnerTextAsync("body"), "Bibliotheken", "Abmelden");
+
+        // Library listing (open the first library).
+        await page.ClickAsync("a[href^='/library/']");
+        await page.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 15000 });
+        await Shot("library-de");
+        Expect("library-de", await page.InnerTextAsync("body"), "Sortierung:", "Titel", "Herunterladen");
+        var libUrl = page.Url;
+
+        // Item detail of the enriched epub — genres/tags/narrators labels.
+        await page.FillAsync("input[name=q]", "The Silent Sea");
+        await page.PressAsync("input[name=q]", "Enter");
+        // Click the row's item link (not the results heading, which echoes the query).
+        await page.ClickAsync("a[href^='/item/']:has-text('The Silent Sea')");
+        await page.WaitForSelectorAsync("text=Dateien", new() { Timeout = 15000 });
+        await Shot("item-de");
+        // genres → Kategorien, tags → Schlagwörter, narrators → Erzähler.
+        Expect("item-de", await page.InnerTextAsync("body"),
+            "Kategorien:", "Schlagwörter:", "Erzähler:", "Dateien", "Herunterladen");
+
+        // Converted view (empty state).
+        await page.GotoAsync(baseUrl + "/converted");
+        await Shot("converted-de");
+        Expect("converted-de", await page.InnerTextAsync("body"), "Konvertiert");
+
+        // Live Convert-button click: label must flip to German, never a raw entity.
+        await page.GotoAsync(libUrl);
+        await page.FillAsync("input[name=q]", "Neon Blade");
+        await page.PressAsync("input[name=q]", "Enter");
+        await page.WaitForSelectorAsync("a[data-warm]", new() { Timeout = 15000 });
+        var convert = page.Locator("a[data-warm]").First;
+        await convert.ClickAsync();
+        await page.WaitForTimeoutAsync(1500); // let the JS swap the label
+        var label = await convert.InnerTextAsync();
+        await Shot("convert-clicked-de");
+        if (label.Contains("&#x", StringComparison.Ordinal))
+            failures.Add($"convert-clicked: HTML entity leaked into JS label: \"{label}\"");
+        if (!label.Contains("Konvert", StringComparison.Ordinal) && !label.Contains("EPUB", StringComparison.Ordinal))
+            failures.Add($"convert-clicked: unexpected label \"{label}\"");
+
+        Console.WriteLine("[authed] index / library / item / converted / convert-click captured");
+    }
+    catch (Exception ex)
+    {
+        failures.Add($"authed flow error: {ex.Message}");
+        try { await Shot("authed-error"); } catch { }
+    }
+    await ctx.CloseAsync();
+}
+
 Console.WriteLine();
 if (failures.Count == 0)
 {
