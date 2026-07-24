@@ -13,8 +13,9 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // Lang "" = no explicit choice yet (resolved from Accept-Language at render).
     public static readonly DeviceSettings Default = new(true, false, "");
 
-    // "<retina><grayscale>" flags, then an optional lowercase language code
-    // (e.g. "10de"). No cookie-reserved characters, so it survives cookie encoding.
+    // Two 0/1 flags "<retina><grayscale>" then an optional lowercase language
+    // code, e.g. "10de" = retina on, grayscale off, lang "de" ("10" alone = no
+    // language). No cookie-reserved characters, so it survives cookie encoding.
     public string Serialize() => $"{(Retina ? 1 : 0)}{(Grayscale ? 1 : 0)}{Lang}";
 
     public static DeviceSettings Read(HttpRequest req)
