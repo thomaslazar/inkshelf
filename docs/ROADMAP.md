@@ -21,6 +21,15 @@ Settings to add to the per-device settings system:
   works everywhere but has reader-imposed margins (not full-bleed) — for devices
   that can't do fixed-layout. (Our EPUB is already epubcheck-clean; the warning is
   the device's EPUB3 limitation, not our bug.)
+- **Structured settings cookie (refactor).** `DeviceSettings` packs its values into
+  one positional string (e.g. `"10de"` = retina, grayscale, lang). Positional
+  encoding is opaque and gets brittle as settings grow: meaning is by index, only
+  the last field can be variable-length, and every addition is another hand-rolled
+  parse plus a legacy shape to keep reading. Move to a keyed value in the same
+  cookie (JSON `{"retina":1,"lang":"de"}` — ASP.NET URL-encodes cookie values, so
+  braces/quotes round-trip), with backward-compat for existing `"10"`/`"10de"`
+  cookies. Do this *before* adding the settings above. Consider bringing the
+  sibling `Favorites` cookie (same packed pattern) along for consistency.
 
 ## Conversion / rendering
 
@@ -29,6 +38,32 @@ Settings to add to the per-device settings system:
   memory, though: parallelising raises the per-conversion peak (more pages held
   at once), so this is deferred in favour of the low-memory serial path shipped
   under Runtime footprint.
+- **Disable conversion via config.** An `AbsOptions` flag / env var (e.g.
+  `CONVERSION_ENABLED`, default `true`, mirroring `DIAG_ENABLED`) to turn the
+  whole CBZ/CBR→EPUB system off — for e-readers that read comic archives natively
+  and only want the raw download. When off: hide the Convert / EPUB ✓ / ↻ actions
+  everywhere (rows and the detail page show only Download), skip registering
+  `ConvertWorker`, don't map the `/convert` endpoints, and drop the `/converted`
+  view plus its home-page link. The retina/grayscale settings only affect
+  conversion, so hide those on the Settings page too when it's off. Any
+  already-cached EPUBs are simply unreachable while disabled.
+- **Surface conversion failure reasons.** A failed convert only shows "Convert
+  (retry)"; the reason lives only in the server log. This instance is shared with
+  family (non-technical users) — they can reach the admin, but shouldn't have to
+  guess, and the admin shouldn't have to log-dive for every vague report.
+  *Capture:* have `ConvertWorker` pass a reason category to `ConvertQueue.MarkFailed`
+  (TooLarge — with the actual archive size vs `MaxArchiveBytes`; DownloadFailed;
+  BadArchive; ConvertError) and store it on the Failed entry (same 10-min TTL;
+  transient is fine — a re-tap reproduces a deterministic failure like TooLarge).
+  *Surface (approach A):* a dedicated server-rendered page — the no-JS
+  `/convert/{id}` tap path already navigates there, so on a Failed state render a
+  small plain-HTML explanation instead of redirecting (actionable, e.g. "archive
+  is 1.3 GB, over the 1 GB limit"), no client JS, works on the oldest e-ink engine.
+  Optionally a short hint on the item detail page; keep listing rows lean. All new
+  strings go through the localizer (`@L[...]` + `de.json`). *Also:* enrich the
+  failure log line with the item title and actual archive size (not just the id +
+  limit) so `docker logs` is enough when a family member reports a vague failure.
+  Scoped for a dedicated agent.
 
 ## Browsing & reading
 
@@ -42,13 +77,28 @@ Settings to add to the per-device settings system:
   this interacts with search results. Decide feasibility + approach before
   committing.
 
+## Localisation
+
+- **UI localisation (German first).** Translate the app's own chrome — labels
+  like Libraries / Download / Convert / Mark read / Sort / Search / Settings, the
+  breadcrumbs, and empty-state text — starting with German, defaulting from the
+  browser's `Accept-Language` on first visit with English as the per-string
+  fallback. A lightweight file-backed catalog: JSON files loaded at startup
+  (`<lang>.json`, the source English string as the key), language chosen
+  per-device via `DeviceSettings` + a Settings dropdown. No
+  `CultureInfo`, no new dependency; a new language drops in as a JSON file plus a
+  restart — no rebuild. ABS content (titles, descriptions) is already in its own
+  language — this covers only Inkshelf's own strings. See the localisation
+  design spec.
+
 ## Runtime footprint
 
 - **Baseline trim.** Smaller idle wins beyond the GC + streaming work already
-  shipped: `InvariantGlobalization` (drops ICU — verify title sorting for
-  non-ASCII libraries first), disabling unused ASP.NET Core features / logging
-  providers, `PublishTrimmed`. Native AOT is off the table (CLAUDE.md); GC
-  configuration carried the bulk.
+  shipped: disabling unused ASP.NET Core features / logging providers,
+  `PublishTrimmed`. Native AOT is off the table (CLAUDE.md); GC configuration
+  carried the bulk. (`InvariantGlobalization` was measured at ~4 MiB resident on
+  this app and dropped — not worth losing `CultureInfo`; UI localisation is
+  pursued instead, see Localisation.)
 
 ## Security
 

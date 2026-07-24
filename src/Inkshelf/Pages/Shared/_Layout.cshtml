@@ -1,6 +1,6 @@
 @{ Layout = null; }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="@(L.CurrentLang() ?? "en")">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -38,6 +38,10 @@
        this page goes away. Links the server marked data-poll are already in
        flight, so we resume polling them on load. No-JS falls back to the
        <noscript> meta-refresh. ES5 for old e-readers. */
+    // JSON-serialised, not localizer lookups inside quotes: Razor HTML-encodes
+    // localizer output, so an ellipsis/quote/ampersand would arrive as an entity
+    // and show literally when the JS assigns it via nodeValue. JSON is JS-safe.
+    var I18N = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { convert = L["Convert"], converting = L["Converting…"], retry = L["Convert (retry)"] }));
     (function () {
         try {
             var POLL_MS = 5000;
@@ -54,13 +58,13 @@
                         setTimeout(function () { poll(a); }, POLL_MS);
                     } else {
                         // failed, 404/None, or any error → terminal; revert to a tappable link.
-                        a.firstChild.nodeValue = (s === 'failed') ? 'Convert (retry)' : 'Convert';
+                        a.firstChild.nodeValue = (s === 'failed') ? I18N.retry : I18N.convert;
                     }
                 };
                 xhr.send();
             }
             function kick(a) {
-                a.firstChild.nodeValue = 'Converting…';
+                a.firstChild.nodeValue = I18N.converting;
                 var xhr = new XMLHttpRequest();
                 xhr.open('GET', a.href + (a.href.indexOf('?') < 0 ? '?' : '&') + 'warm=1');
                 xhr.onreadystatechange = function () {
@@ -71,7 +75,7 @@
                     } else if (xhr.status === 200 || xhr.status === 202) {
                         setTimeout(function () { poll(a); }, POLL_MS);
                     } else {
-                        a.firstChild.nodeValue = 'Convert (retry)';
+                        a.firstChild.nodeValue = I18N.retry;
                     }
                 };
                 xhr.send();

@@ -19,7 +19,7 @@
     }
     </a>
     <div class="body">
-        <a href="/item/@item.Id"><strong>@(m?.Title ?? "(untitled)")</strong></a><br />
+        <a href="/item/@item.Id"><strong>@(m?.Title ?? L["(untitled)"])</strong></a><br />
         @if (Model.Authors is { Count: > 0 } authors)
         {
             for (var i = 0; i < authors.Count; i++)
@@ -50,7 +50,7 @@
     @if (!string.IsNullOrEmpty(fmt))
     {
         <div class="actions">
-            <a href="/download/@item.Id">Download</a>
+            <a href="/download/@item.Id">@L["Download"]</a>
             @if (Model.State != ConvertRowState.NotConvertible)
             {
                 <partial name="_ConvertAction" model="new Inkshelf.Pages.ConvertActionModel(item.Id, null, Model.State, Model.ReturnUrl)" />
@@ -61,11 +61,11 @@
                 <input type="hidden" name="return" value="@Model.ReturnUrl" />
                 @if (Model.Read)
                 {
-                    <button type="submit" class="read-btn" title="Mark as unread">&#10003; Read</button>
+                    <button type="submit" class="read-btn" title="@L["Mark as unread"]">&#10003; @L["Read"]</button>
                 }
                 else
                 {
-                    <button type="submit" class="read-btn" title="Mark as read">Mark read</button>
+                    <button type="submit" class="read-btn" title="@L["Mark as read"]">@L["Mark read"]</button>
                 }
             </form>
         </div>

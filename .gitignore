@@ -13,6 +13,10 @@ Thumbs.db
 # Build outputs
 bin/
 obj/
+
+# uicheck harness output (screenshots + app log)
+tools/uicheck/shots/
+tools/uicheck/app.log
 out/
 build/
 dist/

@@ -11,9 +11,14 @@ services:
       # Set true when a TLS-terminating reverse proxy sits in front of Inkshelf
       # (recommended) so session cookies are marked Secure. See README → Deployment.
       # FORCE_SECURE_COOKIES: "true"
+      # Add or override UI translations without a rebuild: mount your own
+      # <lang>.json files here (merged over the shipped set, your keys win).
+      # Mount at this override path — NOT over the built-in /app/locales.
+      # LOCALES_OVERRIDE_PATH: "/locales"
     volumes:
       - inkshelf-keys:/keys
       - inkshelf-cache:/cache
+      # - ./locales:/locales   # host dir with custom/extra <lang>.json files
     ports:
       - "8080:8080"
     # Cap the sidecar so a conversion can't balloon the host. Sized above the

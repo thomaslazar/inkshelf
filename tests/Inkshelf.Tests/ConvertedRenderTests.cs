@@ -135,7 +135,7 @@ public class ConvertedRenderTests
         var response = await client.SendAsync(Request(factory, "/converted"));
         var html = await response.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Couldn't load details", html);
+        Assert.Contains("Couldn&#x27;t load details", html);
     }
 
     [Fact]

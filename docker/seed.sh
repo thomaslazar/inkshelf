@@ -132,15 +132,22 @@ def req(method, path, data=None):
         headers={'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json'})
     return json.load(urllib.request.urlopen(r))
 meta = {
-    'epub': {'title': 'The Silent Sea', 'authors': [{'name': 'Ada Ebook'}], 'series': [{'name': 'Deep Space', 'sequence': '1'}]},
+    # The epub carries genres + narrators (and tags below) so the item-detail
+    # Genres/Narrators/Tags labels render — the pages that exercise localisation.
+    'epub': {'title': 'The Silent Sea', 'authors': [{'name': 'Ada Ebook'}], 'series': [{'name': 'Deep Space', 'sequence': '1'}],
+             'genres': ['Science Fiction', 'Adventure'], 'narrators': ['Sam Sample']},
     'pdf':  {'title': 'Field Manual', 'authors': [{'name': 'Pete PDF'}]},
     'cbz':  {'title': 'Neon Blade Vol. 1', 'authors': [{'name': 'Mika Manga'}], 'series': [{'name': 'Neon Blade', 'sequence': '1'}]},
     'cbr':  {'title': 'Neon Blade Vol. 2', 'authors': [{'name': 'Mika Manga'}], 'series': [{'name': 'Neon Blade', 'sequence': '2'}]},
 }
+tags = {'epub': ['favorite', 'sci-fi']}  # media-level (sibling of metadata)
 for it in req('GET', '/api/libraries/%s/items?limit=200' % lib)['results']:
     fmt = (it.get('media') or {}).get('ebookFormat')
     if fmt in meta:
-        req('PATCH', '/api/items/%s/media' % it['id'], {'metadata': meta[fmt]})
+        body = {'metadata': meta[fmt]}
+        if fmt in tags:
+            body['tags'] = tags[fmt]
+        req('PATCH', '/api/items/%s/media' % it['id'], body)
         print('  patched %s ebook -> %s' % (fmt, meta[fmt]['title']))
 PY
 

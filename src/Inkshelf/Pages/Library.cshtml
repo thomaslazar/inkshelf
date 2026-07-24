@@ -7,19 +7,19 @@
 
 <div class="page-head" id="top">
     <h1 class="page-title">
-        <a href="/?all=1" class="home-link" title="Libraries"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a>
-        <a href="/?all=1">Libraries</a> <span class="crumb-sep">›</span> @Model.LibraryName
+        <a href="/?all=1" class="home-link" title="@L["Libraries"]"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a>
+        <a href="/?all=1">@L["Libraries"]</a> <span class="crumb-sep">›</span> @Model.LibraryName
     </h1>
     <form class="fav-form" method="post" action="/favorite">
         @Html.AntiForgeryToken()
         <input type="hidden" name="libraryId" value="@Model.Id" />
-        <button type="submit" class="fav-star" title="@(Model.IsFavorite ? "Unset favorite" : "Set favorite")">@(Model.IsFavorite ? "★" : "☆")</button>
+        <button type="submit" class="fav-star" title="@(Model.IsFavorite ? L["Unset favorite"] : L["Set favorite"])">@(Model.IsFavorite ? "★" : "☆")</button>
     </form>
     <form class="searchbar" method="get" action="/library/@Model.Id">
-        <input type="search" name="q" value="@Model.Q" placeholder="Search…" />
-        <button type="submit">Search</button>
+        <input type="search" name="q" value="@Model.Q" placeholder="@L["Search…"]" />
+        <button type="submit">@L["Search"]</button>
     </form>
-    <a class="settings-link" href="/settings" title="Settings"><img src="~/img/gear-black.png" alt="Settings" class="settings-icon" width="24" height="24" /></a>
+    <a class="settings-link" href="/settings" title="@L["Settings"]"><img src="~/img/gear-black.png" alt="@L["Settings"]" class="settings-icon" width="24" height="24" /></a>
 </div>
 
 @if (Model.IsSearch)
@@ -27,21 +27,21 @@
     var books = Model.SearchResults?.Book ?? new();
     var series = Model.SearchResults?.Series ?? new();
     var authors = Model.SearchResults?.Authors ?? new();
-    <p>Results for "<strong>@Model.Q</strong>" · <a href="/library/@Model.Id">clear</a></p>
+    <p>@L["Results for"] "<strong>@Model.Q</strong>" · <a href="/library/@Model.Id">@L["clear"]</a></p>
     <nav class="tabs">
-        @if (books.Count > 0) { <a href="#books">Books (@books.Count)</a> } else { <span>Books (0)</span> }
+        @if (books.Count > 0) { <a href="#books">@L["Books"] (@books.Count)</a> } else { <span>@L["Books"] (0)</span> }
         <span class="crumb-sep">·</span>
-        @if (series.Count > 0) { <a href="#series">Series (@series.Count)</a> } else { <span>Series (0)</span> }
+        @if (series.Count > 0) { <a href="#series">@L["Series"] (@series.Count)</a> } else { <span>@L["Series"] (0)</span> }
         <span class="crumb-sep">·</span>
-        @if (authors.Count > 0) { <a href="#authors">Authors (@authors.Count)</a> } else { <span>Authors (0)</span> }
+        @if (authors.Count > 0) { <a href="#authors">@L["Authors"] (@authors.Count)</a> } else { <span>@L["Authors"] (0)</span> }
     </nav>
     if (books.Count == 0 && series.Count == 0 && authors.Count == 0)
     {
-        <p>No matches.</p>
+        <p>@L["No matches."]</p>
     }
     if (books.Count > 0)
     {
-        <h2 id="books">Books <a class="totop" href="#top">↑</a></h2>
+        <h2 id="books">@L["Books"] <a class="totop" href="#top">↑</a></h2>
         foreach (var b in books)
         {
             <partial name="_ItemRow" model="Model.RowFor(b.LibraryItem)" />
@@ -49,7 +49,7 @@
     }
     if (series.Count > 0)
     {
-        <h2 id="series">Series <a class="totop" href="#top">↑</a></h2>
+        <h2 id="series">@L["Series"] <a class="totop" href="#top">↑</a></h2>
         <ul>
             @foreach (var s in series)
             {
@@ -59,7 +59,7 @@
     }
     if (authors.Count > 0)
     {
-        <h2 id="authors">Authors <a class="totop" href="#top">↑</a></h2>
+        <h2 id="authors">@L["Authors"] <a class="totop" href="#top">↑</a></h2>
         <ul>
             @foreach (var a in authors)
             {
@@ -72,22 +72,22 @@ else
 {
     if (Model.IsFiltered)
     {
-        <p>Filtered by <strong>@Model.FilterDisplay</strong> · <a href="/library/@Model.Id">clear</a></p>
+        <p>@L["Filtered by"] <strong>@L[Model.FilterType!]@(Model.FilterName is null ? "" : $": {Model.FilterName}")</strong> · <a href="/library/@Model.Id">@L["clear"]</a></p>
     }
     <nav class="sortbar">
-        Sort:
-        <a href="@Model.Links.SortHref("media.metadata.title")">Title@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.title", Model.Sort, Model.Desc))</a> ·
-        <a href="@Model.Links.SortHref("media.metadata.authorNameLF")">Author@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.authorNameLF", Model.Sort, Model.Desc))</a> ·
-        <a href="@Model.Links.SortHref("addedAt")">Added@(Inkshelf.Pages.SortLinks.Arrow("addedAt", Model.Sort, Model.Desc))</a>
+        @L["Sort:"]
+        <a href="@Model.Links.SortHref("media.metadata.title")">@L["Title"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.title", Model.Sort, Model.Desc))</a> ·
+        <a href="@Model.Links.SortHref("media.metadata.authorNameLF")">@L["Author"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.authorNameLF", Model.Sort, Model.Desc))</a> ·
+        <a href="@Model.Links.SortHref("addedAt")">@L["Added"]@(Inkshelf.Pages.SortLinks.Arrow("addedAt", Model.Sort, Model.Desc))</a>
         @if (!string.IsNullOrEmpty(Model.Series) || Model.Filter?.StartsWith("series.") == true)
         {
-            <text> · </text><a href="@Model.Links.SortHref("sequence")">Sequence@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.Sort, Model.Desc))</a>
+            <text> · </text><a href="@Model.Links.SortHref("sequence")">@L["Sequence"]@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.Sort, Model.Desc))</a>
         }
     </nav>
     <partial name="_Pager" model="Model" />
     @if (Model.Items.Count == 0)
     {
-        <p>No items.</p>
+        <p>@L["No items."]</p>
     }
     @foreach (var item in Model.Items)
     {

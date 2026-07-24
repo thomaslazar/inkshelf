@@ -76,9 +76,85 @@ real (if minimal) server rather than only unit tests.
   unavoidable (there are two tiny, deliberate inline scripts today).
 - **Defensive CSS.** Assume an old rendering engine: no `object-fit`, no flex
   `gap`, and similar modern-only features. Prefer widely-supported properties.
+- **Localise user-facing strings.** Wrap new chrome text in the injected
+  localizer (`@L["…"]`) instead of hardcoding English — see
+  [Localisation](#localisation).
 - **Tests stay green.** `dotnet test` must pass, and `dotnet format --verify-no-changes`
   must be clean, before you open a PR. New behavior needs tests.
+- **Verify UI changes in a browser.** Any change touching views, CSS, or
+  user-facing strings gets a headless-browser pass before the e-reader pass —
+  see [Verifying UI changes](#verifying-ui-changes).
 - **Respect the non-goals** documented in `docs/ARCHITECTURE.md`.
+
+## Verifying UI changes
+
+Two passes, in order:
+
+1. **Browser pass (always, in the container):** run the screenshot harness —
+   ```bash
+   tools/uicheck/run.sh
+   ```
+   It starts the app, drives it in a headless browser, writes full-page
+   screenshots to `tools/uicheck/shots/`, and asserts key strings; it exits
+   non-zero on failure. This catches gross breakage, layout overflow, and
+   untranslated / English-leak strings. First run downloads Chromium (one-time,
+   no root). Extend `tools/uicheck/Program.cs` with a `Check(...)` call when you
+   add a page or language. See [`tools/uicheck/README.md`](tools/uicheck/README.md).
+2. **E-reader pass (mandatory for merge):** the browser above is desktop
+   Chromium and does **not** reproduce the old e-ink engine (no `object-fit`, no
+   flex `gap`), so always confirm the change on a real e-ink e-reader before it
+   merges.
+
+## Localisation
+
+Inkshelf's own UI chrome (nav, buttons, breadcrumbs, empty states) is
+localisable. Audiobookshelf content — titles, author names, descriptions — is
+left in whatever language ABS holds. **English is the source language: the
+English string is itself the lookup key**, so there is no English translation
+file to keep in sync. Full design in
+[`docs/superpowers/specs/2026-07-23-ui-localisation-design.md`](docs/superpowers/specs/2026-07-23-ui-localisation-design.md).
+
+Translations live in `src/Inkshelf/locales/<lang>.json` — one flat JSON file per
+language, mapping the English source string to its translation:
+
+```json
+{
+  "$name": "Deutsch",
+  "Download": "Herunterladen",
+  "Mark read": "Gelesen",
+  "Page {0} of {1}": "Seite {0} von {1}"
+}
+```
+
+- `$name` (optional) is the language's own display name shown in the Settings
+  picker; omit it and the picker shows the bare code.
+- Keep `{0}`, `{1}` placeholders — you may reorder them for grammar.
+- Any string you leave out falls back to English, so a partial translation is
+  fine.
+
+**Add or update a language:**
+
+1. Create or edit `src/Inkshelf/locales/<lang>.json` (e.g. `de.json`, `fr.json`).
+2. Run the app (`ABS_URL=… dotnet run --project src/Inkshelf`), open **Settings**,
+   and pick the language — or set your browser's preferred language, since a
+   first visit with no saved choice honours `Accept-Language`.
+
+The catalog loads from two directories, merged: the shipped baseline
+`LOCALES_PATH` (default `<content-root>/locales`) plus an optional
+`LOCALES_OVERRIDE_PATH`, whose files win per-key. So you can drop a whole new
+language or override just a few strings in the override dir without touching the
+baseline — handy for trying a translation locally
+(`LOCALES_OVERRIDE_PATH=/tmp/loc-test dotnet run …`).
+
+No rebuild is needed in a deployed container: mount your custom/extra
+`<lang>.json` files at `LOCALES_OVERRIDE_PATH` and restart. Don't bind-mount over
+`LOCALES_PATH` — a mount shadows the image directory, which would hide the
+shipped translations.
+
+**Adding a new UI string in code:** write the English text through the injected
+localizer (`@L["New label"]`); the English string becomes the key automatically.
+Add its translation to each `<lang>.json` — until you do, that language shows the
+English text.
 
 ## Commits
 

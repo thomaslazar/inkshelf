@@ -3,6 +3,7 @@ using Inkshelf.Abs;
 using Inkshelf.Auth;
 using Inkshelf.Convert;
 using Inkshelf.Endpoints;
+using Inkshelf.Localization;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -15,11 +16,13 @@ var absOptions = new AbsOptions
     AbsUrl = builder.Configuration["ABS_URL"] ?? "",
     CachePath = builder.Configuration["CachePath"],
     DataProtectionKeysPath = builder.Configuration["DataProtectionKeysPath"],
+    LocalesPath = builder.Configuration["LOCALES_PATH"],
+    LocalesOverridePath = builder.Configuration["LOCALES_OVERRIDE_PATH"],
     DiagEnabled = !string.Equals(builder.Configuration["DIAG_ENABLED"], "false", StringComparison.OrdinalIgnoreCase),
     ForceSecureCookies = bool.TryParse(builder.Configuration["FORCE_SECURE_COOKIES"], out var fsc) && fsc,
     TrustedProxy = builder.Configuration["TRUSTED_PROXY"],
-    MaxCacheBytes = long.TryParse(builder.Configuration["MaxCacheBytes"], out var mcb) && mcb > 0 ? mcb : 1_073_741_824,
-    MaxArchiveBytes = long.TryParse(builder.Configuration["MaxArchiveBytes"], out var mab) && mab > 0 ? mab : 524_288_000,
+    MaxCacheBytes = long.TryParse(builder.Configuration["MaxCacheBytes"], out var mcb) && mcb > 0 ? mcb : 5_368_709_120,
+    MaxArchiveBytes = long.TryParse(builder.Configuration["MaxArchiveBytes"], out var mab) && mab > 0 ? mab : 1_073_741_824,
     MaxConcurrentConversions = int.TryParse(builder.Configuration["MaxConcurrentConversions"], out var mcc) && mcc > 0 ? mcc : 1,
 };
 // Fail fast on missing required config. SmokeTests.MissingAbsUrl_FailsStartup
@@ -61,6 +64,18 @@ builder.Services.AddSingleton<ConvertLock>();
 builder.Services.AddSingleton<ConvertQueue>();
 builder.Services.AddHostedService<ConvertWorker>();
 builder.Services.AddScoped<ConvertService>();
+// UI localisation: load <lang>.json once at startup; Localizer resolves the
+// per-request language and is injected into every view. The shipped baseline
+// dir is loaded first, then an optional override dir merged on top (its keys
+// win) so a mounted/extra dir never hides the built-in translations.
+var localesPath = absOptions.LocalesPath
+    ?? Path.Combine(builder.Environment.ContentRootPath, "locales");
+var localeDirs = string.IsNullOrWhiteSpace(absOptions.LocalesOverridePath)
+    ? new[] { localesPath }
+    : new[] { localesPath, absOptions.LocalesOverridePath };
+builder.Services.AddSingleton(sp =>
+    LocalizationCatalog.Load(localeDirs, sp.GetService<ILoggerFactory>()?.CreateLogger("Localization")));
+builder.Services.AddSingleton<Localizer>();
 builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AddPageRoute("/Library", "library/{id}");
