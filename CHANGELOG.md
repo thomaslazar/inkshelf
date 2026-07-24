@@ -3,6 +3,64 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.3.0 — 2026-07-24
+
+### Highlights
+- **German UI localisation.** Inkshelf's own chrome (navigation, breadcrumbs, row actions, pager, login/settings forms, empty states) is now translatable. Language is per-device, chosen in Settings or defaulted from the browser's `Accept-Language`, with English as the fallback. New languages drop in as a JSON file plus a restart — no rebuild.
+- **Conversion failure reasons.** A failed comic conversion now explains *why* on a plain-HTML page — too large (with the actual size vs the limit), unreadable archive, download failure, or unexpected error — instead of a bare "Convert (retry)". Oversized archives are now rejected before downloading.
+- **No more blank page from a stale favorite.** A favorite-library cookie left over from a different Audiobookshelf server no longer produces a blank 500; it's validated and cleared, falling back to the library list.
+- **Higher default conversion limits** — archive 1 GiB, cache 5 GiB.
+- **Touch- and e-reader-friendly polish** — a larger, better-spaced libraries list, and Failed-row actions that wrap correctly on narrow e-ink screens.
+
+### Features
+- feat: add conversion failure reason page
+- feat: add language picker to Settings
+- feat: add LocalizationCatalog for JSON translation files
+- feat: add per-device language to DeviceSettings
+- feat: add request-scoped Localizer with language resolution
+- feat: carry archive size and expose failure via ConvertService
+- feat: categorize conversion failures and reject oversized archives early
+- feat: enlarge and space out the libraries list for touch
+- feat: link failed rows to the reason page and auto-navigate on failure
+- feat: load and inject UI translation catalog
+- feat: localise index, library, item, settings, and converted pages
+- feat: localise login page + localisation integration test
+- feat: localise shared layout and row/pager/convert partials
+- feat: merge UI translations from baseline + optional override dir
+- feat: raise default conversion limits (archive 1 GiB, cache 5 GiB)
+- feat: store failure reason on the convert queue entry
+
+### Fixes
+- fix: align German UI terms with Audiobookshelf wording
+- fix: don't blank-500 when a favorite library is missing on the current ABS
+- fix: don't report a misleading size on copy-guard TooLarge; harden FailureFor lookup
+- fix: emit convert-status JS labels as JSON, not HTML-encoded
+- fix: even out pager spacing around the page indicator
+- fix: guard locale directory listing against enumeration errors
+- fix: rename ConvertWhy.File query param to avoid hiding PageModel.File
+- fix: use "Als gelesen markieren" for the mark-read label
+- fix: wrap the failed-row convert actions so the why? link fits narrow screens
+
+### Internal
+- refactor: harden localisation edge cases and drop dead FilterDisplay
+- test: cover the conversion failure reason path in uicheck
+- test: seed corrupt comic fixtures and cover BadArchive/ConvertError in uicheck
+- chore: add headless-browser UI screenshot harness (tools/uicheck)
+- chore: extend uicheck to authenticated pages via seeded ABS
+- chore: add Node devcontainer feature for ponytail plugin hooks
+- chore: install ponytail and answer-first plugins in devcontainer
+- docs: add localisation and disable-conversion roadmap items
+- docs: add structured settings-cookie refactor to roadmap
+- docs: add UI localisation design spec; drop InvariantGlobalization
+- docs: add UI localisation implementation plan
+- docs: clarify DeviceSettings cookie comment (10de is not a lang code)
+- docs: document localisation workflow in CONTRIBUTING
+- docs: implementation plan for conversion failure reasons
+- docs: move shipped UI localisation to roadmap Done
+- docs: record conversion failure reasons
+- docs: roadmap item for surfacing conversion failure reasons
+- docs: spec for surfacing conversion failure reasons
+
 ## v0.2.1 — 2026-07-21
 
 ### Highlights
