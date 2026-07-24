@@ -19,7 +19,7 @@ public class ConvertWhyModel : PageModel
     { _convert = convert; _options = options; }
 
     [FromRoute] public string Id { get; set; } = "";
-    [FromQuery] public string? File { get; set; }
+    [FromQuery(Name = "file")] public string? FileIno { get; set; }
     [FromQuery(Name = "return")] public string? Return { get; set; }
 
     public string Title { get; private set; } = "";
@@ -35,7 +35,7 @@ public class ConvertWhyModel : PageModel
         var ds = DeviceSettings.Read(Request);
         var target = ScreenTarget.FromCookie(Request.Cookies["scr"], ds.Retina, ds.Grayscale);
 
-        var f = await _convert.FailureAsync(Id, target, ct, File);
+        var f = await _convert.FailureAsync(Id, target, ct, FileIno);
         BackUrl = ConvertEndpoints.LocalReturn(Return);
         if (f is null) return Redirect(BackUrl); // not (any longer) Failed → nothing to explain
 
@@ -44,7 +44,7 @@ public class ConvertWhyModel : PageModel
         ArchiveBytes = f.Value.ArchiveBytes;
         LimitBytes = _options.MaxArchiveBytes;
 
-        var fileQ = string.IsNullOrEmpty(File) ? "" : $"file={Uri.EscapeDataString(File)}&";
+        var fileQ = string.IsNullOrEmpty(FileIno) ? "" : $"file={Uri.EscapeDataString(FileIno)}&";
         RetryUrl = $"/convert/{Id}?{fileQ}return={Uri.EscapeDataString(BackUrl)}";
         return Page();
     }
