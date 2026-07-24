@@ -132,6 +132,11 @@ repo root (inside the devcontainer) must stay green.
   listing if not ready yet); `?warm=1` is the JS kick, answered with a 202 and a
   status body while queued/running; `?status=1` polls without enqueuing, returning
   the status as plain text; `?fresh=1` discards the cached EPUB and reconverts.
+- **Failure reasons are categorized.** A Failed queue entry also carries a
+  `ConvertFailReason` (+ the archive size for TooLarge), surfaced by the
+  `/convert/{id}/why` page via `ConvertService.FailureAsync`. The worker
+  categorizes by stage (download vs convert) and rejects archives whose
+  ABS-reported size exceeds `MaxArchiveBytes` before downloading.
 - **Two device cookies, two purposes.** `scr` is JS-written device *truth* (the
   screen probe); `inkshelf_settings` (`DeviceSettings`) is server-written user
   *choice* (retina, grayscale). Wherever conversion is computed —
