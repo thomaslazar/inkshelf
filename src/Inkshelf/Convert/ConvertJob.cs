@@ -18,4 +18,4 @@ public readonly record struct ConvertFailure(ConvertFailReason Reason, long? Arc
 // HttpContext to read the session cookie from.
 public sealed record ConvertJob(
     string ItemId, string AccessToken, string CachePath,
-    EbookMeta Meta, RenderTarget Target, string? FileIno = null);
+    EbookMeta Meta, RenderTarget Target, string? FileIno = null, long ArchiveBytes = 0);
