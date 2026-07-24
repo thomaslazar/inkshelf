@@ -56,4 +56,22 @@ public class LocalizationCatalogTests
         Assert.Equal("Deutsch", c.DisplayName("de"));
         Assert.Equal("es", c.DisplayName("es"));
     }
+
+    [Fact]
+    public void Later_dir_overrides_keys_per_key_adds_languages_keeps_baseline()
+    {
+        var baseline = WriteLocales(("de", """{"$name":"Deutsch","Download":"Herunterladen","Save":"Speichern"}"""));
+        var overrides = WriteLocales(
+            ("de", """{"Save":"Sichern"}"""),
+            ("fr", """{"Download":"Télécharger"}"""));
+
+        var c = LocalizationCatalog.Load(new[] { baseline, overrides });
+
+        Assert.Equal("Sichern", c.Get("de", "Save"));           // override wins
+        Assert.Equal("Herunterladen", c.Get("de", "Download")); // baseline key untouched
+        Assert.Equal("Deutsch", c.DisplayName("de"));           // baseline $name kept
+        Assert.Equal("Télécharger", c.Get("fr", "Download"));   // language only in override
+        Assert.Contains("de", c.Languages);
+        Assert.Contains("fr", c.Languages);
+    }
 }

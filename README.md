@@ -134,7 +134,8 @@ All configuration is via environment variables.
 | `FORCE_SECURE_COOKIES`    | `false`              | Mark cookies `Secure` regardless of the request scheme. Set `true` when behind a TLS-terminating reverse proxy. |
 | `TRUSTED_PROXY`           | *(unset)*            | Comma-separated IPs/CIDRs permitted to set forwarded headers. Unset = trust the immediate hop. |
 | `DIAG_ENABLED`            | `true`               | Whether the unauthenticated `/diag` browser-probe endpoint is exposed. Set `false` to disable it. |
-| `LOCALES_PATH`            | `<ContentRoot>/locales` | Directory of `<lang>.json` UI translation files. Drop a file in and restart to add a language; no rebuild. |
+| `LOCALES_PATH`            | `<ContentRoot>/locales` | Baseline directory of shipped `<lang>.json` UI translation files. Don't mount over this — use `LOCALES_OVERRIDE_PATH` instead. |
+| `LOCALES_OVERRIDE_PATH`   | *(unset)*            | Optional extra directory of `<lang>.json` files, merged on top of `LOCALES_PATH` (its keys win). Mount custom or extra translations here and restart — the shipped set stays intact; no rebuild. |
 | `MaxArchiveBytes`         | `524288000` (500 MB) | Reject ebook archives larger than this before conversion (memory guard). |
 | `MaxCacheBytes`           | `1073741824` (1 GB)  | Soft cap on total EPUB cache size; oldest entries are evicted past it. |
 

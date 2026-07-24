@@ -139,8 +139,17 @@ language, mapping the English source string to its translation:
    and pick the language — or set your browser's preferred language, since a
    first visit with no saved choice honours `Accept-Language`.
 
-No rebuild is needed in a deployed container: drop a `<lang>.json` into the
-directory named by `LOCALES_PATH` (default `<content-root>/locales`) and restart.
+The catalog loads from two directories, merged: the shipped baseline
+`LOCALES_PATH` (default `<content-root>/locales`) plus an optional
+`LOCALES_OVERRIDE_PATH`, whose files win per-key. So you can drop a whole new
+language or override just a few strings in the override dir without touching the
+baseline — handy for trying a translation locally
+(`LOCALES_OVERRIDE_PATH=/tmp/loc-test dotnet run …`).
+
+No rebuild is needed in a deployed container: mount your custom/extra
+`<lang>.json` files at `LOCALES_OVERRIDE_PATH` and restart. Don't bind-mount over
+`LOCALES_PATH` — a mount shadows the image directory, which would hide the
+shipped translations.
 
 **Adding a new UI string in code:** write the English text through the injected
 localizer (`@L["New label"]`); the English string becomes the key automatically.

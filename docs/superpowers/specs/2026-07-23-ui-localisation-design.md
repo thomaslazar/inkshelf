@@ -69,18 +69,26 @@ Settled in brainstorming, backed by measurement:
 
 ### 2. Location & shipping
 
-- Directory configured by **`LOCALES_PATH`** (new `AbsOptions` field, mirroring
-  `CachePath` / `DataProtectionKeysPath`), default `<ContentRoot>/locales`.
-- The repo ships `src/Inkshelf/locales/de.json`; the `.csproj` copies
-  `locales/**` to output (`<Content>` with `CopyToOutputDirectory`).
-- To add/replace a language in a running deployment: mount or copy a `<lang>.json`
-  into `LOCALES_PATH` and restart. A mounted volume over the default dir replaces
-  the shipped set; extra files sit alongside.
+- **Two directories, merged** (baseline + optional override), so a mount is
+  additive and never hides shipped translations:
+  - **`LOCALES_PATH`** (default `<ContentRoot>/locales`) — the shipped baseline,
+    always loaded first. The repo ships `src/Inkshelf/locales/de.json`; the
+    `.csproj` copies `locales/**` to output. Not meant to be mounted over.
+  - **`LOCALES_OVERRIDE_PATH`** (optional, default unset) — an extra directory
+    merged on top, its keys winning. This is the safe path to bind-mount for
+    custom/extra translations, and the one contributors point at a scratch dir
+    to test a language locally.
+- Merge is **per-key**: an override file can add a whole new language or replace
+  a few strings without copying the baseline file. (Rationale: a bind mount
+  shadows the image directory it covers, so mounting over `LOCALES_PATH` would
+  hide the shipped `de.json` — the override dir avoids that.)
 
 ### 3. Loading
 
-- At startup, scan `LOCALES_PATH` for `*.json`, parse each into a
-  `Dictionary<string,string>` keyed by filename stem (`de.json` → `de`).
+- At startup, scan the locale dirs (baseline `LOCALES_PATH`, then
+  `LOCALES_OVERRIDE_PATH` if set) for `*.json`, parse each into a
+  `Dictionary<string,string>` keyed by filename stem (`de.json` → `de`), merging
+  per-key with later dirs winning.
 - Held in a **singleton `LocalizationCatalog`** — immutable after load.
 - **Resilience:** a malformed or unreadable file is logged (warning) and skipped;
   it must never crash the sidecar. A missing/empty dir → zero catalogs → the app

@@ -35,10 +35,18 @@ public sealed class LocalizationCatalog
     // Load every *.json in dir. A malformed/unreadable file is logged and skipped
     // — a bad translation file must never crash the sidecar. Missing dir → empty.
     public static LocalizationCatalog Load(string dir, ILogger? logger = null)
+        => Load([dir], logger);
+
+    // Load and merge *.json across dirs, in order: languages union, and later
+    // dirs win per-key (so an override dir can add a language or replace a few
+    // strings without copying the whole baseline file). Malformed/unreadable
+    // files are logged and skipped — loading must never crash the sidecar.
+    public static LocalizationCatalog Load(IReadOnlyList<string> dirs, ILogger? logger = null)
     {
-        var result = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
-        if (Directory.Exists(dir))
+        var merged = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var dir in dirs)
         {
+            if (!Directory.Exists(dir)) continue;
             string[] files;
             try
             {
@@ -47,7 +55,7 @@ public sealed class LocalizationCatalog
             catch (Exception ex)
             {
                 logger?.LogWarning(ex, "Cannot list locale directory {Dir}", dir);
-                files = [];
+                continue;
             }
             foreach (var file in files)
             {
@@ -55,7 +63,10 @@ public sealed class LocalizationCatalog
                 try
                 {
                     var map = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(file));
-                    if (map is not null) result[lang] = map;
+                    if (map is null) continue;
+                    if (!merged.TryGetValue(lang, out var acc))
+                        merged[lang] = acc = new Dictionary<string, string>();
+                    foreach (var kv in map) acc[kv.Key] = kv.Value; // later dir/file wins
                 }
                 catch (Exception ex)
                 {
@@ -63,6 +74,8 @@ public sealed class LocalizationCatalog
                 }
             }
         }
-        return new LocalizationCatalog(result);
+        var frozen = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var kv in merged) frozen[kv.Key] = kv.Value;
+        return new LocalizationCatalog(frozen);
     }
 }
