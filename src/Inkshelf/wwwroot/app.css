@@ -23,6 +23,12 @@ nav.pager a, nav.pager span { margin-right: 1rem; }
 .item .actions > a, .item .actions .convert { display: block; margin-bottom: .35rem; }
 .item .actions .regen { margin-left: .4rem; }
 .item .actions .convert { white-space: nowrap; }
+/* Libraries list: large, full-width, well-separated tap targets so a device tap
+   doesn't land on the wrong library. Block links (no flex gap for the Tolino). */
+.libraries { list-style: none; padding: 0; margin: 1rem 0; }
+.libraries li { border-bottom: 1px solid #ccc; }
+.libraries a { display: block; font-size: 1.3rem; line-height: 1.3; padding: .7rem .25rem; text-decoration: underline; }
+.libraries small { display: block; padding: 0 .25rem .55rem; font-size: .9rem; color: #666; }
 /* Logo mark beside the page heading. The explicit height is needed because the
    global `img { height:auto }` rule would otherwise blow it up to full width.
    No flex `gap` on the Tolino — the icon is inline with a margin instead. */
