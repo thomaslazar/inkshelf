@@ -31,6 +31,20 @@ public class ConvertWorkerTests
         return ms.ToArray();
     }
 
+    // A VALID zip whose only page has an image extension but non-image bytes:
+    // the archive opens (past the BadArchive stage) but decoding the page throws.
+    private static byte[] CbzWithBadImage()
+    {
+        using var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        using (var s = zip.CreateEntry("p1.jpg").Open())
+        {
+            var junk = System.Text.Encoding.ASCII.GetBytes("not a real jpeg");
+            s.Write(junk, 0, junk.Length);
+        }
+        return ms.ToArray();
+    }
+
     private static byte[] CoverJpg(int w = 300, int h = 450)
     {
         using var ms = new MemoryStream();
@@ -253,6 +267,26 @@ public class ConvertWorkerTests
         await worker.StopAsync(default);
 
         Assert.Equal(ConvertFailReason.BadArchive, queue.FailureFor(path)!.Value.Reason);
+    }
+
+    [Fact]
+    public async Task A_valid_archive_with_an_undecodable_page_is_categorized_ConvertError()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        var queue = new ConvertQueue();
+        var path = cache.PathFor("item1", 1, 2, 0, 0);
+        queue.Enqueue(Job(path));
+
+        // Archive opens fine (past BadArchive), but the page image won't decode →
+        // the convert stage throws a non-archive exception → ConvertError.
+        var worker = Worker(queue, ScopeFactoryReturning(CbzWithBadImage()), cache);
+        await worker.StartAsync(default);
+        await WaitUntil(() => queue.Status(path) == ConvertStatus.Failed, TimeSpan.FromSeconds(10));
+        await worker.StopAsync(default);
+
+        Assert.Equal(ConvertFailReason.ConvertError, queue.FailureFor(path)!.Value.Reason);
+        Assert.False(File.Exists(path));
     }
 
     [Fact]
