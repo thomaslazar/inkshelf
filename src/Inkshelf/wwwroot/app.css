@@ -14,7 +14,7 @@ img { max-width: 100%; height: auto; }
    body — without the cap, long titles overflow and render under the actions.
    Mirrors the row's fixed slots: cover 72px + 1rem, actions 8.5rem + .75rem. */
 .item .body { flex: 1 1 auto; min-width: 0; max-width: calc(100% - 72px - 1rem - 8.5rem - .75rem); }
-nav.pager a { margin-right: 1rem; }
+nav.pager a, nav.pager span { margin-right: 1rem; }
 .sortbar { margin: .5rem 0; }
 /* Fixed-width right column so the middle (title/author) column does all the
    line-wrapping and Download always sits at the same place. flex-basis + an
