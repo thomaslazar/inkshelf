@@ -47,6 +47,23 @@ Settings to add to the per-device settings system:
   view plus its home-page link. The retina/grayscale settings only affect
   conversion, so hide those on the Settings page too when it's off. Any
   already-cached EPUBs are simply unreachable while disabled.
+- **Surface conversion failure reasons.** A failed convert only shows "Convert
+  (retry)"; the reason lives only in the server log. This instance is shared with
+  family (non-technical users) — they can reach the admin, but shouldn't have to
+  guess, and the admin shouldn't have to log-dive for every vague report.
+  *Capture:* have `ConvertWorker` pass a reason category to `ConvertQueue.MarkFailed`
+  (TooLarge — with the actual archive size vs `MaxArchiveBytes`; DownloadFailed;
+  BadArchive; ConvertError) and store it on the Failed entry (same 10-min TTL;
+  transient is fine — a re-tap reproduces a deterministic failure like TooLarge).
+  *Surface (approach A):* a dedicated server-rendered page — the no-JS
+  `/convert/{id}` tap path already navigates there, so on a Failed state render a
+  small plain-HTML explanation instead of redirecting (actionable, e.g. "archive
+  is 1.3 GB, over the 1 GB limit"), no client JS, works on the oldest e-ink engine.
+  Optionally a short hint on the item detail page; keep listing rows lean. All new
+  strings go through the localizer (`@L[...]` + `de.json`). *Also:* enrich the
+  failure log line with the item title and actual archive size (not just the id +
+  limit) so `docker logs` is enough when a family member reports a vague failure.
+  Scoped for a dedicated agent.
 
 ## Browsing & reading
 
