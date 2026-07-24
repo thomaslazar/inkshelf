@@ -63,7 +63,10 @@ public sealed class ConvertQueue
     {
         lock (_gate) _entries[cachePath] = new Entry
         {
-            Phase = Phase.Failed, FailedAtUtc = _clock(), Reason = reason, ArchiveBytes = archiveBytes,
+            Phase = Phase.Failed,
+            FailedAtUtc = _clock(),
+            Reason = reason,
+            ArchiveBytes = archiveBytes,
         };
     }
 
