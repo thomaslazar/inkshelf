@@ -66,6 +66,11 @@ printf '%%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pa
 # here — drop a real .cbr into the library folder if you need to test cbr.)
 cp "$TMP/cover.png" "$TMP/page-01.png"
 (cd "$TMP" && zip -jq sample.cbz page-01.png)
+# An oversized CBZ: one ~300 KiB incompressible page, stored (no compression),
+# so ABS reports a file size well over the uicheck run's tiny archive ceiling.
+# Exercises the TooLarge failure-reason path end to end.
+python3 -c "import os;open('$TMP/big.jpg','wb').write(b'\xff\xd8'+os.urandom(300000))"
+(cd "$TMP" && zip -j0q big.cbz big.jpg)
 # CBR = RAR archive; only if the `rar` tool is installed (see the devcontainer
 # Dockerfile, or `sudo apt-get install -y rar`). Skipped otherwise.
 if command -v rar >/dev/null 2>&1; then
@@ -109,8 +114,9 @@ echo "Uploading ebook fixtures (epub / pdf / cbz)..."
 uploadf "The Silent Sea"    "Ada Ebook"  "Deep Space" "$TMP/sample.epub"
 uploadf "Field Manual"      "Pete PDF"   ""           "$TMP/sample.pdf"
 uploadf "Neon Blade Vol. 1" "Mika Manga" "Neon Blade" "$TMP/sample.cbz"
-EXPECT=18
-[ -f "$TMP/sample.cbr" ] && { uploadf "Neon Blade Vol. 2" "Mika Manga" "Neon Blade" "$TMP/sample.cbr"; EXPECT=19; }
+uploadf "Big Comic Vol. 1" "Mika Manga" "Neon Blade" "$TMP/big.cbz"
+EXPECT=19
+[ -f "$TMP/sample.cbr" ] && { uploadf "Neon Blade Vol. 2" "Mika Manga" "Neon Blade" "$TMP/sample.cbr"; EXPECT=20; }
 
 echo "Scanning..."
 curl -sf -X POST "$ABS_URL/api/libraries/$LIBRARY_ID/scan" -H "$AUTH" >/dev/null
@@ -142,8 +148,16 @@ meta = {
 }
 tags = {'epub': ['favorite', 'sci-fi']}  # media-level (sibling of metadata)
 for it in req('GET', '/api/libraries/%s/items?limit=200' % lib)['results']:
-    fmt = (it.get('media') or {}).get('ebookFormat')
-    if fmt in meta:
+    media = it.get('media') or {}
+    fmt = media.get('ebookFormat')
+    if fmt == 'cbz':
+        # Two CBZ items: the oversized one (larger file) is "Big Comic Vol. 1".
+        size = it.get('size') or media.get('size') or 0
+        m = {'title': 'Big Comic Vol. 1', 'authors': [{'name': 'Mika Manga'}], 'series': [{'name': 'Neon Blade', 'sequence': '1'}]} \
+            if size > 150000 else meta['cbz']
+        req('PATCH', '/api/items/%s/media' % it['id'], {'metadata': m})
+        print('  patched cbz (%d bytes) -> %s' % (size, m['title']))
+    elif fmt in meta:
         body = {'metadata': meta[fmt]}
         if fmt in tags:
             body['tags'] = tags[fmt]
@@ -163,8 +177,8 @@ rm -rf "$TMP"
 echo ""
 echo "Seed complete. ABS_URL=$ABS_URL  LIBRARY_ID=$LIBRARY_ID  root/root"
 echo "One item has a cover ($COVER_ITEM); the rest are coverless."
-if [ "$EXPECT" = 19 ]; then
-    echo "Ebook fixtures: epub, pdf, cbz, cbr."
+if [ "$EXPECT" = 20 ]; then
+    echo "Ebook fixtures: epub, pdf, cbz, cbz (oversized), cbr."
 else
-    echo "Ebook fixtures: epub, pdf, cbz (cbr seeded only when the rar tool is present)."
+    echo "Ebook fixtures: epub, pdf, cbz, cbz (oversized) (cbr seeded only when the rar tool is present)."
 fi

@@ -134,7 +134,22 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         if (!label.Contains("Konvert", StringComparison.Ordinal) && !label.Contains("EPUB", StringComparison.Ordinal))
             failures.Add($"convert-clicked: unexpected label \"{label}\"");
 
-        Console.WriteLine("[authed] index / library / item / converted / convert-click captured");
+        // Failure reason: the seeded "Big Comic" is over the run's tiny ceiling.
+        // Clicking Convert must land on the German reason page (poll-JS auto-nav).
+        await page.GotoAsync(libUrl);
+        await page.FillAsync("input[name=q]", "Big Comic");
+        await page.PressAsync("input[name=q]", "Enter");
+        await page.ClickAsync("a[href^='/item/']:has-text('Big Comic')");
+        await page.WaitForSelectorAsync("a[data-warm]", new() { Timeout = 15000 });
+        await page.Locator("a[data-warm]").First.ClickAsync();
+        // The poll flips to failed within a couple of cycles, then navigates to /why.
+        await page.WaitForURLAsync("**/convert/**/why**", new() { Timeout = 20000 });
+        await Shot("convert-failed-de");
+        var whyBody = await page.InnerTextAsync("body");
+        Expect("convert-failed-de", whyBody,
+            "Konvertierung fehlgeschlagen", "überschreitet", "Erneut versuchen", "Zurück");
+
+        Console.WriteLine("[authed] index / library / item / converted / convert-click / convert-failed captured");
     }
     catch (Exception ex)
     {
