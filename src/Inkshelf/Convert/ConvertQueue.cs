@@ -14,7 +14,7 @@ public sealed class ConvertQueue
     private static readonly TimeSpan FailedTtl = TimeSpan.FromMinutes(10);
 
     private enum Phase { Queued, Running, Failed }
-    private sealed class Entry { public Phase Phase; public DateTime FailedAtUtc; }
+    private sealed class Entry { public Phase Phase; public DateTime FailedAtUtc; public ConvertFailReason Reason; public long? ArchiveBytes; }
 
     private readonly ConcurrentDictionary<string, Entry> _entries = new();
     private readonly object _gate = new();
@@ -59,9 +59,27 @@ public sealed class ConvertQueue
 
     public void MarkDone(string cachePath) => _entries.TryRemove(cachePath, out _);
 
-    public void MarkFailed(string cachePath)
+    public void MarkFailed(string cachePath, ConvertFailReason reason = ConvertFailReason.ConvertError, long? archiveBytes = null)
     {
-        lock (_gate) _entries[cachePath] = new Entry { Phase = Phase.Failed, FailedAtUtc = _clock() };
+        lock (_gate) _entries[cachePath] = new Entry
+        {
+            Phase = Phase.Failed,
+            FailedAtUtc = _clock(),
+            Reason = reason,
+            ArchiveBytes = archiveBytes,
+        };
+    }
+
+    // The failure reason while the path is Failed (honours the TTL via Peek), else null.
+    public ConvertFailure? FailureFor(string cachePath)
+    {
+        lock (_gate)
+        {
+            if (Peek(cachePath) != ConvertStatus.Failed) return null;
+            return _entries.TryGetValue(cachePath, out var e)
+                ? new ConvertFailure(e.Reason, e.ArchiveBytes)
+                : null;
+        }
     }
 
     // Caller holds _gate (except the File.Exists fast paths above).

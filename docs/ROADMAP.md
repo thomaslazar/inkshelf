@@ -47,23 +47,6 @@ Settings to add to the per-device settings system:
   view plus its home-page link. The retina/grayscale settings only affect
   conversion, so hide those on the Settings page too when it's off. Any
   already-cached EPUBs are simply unreachable while disabled.
-- **Surface conversion failure reasons.** A failed convert only shows "Convert
-  (retry)"; the reason lives only in the server log. This instance is shared with
-  family (non-technical users) — they can reach the admin, but shouldn't have to
-  guess, and the admin shouldn't have to log-dive for every vague report.
-  *Capture:* have `ConvertWorker` pass a reason category to `ConvertQueue.MarkFailed`
-  (TooLarge — with the actual archive size vs `MaxArchiveBytes`; DownloadFailed;
-  BadArchive; ConvertError) and store it on the Failed entry (same 10-min TTL;
-  transient is fine — a re-tap reproduces a deterministic failure like TooLarge).
-  *Surface (approach A):* a dedicated server-rendered page — the no-JS
-  `/convert/{id}` tap path already navigates there, so on a Failed state render a
-  small plain-HTML explanation instead of redirecting (actionable, e.g. "archive
-  is 1.3 GB, over the 1 GB limit"), no client JS, works on the oldest e-ink engine.
-  Optionally a short hint on the item detail page; keep listing rows lean. All new
-  strings go through the localizer (`@L[...]` + `de.json`). *Also:* enrich the
-  failure log line with the item title and actual archive size (not just the id +
-  limit) so `docker logs` is enough when a family member reports a vague failure.
-  Scoped for a dedicated agent.
 
 ## Browsing & reading
 
@@ -77,28 +60,14 @@ Settings to add to the per-device settings system:
   this interacts with search results. Decide feasibility + approach before
   committing.
 
-## Localisation
-
-- **UI localisation (German first).** Translate the app's own chrome — labels
-  like Libraries / Download / Convert / Mark read / Sort / Search / Settings, the
-  breadcrumbs, and empty-state text — starting with German, defaulting from the
-  browser's `Accept-Language` on first visit with English as the per-string
-  fallback. A lightweight file-backed catalog: JSON files loaded at startup
-  (`<lang>.json`, the source English string as the key), language chosen
-  per-device via `DeviceSettings` + a Settings dropdown. No
-  `CultureInfo`, no new dependency; a new language drops in as a JSON file plus a
-  restart — no rebuild. ABS content (titles, descriptions) is already in its own
-  language — this covers only Inkshelf's own strings. See the localisation
-  design spec.
-
 ## Runtime footprint
 
 - **Baseline trim.** Smaller idle wins beyond the GC + streaming work already
   shipped: disabling unused ASP.NET Core features / logging providers,
   `PublishTrimmed`. Native AOT is off the table (CLAUDE.md); GC configuration
   carried the bulk. (`InvariantGlobalization` was measured at ~4 MiB resident on
-  this app and dropped — not worth losing `CultureInfo`; UI localisation is
-  pursued instead, see Localisation.)
+  this app and dropped — not worth losing `CultureInfo`; UI localisation was
+  pursued instead, see Done.)
 
 ## Security
 
@@ -162,3 +131,16 @@ Shipped; kept as a short record (full detail in git history / the PR).
 - **Read-state toggle** — per-row Mark read / ✓ Read on listing + search rows,
   synced to ABS media progress (`GET /api/me` finished-set; `PATCH
   /api/me/progress/{id}` `{isFinished}`).
+- **Conversion failure reasons** — a failed convert records a reason category
+  (TooLarge / DownloadFailed / BadArchive / ConvertError) on its transient queue
+  entry; oversized archives are rejected before download. The row's "why?" link
+  (and the poll-JS auto-nav on failure) opens a plain-HTML `/convert/{id}/why`
+  page explaining the failure — actionable for TooLarge ("archive is X, over the
+  Y limit"). Failure log lines carry the item title. All strings localized.
+- **UI localisation (German)** — Inkshelf's own chrome (nav, breadcrumbs, row
+  actions, pager, login/settings forms, empty states) is translated via a
+  lightweight file-backed JSON catalog keyed by the source English string, loaded
+  at startup. Language is per-device (`DeviceSettings` + a Settings dropdown),
+  defaulting from the browser's `Accept-Language` with English as the per-string
+  fallback. No `CultureInfo`, no new dependency; a new language is a `<lang>.json`
+  drop-in plus a restart. ABS content (titles, descriptions) is untouched.

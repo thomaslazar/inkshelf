@@ -36,6 +36,6 @@ public static class ConvertEndpoints
     private static string Text(ConvertStatus s) => s.ToString().ToLowerInvariant();
 
     // Open-redirect guard: only same-site absolute paths are honored.
-    private static string LocalReturn(string? r) =>
+    internal static string LocalReturn(string? r) =>
         !string.IsNullOrEmpty(r) && r.StartsWith('/') && !r.StartsWith("//") && !r.Contains('\\') ? r : "/";
 }

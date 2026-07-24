@@ -196,7 +196,8 @@ public class ListingRenderTests
         var colourHtml = await colourResponse.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, colourResponse.StatusCode);
         Assert.DoesNotContain("EPUB &#10003;", colourHtml);
-        Assert.Contains("data-warm>Convert</a>", PrimaryConvertAnchor(colourHtml));
+        Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(colourHtml));
+        Assert.Contains(">Convert</a>", PrimaryConvertAnchor(colourHtml));
     }
 
     // Regression: search-result rows for a cbz/cbr must offer Convert, not just
@@ -218,7 +219,8 @@ public class ListingRenderTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Results for", html); // confirm we rendered the search branch
         Assert.Contains($"/convert/{ItemId}?return=", html);
-        Assert.Contains("data-warm>Convert</a>", PrimaryConvertAnchor(html));
+        Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(html));
+        Assert.Contains(">Convert</a>", PrimaryConvertAnchor(html));
     }
 
     // Search rows fetch batch metadata too (hits are capped), so an already-

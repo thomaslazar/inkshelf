@@ -87,4 +87,41 @@ public class ConvertQueueTests
         q.MarkDone(path);
         Assert.Equal(ConvertStatus.None, q.Status(path)); // no file, no entry
     }
+
+    [Fact]
+    public void FailureFor_returns_reason_and_bytes_while_failed()
+    {
+        var q = new ConvertQueue();
+        var path = TempPath();
+        q.Enqueue(Job(path));
+        q.Reader.TryRead(out _);
+        q.MarkFailed(path, ConvertFailReason.TooLarge, 1_500_000_000);
+        var f = q.FailureFor(path);
+        Assert.NotNull(f);
+        Assert.Equal(ConvertFailReason.TooLarge, f!.Value.Reason);
+        Assert.Equal(1_500_000_000, f.Value.ArchiveBytes);
+    }
+
+    [Fact]
+    public void FailureFor_is_null_when_not_failed()
+    {
+        var q = new ConvertQueue();
+        var path = TempPath();
+        q.Enqueue(Job(path));            // Queued, not Failed
+        Assert.Null(q.FailureFor(path));
+        Assert.Null(q.FailureFor(TempPath())); // unknown path
+    }
+
+    [Fact]
+    public void FailureFor_is_null_after_ttl()
+    {
+        var now = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var q = new ConvertQueue(() => now);
+        var path = TempPath();
+        q.Enqueue(Job(path));
+        q.Reader.TryRead(out _);
+        q.MarkFailed(path, ConvertFailReason.BadArchive);
+        now = now.AddMinutes(11);
+        Assert.Null(q.FailureFor(path));
+    }
 }

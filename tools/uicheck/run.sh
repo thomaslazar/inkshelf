@@ -38,6 +38,9 @@ fi
 export ABS_URL="$ABS"
 export CachePath="$(mktemp -d)"
 export ASPNETCORE_URLS="http://127.0.0.1:$PORT"
+# Tiny archive ceiling so the seeded oversized comic trips the TooLarge failure
+# path while the small sample.cbz still converts. Shipped default (1 GiB) unchanged.
+export MaxArchiveBytes=102400
 dotnet run --project "$REPO/src/Inkshelf" -c Debug --no-launch-profile >"$SCRIPT_DIR/app.log" 2>&1 &
 APP=$!
 trap 'kill $APP 2>/dev/null' EXIT

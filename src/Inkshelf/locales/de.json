@@ -70,5 +70,15 @@
 
   "Converted & cached on this device.": "Auf diesem Gerät konvertiert & zwischengespeichert.",
   "Couldn't load details from Audiobookshelf. Try again.": "Details konnten nicht von Audiobookshelf geladen werden. Bitte erneut versuchen.",
-  "Nothing converted for this device yet.": "Für dieses Gerät wurde noch nichts konvertiert."
+  "Nothing converted for this device yet.": "Für dieses Gerät wurde noch nichts konvertiert.",
+
+  "Conversion failed": "Konvertierung fehlgeschlagen",
+  "The archive is {0}, over the {1} limit.": "Das Archiv ist {0} groß und überschreitet das Limit von {1}.",
+  "The comic archive is too large to convert.": "Das Comic-Archiv ist zu groß zum Konvertieren.",
+  "The download from Audiobookshelf failed. Try again.": "Der Download von Audiobookshelf ist fehlgeschlagen. Bitte erneut versuchen.",
+  "The comic archive could not be read (it may be corrupt or an unsupported format).": "Das Comic-Archiv konnte nicht gelesen werden (möglicherweise beschädigt oder ein nicht unterstütztes Format).",
+  "The conversion failed unexpectedly. Try again.": "Die Konvertierung ist unerwartet fehlgeschlagen. Bitte erneut versuchen.",
+  "Retry": "Erneut versuchen",
+  "Back": "Zurück",
+  "why?": "warum?"
 }

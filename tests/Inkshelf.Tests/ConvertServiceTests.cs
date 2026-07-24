@@ -138,4 +138,36 @@ public class ConvertServiceTests
         Assert.Equal(cache.PathFor("i1", 99, 88, 100, 200), job!.CachePath);
         Assert.Equal("2", job.FileIno);
     }
+
+    [Fact]
+    public async Task FailureAsync_returns_title_and_reason_when_failed()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        var queue = new ConvertQueue();
+        var api = DetailClient(DetailJson("cbz", "Big Comic", "Mika Manga", 300_000, 42));
+        var svc = Service(api, cache, queue, TokenStoreWith("tok"));
+        var target = new RenderTarget(0, 0, 1.0, false);
+
+        // Mark the exact path the service will resolve as Failed.
+        var path = cache.PathFor("item1", 300_000, 42, target.MaxW, target.MaxH, target.Grayscale);
+        queue.MarkFailed(path, ConvertFailReason.TooLarge, 300_000);
+
+        var f = await svc.FailureAsync("item1", target, default);
+        Assert.NotNull(f);
+        Assert.Equal("Big Comic", f!.Value.Title);
+        Assert.Equal(ConvertFailReason.TooLarge, f.Value.Reason);
+        Assert.Equal(300_000, f.Value.ArchiveBytes);
+    }
+
+    [Fact]
+    public async Task FailureAsync_is_null_when_not_failed()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        var queue = new ConvertQueue();
+        var api = DetailClient(DetailJson("cbz", "Big Comic", "Mika Manga", 300_000, 42));
+        var svc = Service(api, cache, queue, TokenStoreWith("tok"));
+        Assert.Null(await svc.FailureAsync("item1", new RenderTarget(0, 0, 1.0, false), default));
+    }
 }

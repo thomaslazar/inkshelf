@@ -48,7 +48,12 @@ public class LibraryModel : PageModel
         IsFavorite = Favorites.Read(Request) == Id;
 
         var libraries = await _api.GetLibrariesAsync(ct);
-        LibraryName = libraries.FirstOrDefault(l => l.Id == Id)?.Name ?? "Library";
+        var library = libraries.FirstOrDefault(l => l.Id == Id);
+        // Unknown library (e.g. a stale favorite from a different ABS, hit
+        // directly): bounce to the list instead of 500ing on the items call.
+        // Index drops the stale favorite cookie, so this doesn't loop.
+        if (library is null) return Redirect("/");
+        LibraryName = library.Name;
 
         if (IsSearch)
         {
