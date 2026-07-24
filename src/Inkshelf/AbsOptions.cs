@@ -23,11 +23,12 @@ public sealed class AbsOptions
     public string? TrustedProxy { get; set; }
     // Whether the unauthenticated /diag probe endpoint is mapped. Default true.
     public bool DiagEnabled { get; set; } = true;
-    // Soft cap on total EPUB cache bytes; oldest entries are evicted past it. Default 1 GiB.
-    public long MaxCacheBytes { get; set; } = 1_073_741_824;
-    // Max bytes buffered from an ebook archive before conversion; larger archives
-    // are refused (decompression-bomb / OOM guard). Default 500 MiB.
-    public long MaxArchiveBytes { get; set; } = 524_288_000;
+    // Soft cap on total EPUB cache bytes; oldest entries are evicted past it. Default 5 GiB.
+    public long MaxCacheBytes { get; set; } = 5_368_709_120;
+    // Max bytes read from an ebook archive before conversion; larger archives are
+    // refused (decompression-bomb guard). Spooled to a temp file, so this bounds
+    // disk not RAM. Default 1 GiB — comics are large.
+    public long MaxArchiveBytes { get; set; } = 1_073_741_824;
     // Max conversions the background worker runs at once. Default 1 — a small
     // host must not run two ImageSharp resizes concurrently (CPU/RAM thrash).
     public int MaxConcurrentConversions { get; set; } = 1;
