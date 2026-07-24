@@ -49,4 +49,18 @@ public class LocalizationIntegrationTests : IClassFixture<LocalizationIntegratio
         var html = await (await client.SendAsync(req)).Content.ReadAsStringAsync();
         Assert.Contains("Anmelden", html);
     }
+
+    // Regression: the convert-status labels are assigned in JS via nodeValue, which
+    // does not decode HTML entities. They must be JS-escaped (JSON), not routed
+    // through Razor's HTML encoder — otherwise "Converting…" shows as the literal
+    // "Converting&#x2026;". The layout renders on every page, so /login covers it.
+    [Fact]
+    public async Task Convert_js_labels_are_js_encoded_not_html_entities()
+    {
+        var client = _factory.CreateClient();
+        var html = await (await client.GetAsync("/login")).Content.ReadAsStringAsync();
+        Assert.Contains("var I18N =", html);                    // the label object exists
+        Assert.Contains("\"converting\":\"Converting\\u2026\"", html); // JSON …, JS-safe
+        Assert.DoesNotContain("&#x2026;", html);                 // no HTML entity leaked into JS
+    }
 }

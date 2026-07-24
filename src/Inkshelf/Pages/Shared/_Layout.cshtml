@@ -38,11 +38,10 @@
        this page goes away. Links the server marked data-poll are already in
        flight, so we resume polling them on load. No-JS falls back to the
        <noscript> meta-refresh. ES5 for old e-readers. */
-    var I18N = {
-        convert: "@L["Convert"]",
-        converting: "@L["Converting…"]",
-        retry: "@L["Convert (retry)"]"
-    };
+    // JSON-serialised, not localizer lookups inside quotes: Razor HTML-encodes
+    // localizer output, so an ellipsis/quote/ampersand would arrive as an entity
+    // and show literally when the JS assigns it via nodeValue. JSON is JS-safe.
+    var I18N = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { convert = L["Convert"], converting = L["Converting…"], retry = L["Convert (retry)"] }));
     (function () {
         try {
             var POLL_MS = 5000;
