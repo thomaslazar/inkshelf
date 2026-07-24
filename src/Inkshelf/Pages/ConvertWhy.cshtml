@@ -1,0 +1,24 @@
+@page "/convert/{id}/why"
+@model Inkshelf.Pages.ConvertWhyModel
+@using Inkshelf.Convert
+@{
+    ViewData["Title"] = L["Conversion failed"];
+    var message = Model.Reason switch
+    {
+        ConvertFailReason.TooLarge => Model.ArchiveBytes is { } b
+            ? L["The archive is {0}, over the {1} limit.",
+                Inkshelf.Pages.ConvertWhyModel.HumanBytes(b),
+                Inkshelf.Pages.ConvertWhyModel.HumanBytes(Model.LimitBytes)]
+            : L["The comic archive is too large to convert."],
+        ConvertFailReason.DownloadFailed => L["The download from Audiobookshelf failed. Try again."],
+        ConvertFailReason.BadArchive => L["The comic archive could not be read (it may be corrupt or an unsupported format)."],
+        _ => L["The conversion failed unexpectedly. Try again."],
+    };
+}
+<h1>@L["Conversion failed"]</h1>
+<p class="item-title">@Model.Title</p>
+<p>@message</p>
+<p class="actions">
+    <a href="@Model.RetryUrl">@L["Retry"]</a>
+    <a href="@Model.BackUrl">@L["Back"]</a>
+</p>
