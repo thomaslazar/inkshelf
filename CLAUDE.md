@@ -21,6 +21,30 @@ the load-bearing conventions (some look like cleanup targets but are deliberate)
 - Claude sessions are shared in/out of the container via the project-path
   symlink set up in `.devcontainer/post-create.sh`.
 
+## Testing — use the local stack, never ask for credentials
+
+Everything needed to exercise this app end to end is in the repo. There is no
+situation where a verification pass is "blocked on credentials".
+
+- **Unit/integration:** `dotnet test` from the repo root.
+- **UI / browser pass:** `tools/uicheck/run.sh` — headless Playwright Chromium.
+  It brings up the seeded ABS, starts Inkshelf, drives both anonymous and
+  logged-in pages in English and German, asserts key strings, and writes
+  full-page screenshots to `tools/uicheck/shots/` (read them; don't just trust
+  the exit code). Extend it when a feature adds or changes a page.
+- **Seeded ABS backend:** `docker/docker-compose.yml` (project `inkshelf-it`,
+  port **13379**, `root`/`root`), populated by `docker/seed.sh` with ~22 items
+  including deliberately broken fixtures (corrupt archive, bad page, oversized)
+  for the failure paths. `run.sh` brings it up and seeds it automatically.
+- **HTTP smoke:** `docker/smoke-test.sh` drives a running Inkshelf against it.
+- **Manual run:** `ABS_URL=http://host.docker.internal:13379 dotnet run
+  --project src/Inkshelf --no-launch-profile --urls http://localhost:5099`.
+  Use port **5099** — `launchSettings.json`'s 5197 is not the bookmarked one.
+
+The headless pass does **not** reproduce the old e-ink engine (no `object-fit`,
+no flex `gap`), so a real e-reader pass by the user stays mandatory for
+engine-specific rendering. Do the headless pass first, then hand over.
+
 ## Git conventions
 - **Always ask before committing.** Do not commit automatically.
 - **Conventional Commits**: `type: subject` — `feat`, `fix`, `docs`, `test`,

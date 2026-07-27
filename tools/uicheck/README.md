@@ -40,7 +40,9 @@ sudo pwsh tools/uicheck/bin/Debug/net10.0/playwright.ps1 install-deps chromium
 - No-auth pages: add `Check(...)` calls near the top of `Program.cs`.
 - Authenticated pages: extend the `UICHECK_AUTHED` block (login is `root`/`root`
   against the seeded ABS). The German context uses cookie `inkshelf_settings` =
-  `<retina><grayscale><lang>` (e.g. `10de`). To exercise the item-detail term
-  labels, `docker/seed.sh` gives one epub genres/tags/narrators.
+  `retina=1&gray=0&lang=de&fav=` (the `De` const in `Program.cs`) — the cookie is
+  a keyed value, so a new setting is a new key rather than another position. To
+  exercise the item-detail term labels, `docker/seed.sh` gives one epub
+  genres/tags/narrators.
 
 Not part of `Inkshelf.sln` — it never affects the app build or `dotnet test`.
