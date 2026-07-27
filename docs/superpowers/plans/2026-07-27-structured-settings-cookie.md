@@ -403,30 +403,54 @@ git commit -m "refactor: move the favorite library into the settings cookie"
 
 - [ ] **Step 1: Write the failing test for the clobber hazard**
 
-This is the bug this task can introduce, so it gets a test before the change. Add to `tests/Inkshelf.Tests/DeviceSettingsTests.cs`:
+This is the bug this task can introduce, so it gets a real end-to-end test first. It drives the actual HTTP endpoints, because the hazard lives in the endpoint wiring, not in `DeviceSettings`.
+
+Add to `tests/Inkshelf.Tests/EndpointTests.cs`, which already has the `CreateFactory` and `GetAntiforgeryTokenAsync` helpers this uses. Neither `POST /favorite` nor `POST /settings` calls ABS — both only read and write cookies and redirect — so no ABS stubbing is needed.
 
 ```csharp
     [Fact]
-    public void Saving_settings_must_carry_the_favorite_forward()
+    public async Task Saving_settings_keeps_the_favorite_library()
     {
-        // The hazard of one shared cookie: a settings save that constructs a fresh
+        // The hazard of one shared cookie: a settings save that builds a fresh
         // DeviceSettings instead of using `with` silently wipes the favorite, and
         // the symptom (favorite vanishes after visiting Settings) points nowhere
-        // near the cause. This asserts the read-modify-write shape holds.
-        var req = RequestWithCookie("retina=1&gray=0&lang=de&fav=lib_keep");
-        var saved = DeviceSettings.Read(req) with { Retina = false, Grayscale = true, Lang = "fr" };
+        // near the cause.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        var token = await GetAntiforgeryTokenAsync(client);
 
-        Assert.Equal("lib_keep", saved.Fav);
-        Assert.False(saved.Retina);
-        Assert.True(saved.Grayscale);
-        Assert.Equal("fr", saved.Lang);
+        // Favorite a library, then save unrelated settings. Both go through the
+        // client's own cookie container — do NOT set a Cookie header by hand, it
+        // fights the container and drops the antiforgery cookie.
+        var fav = await client.PostAsync("/favorite", new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["libraryId"] = "lib_keep",
+            }));
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, fav.StatusCode);
+
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["grayscale"] = "on",
+                ["lang"] = "de",
+            }));
+
+        var setCookie = string.Join(" ", saved.Headers.GetValues("Set-Cookie"));
+        Assert.Contains("fav%3Dlib_keep", setCookie);   // the favorite survived the save
+        Assert.Contains("gray%3D1", setCookie);         // and the new choice was applied
     }
 ```
 
-- [ ] **Step 2: Run it to verify it passes already**
+- [ ] **Step 2: Run it to verify it fails**
 
-Run: `dotnet test --filter "FullyQualifiedName~Saving_settings_must_carry"`
-Expected: PASS. This one is a guard on the *shape* the next step must use, not a red-to-green test — Task 2 already made `with` work. Keep it: it fails if someone later changes `Fav` in a way that `with` stops carrying.
+Run: `dotnet test --filter "FullyQualifiedName~Saving_settings_keeps_the_favorite"`
+Expected: FAIL. After Task 2 the settings POST still builds a fresh `DeviceSettings`, so it writes `fav=` and the assertion reports the `fav%3Dlib_keep` substring missing. This is a genuine red — the exact bug, before the fix.
 
 - [ ] **Step 3: Update `SettingsEndpoints.cs`**
 
@@ -513,10 +537,11 @@ Line 55, in `Index_drops_a_stale_favorite_and_shows_the_list` — the stale-clea
 ```csharp
         var setCookie = model.Response.Headers.SetCookie.ToString();
         Assert.Contains(DeviceSettings.Cookie, setCookie);   // the stale favorite is cleared
-        Assert.Contains("fav%3D;", setCookie + ";");          // ...by writing an empty fav
+        Assert.Contains("fav%3D;", setCookie);               // ...by writing an empty fav
 ```
 
-The `+ ";"` covers `fav=` landing at the very end of the escaped value with nothing after it.
+`fav` is the last key and `Set-Cookie` always continues with `; path=/`, so
+`fav%3D;` is the empty-favorite signature.
 
 Leave the other three tests in the file untouched — they exercise the redirect behavior, which is unchanged.
 
