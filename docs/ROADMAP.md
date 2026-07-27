@@ -41,6 +41,22 @@ Settings to add to the per-device settings system:
 
 ## Browsing & reading
 
+- **Mark files as already downloaded (per device).** Track which files this device
+  has downloaded and show a marker on the row, so you can tell at a glance whether
+  you already grabbed volume 4 and don't fetch it twice. Covers both raw ebook
+  downloads and converted EPUBs. Distinct from the shipped read/unread toggle:
+  that is per-*user* ABS media progress and means "I read this", whereas this is
+  per-*device* and means "the file is on this reader".
+  Promising approach, no JS needed: the download itself is a plain `<a>` hitting
+  our own endpoint, so the download **response** can `Set-Cookie` and append the
+  id — automatic rather than a thing you have to remember to tick, which is the
+  whole point. Key on item id plus file ino, since the detail page offers
+  per-file downloads and a multi-file item needs per-file marks.
+  Open question is the cookie ceiling: ~4 KB, ABS ids are UUIDs, and the cookie
+  rides every request on a slow e-ink connection. Likely wants a short id hash
+  (first ~8 hex chars) plus a rolling cap with FIFO eviction — a "recently
+  downloaded" window, not a permanent ledger. Keep it in its **own** cookie, not
+  the settings one: settings are small and stable, this list grows and churns.
 - **Sort the Converted view, newest first.** `/converted` currently lists cached
   EPUBs in whatever order the cache enumeration yields. Default it to
   **converted-at descending** so the most recently converted comic is at the top —
