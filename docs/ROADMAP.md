@@ -63,9 +63,10 @@ Settings to add to the per-device settings system:
   - *`display: "standalone"` in `wwwroot/site.webmanifest`.* A standalone launch
     renders without browser chrome, and the save prompt is chrome — but the
     device opens Inkshelf from an ordinary bookmark in a normal tab, so
-    standalone never applies. (Unrelated but worth knowing: that `display` value
-    is stock favicon-generator boilerplate from `c57aa9a`, not a deliberate
-    choice, and nothing relies on it.)
+    standalone never applies. Confirmed the hard way: removing the `display` key
+    and retesting on the device changed nothing, so it was put back. (Worth
+    knowing regardless: that value is stock favicon-generator boilerplate from
+    `c57aa9a`, not a deliberate choice, and nothing relies on it.)
   - *Scheme, cert validity and origin form.* Safari saves against the dev server
     over plain HTTP **and** over self-signed HTTPS, on a bare LAN IP.
 
