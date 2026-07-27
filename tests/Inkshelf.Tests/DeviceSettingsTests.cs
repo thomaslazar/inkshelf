@@ -57,7 +57,7 @@ public class DeviceSettingsTests
         var ctx = new DefaultHttpContext();
         DeviceSettings.Set(ctx.Response, new DeviceSettings(true, true, ""));
         var setCookie = ctx.Response.Headers.SetCookie.ToString();
-        Assert.Contains($"{DeviceSettings.Cookie}=11", setCookie);
+        Assert.Contains($"{DeviceSettings.Cookie}=retina%3D1%26gray%3D1", setCookie);
         Assert.Contains("path=/", setCookie, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -80,10 +80,62 @@ public class DeviceSettingsTests
     }
 
     [Fact]
-    public void Serialize_roundtrips_lang()
+    public void Serialize_emits_keyed_pairs()
     {
-        Assert.Equal("10de", new DeviceSettings(true, false, "de").Serialize());
-        Assert.Equal("11", new DeviceSettings(true, true, "").Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=", new DeviceSettings(true, false, "de").Serialize());
+        Assert.Equal("retina=1&gray=1&lang=&fav=", new DeviceSettings(true, true, "").Serialize());
+    }
+
+    [Fact]
+    public void Read_parses_keyed_pairs()
+    {
+        var s = DeviceSettings.Read(RequestWithCookie("retina=0&gray=1&lang=de&fav="));
+        Assert.False(s.Retina);
+        Assert.True(s.Grayscale);
+        Assert.Equal("de", s.Lang);
+    }
+
+    [Fact]
+    public void Read_absent_key_falls_back_to_the_documented_default_not_false()
+    {
+        // Only gray is present. Retina must stay ON — it defaults on, and a naive
+        // `q["retina"] == "1"` would silently turn it off.
+        var s = DeviceSettings.Read(RequestWithCookie("gray=1"));
+        Assert.True(s.Retina);
+        Assert.True(s.Grayscale);
+        Assert.Equal("", s.Lang);
+    }
+
+    [Fact]
+    public void Read_unknown_keys_are_ignored()
+    {
+        var s = DeviceSettings.Read(RequestWithCookie("retina=0&whatever=9&lang=fr"));
+        Assert.False(s.Retina);
+        Assert.Equal("fr", s.Lang);
+    }
+
+    [Fact]
+    public void Read_legacy_positional_cookie_still_works()
+    {
+        Assert.Equal(new DeviceSettings(true, false, "de"), DeviceSettings.Read(RequestWithCookie("10de")));
+        Assert.Equal(new DeviceSettings(false, true, ""), DeviceSettings.Read(RequestWithCookie("01")));
+    }
+
+    [Fact]
+    public void Set_then_Read_roundtrips_through_real_cookie_escaping()
+    {
+        // The `&` and `=` are escaped to %26/%3D on the way out and unescaped on the
+        // way in. This test exists so a framework change can't break that silently.
+        var ctx = new DefaultHttpContext();
+        DeviceSettings.Set(ctx.Response, new DeviceSettings(false, true, "pt-br"));
+
+        var value = ctx.Response.Headers.SetCookie.ToString().Split(';')[0].Split('=', 2)[1];
+        Assert.Contains("%26", value);              // the separators really are escaped
+        var ctx2 = new DefaultHttpContext();
+        ctx2.Request.Headers.Cookie = $"{DeviceSettings.Cookie}={value}";
+
+        var read = DeviceSettings.Read(ctx2.Request);
+        Assert.Equal(new DeviceSettings(false, true, "pt-br"), read);
     }
 
     [Fact]

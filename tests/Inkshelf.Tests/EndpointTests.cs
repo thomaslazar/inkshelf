@@ -143,7 +143,7 @@ public class EndpointTests
         Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/settings", response.Headers.Location?.OriginalString);
         var setCookie = response.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
-        Assert.Contains("inkshelf_settings=10", setCookie); // retina on, grayscale off → "10"
+        Assert.Contains("inkshelf_settings=retina%3D1%26gray%3D0", setCookie); // retina on, grayscale off
     }
 
     [Fact]
