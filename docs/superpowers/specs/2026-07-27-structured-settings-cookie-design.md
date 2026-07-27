@@ -51,8 +51,9 @@ key is load-bearing — see the resurrect guard in section C.
 **Escaping:** `Response.Cookies.Append` runs the value through
 `Uri.EscapeDataString`, and `RequestCookieCollection` reverses it, so `&` and
 `=` round-trip as `%26`/`%3D`. This is the same mechanism the roadmap noted for
-JSON braces. It is a *premise*, not an assumption — a Response→Request
-round-trip test verifies it (section E).
+JSON braces. **Confirmed by probe** (see the table in section C); a
+Response→Request round-trip test locks it in so a framework change can't break
+it silently.
 
 **Consequence to be aware of:** anything writing this cookie *outside*
 `Response.Cookies.Append` — e.g. the inline JS that writes the `scr` probe —
@@ -83,19 +84,24 @@ comment on `Serialize()`.
 ### C. `DeviceSettings`
 
 ```csharp
-public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang, string Fav)
+public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
 {
     public const string Cookie = "inkshelf_settings";
     public const string LegacyFavCookie = "inkshelf_fav_library";
-    public static readonly DeviceSettings Default = new(true, false, "", "");
+    public static readonly DeviceSettings Default = new(true, false, "");
 
-    // Sanitize in the initializers so no invalid instance can exist — this covers
-    // Read, Set, `with`, and the form POST in one place instead of four.
-    public string Lang { get; } = SanitizeLang(Lang);
-    public string Fav  { get; } = SanitizeId(Fav);
+    // An init property, not a 4th positional parameter, so the ten existing
+    // `new DeviceSettings(a, b, c)` sites in DeviceSettingsTests keep compiling.
+    // Those tests are the regression net for this refactor; rewriting them at the
+    // same time as the parse logic would weaken exactly what's checking the work.
+    // Record equality still covers it, and `with { Fav = … }` still works.
+    public string Fav { get; init; } = "";
 
+    // Sanitized on the way OUT here and on the way IN in Read — the two cookie
+    // boundaries. See "Why not sanitize in the record" below.
     public string Serialize() =>
-        $"retina={(Retina ? 1 : 0)}&gray={(Grayscale ? 1 : 0)}&lang={Lang}&fav={Fav}";
+        $"retina={(Retina ? 1 : 0)}&gray={(Grayscale ? 1 : 0)}"
+        + $"&lang={SanitizeLang(Lang)}&fav={SanitizeId(Fav)}";
 }
 ```
 
@@ -103,8 +109,24 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang, st
 `libraryId` straight from a form POST. A `libraryId` of `x&retina=0` would
 write a cookie that parses back with retina off. It is only the caller's own
 cookie, so this is a correctness hole rather than a meaningful security one —
-but it is why validation belongs in the constructor initializers, where no
-call site can forget it.
+but it does have to be closed somewhere no call site can forget.
+
+**Why not sanitize in the record (corrected).** An earlier draft of this spec
+put the sanitizers in property initializers so "no invalid instance can
+exist". That does not work in C#, confirmed by probe:
+
+| Form | Result |
+|---|---|
+| `public string Fav { get; } = SanitizeId(Fav);` | ctor sanitizes, but `with { Fav = … }` does not compile — no `init` accessor |
+| `public string Fav { get; init; } = SanitizeId(Fav);` | ctor sanitizes; **`with` silently bypasses it** — initializers only run in the primary constructor |
+| `private readonly string _fav; public string Fav { get => _fav; init => _fav = SanitizeId(value); }` | `with` sanitizes, but the compiler warns **CS8907 "Parameter 'Fav' is unread"** and `new DeviceSettings(…, "x")` yields `null` |
+
+The only airtight version means dropping the positional constructor entirely
+and converting every construction site to object-initializer syntax. Not worth
+it. Instead both cookie boundaries sanitize — `Serialize` on the way out,
+`Read` on the way in. The in-memory record can transiently hold an odd `Fav`
+after a `with`, which is harmless: the one consumer that builds a URL from it
+(`Index`'s `Redirect($"/library/{fav}")`) gets its value from `Read`.
 
 - `SanitizeLang` — unchanged from today: short lowercase code, letters and
   dash, else `""`.
@@ -119,7 +141,7 @@ call site can forget it.
 - Value contains no `=` → legacy positional shape (`"10"`, `"10de"`); parse as
   today, with `Fav` from the legacy cookie.
 - Otherwise `QueryHelpers.ParseQuery`, then per field:
-  - `Flag(q["retina"], Default.Retina)` — an absent key lands on the
+  - `Flag(q, "retina", Default.Retina)` — an absent key lands on the
     *documented default*, not `false`. This is the whole reason keyed encoding
     is worth doing, and the easiest thing to get wrong.
   - `Fav`: **presence, not emptiness.** `q.TryGetValue("fav", out var f)`
@@ -128,9 +150,23 @@ call site can forget it.
     favorite the user just cleared.
 
 ```csharp
-private static bool Flag(StringValues v, bool fallback) =>
-    v.Count == 0 ? fallback : v[0] == "1";
+private static bool Flag(Dictionary<string, StringValues> q, string key, bool fallback) =>
+    q.TryGetValue(key, out var v) && v.Count > 0 ? v[0] == "1" : fallback;
 ```
+
+**`ParseQuery` returns a plain `Dictionary<string, StringValues>`, not an
+`IQueryCollection`** — so its indexer *throws* `KeyNotFoundException` on a
+missing key rather than yielding `StringValues.Empty`. Every access must go
+through `TryGetValue`. Confirmed by probe, along with the rest of the
+encoding's behavior:
+
+| Input | Result |
+|---|---|
+| `retina=1&gray=0&lang=de&fav=` | `fav` key **present**, value `""` — the resurrect guard works |
+| `q["nope"]` | throws `KeyNotFoundException` |
+| `"totally-not-a-query"` | 1 key, no exception, no `retina` key → every field defaults |
+| `""` | 0 keys |
+| round-trip via `Response.Cookies.Append` | stored `retina%3D1%26gray%3D0%26lang%3Dde%26fav%3Dlib_x`, read back `retina=1&gray=0&lang=de&fav=lib_x` |
 
 **`Set`** keeps today's cookie flags (`HttpOnly`, `SameSite=Lax`,
 `Secure = ForceSecureCookies || Request.IsHttps`, `IsEssential`, `Path=/`,
@@ -210,5 +246,6 @@ are ~6 lines and cost nothing to keep.
 | A settings save wipes the favorite | `with` at every write site; no fresh construction. Covered by a test. |
 | Un-favorite resurrects from the legacy cookie | Presence check on the `fav` key + unconditional legacy delete in `Set`. Covered by a test. |
 | Absent key silently flips retina off | `Flag(…, Default.Retina)`. Covered by a test. |
-| `&` in a library id corrupts the cookie | `SanitizeId` in the record initializer. Covered by a test. |
-| Escaping does not round-trip as believed | Round-trip test; would fail loudly at implementation time, before any deploy. |
+| `&` in a library id corrupts the cookie | `SanitizeId` in both `Serialize` and `Read`. Covered by a test. |
+| An absent-key read throws `KeyNotFoundException` | All dictionary access via `TryGetValue`; the junk-input test exercises it. |
+| Escaping does not round-trip as believed | Confirmed by probe before planning; a round-trip test keeps it that way. |
