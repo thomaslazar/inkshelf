@@ -60,23 +60,27 @@ Settings to add to the per-device settings system:
     antiforgery token, not by us). Safari saves the credentials in spite of it,
     and it has been there since the first scaffold anyway.
 
-  **Leading hypothesis: `display: "standalone"` in `wwwroot/site.webmanifest`.**
-  Launched from a home-screen shortcut, a standalone web app renders without
-  browser chrome — and the "save password?" prompt *is* chrome, so the store is
-  never asked. The timeline fits: the manifest arrived in `c57aa9a`, after the
-  point the user remembers saving working. **Discriminating test:** on the
-  device, open the site by typing the URL into a normal browser tab instead of
-  using the shortcut. Prompt appears → confirmed.
+  - *`display: "standalone"` in `wwwroot/site.webmanifest`.* A standalone launch
+    renders without browser chrome, and the save prompt is chrome — but the
+    device opens Inkshelf from an ordinary bookmark in a normal tab, so
+    standalone never applies. (Unrelated but worth knowing: that `display` value
+    is stock favicon-generator boilerplate from `c57aa9a`, not a deliberate
+    choice, and nothing relies on it.)
+  - *Scheme, cert validity and origin form.* Safari saves against the dev server
+    over plain HTTP **and** over self-signed HTTPS, on a bare LAN IP.
 
-  If confirmed, it's a **tradeoff, not a bug fix**: `display: "browser"` keeps
-  the manifest's icon and name but launches in a normal tab, restoring the
-  prompt at the cost of the chrome-free reading area that standalone buys on an
-  e-ink screen. Decide which is worth more before changing it.
-
-  Otherwise the remaining candidates are the device's own password-saving
-  setting or a site allow-list in its store (free to check first), then
-  `<button type="submit">` vs `<input type="submit">` — some very old engines
-  only treat the latter as a login submit, and swapping it touches styling.
+  So the app is serving a form that competent stores accept; only that engine
+  declines. Remaining candidates, cheapest first:
+  - **The device's own password-saving setting**, or a site allow/block list in
+    its store. Free to check, and check it first.
+  - **A stale entry already in the store** for that origin, suppressing a
+    re-prompt. Worth distinguishing "never prompts" from "prompts but never
+    autofills later" — they point at different causes.
+  - **`<button type="submit">` vs `<input type="submit">`.** Some very old
+    engines only treat the latter as a login submit. Swapping it touches
+    styling, so it needs a layout check.
+  - **The engine may simply have no form-login password manager**, in which case
+    there is nothing to fix and the item should be closed as won't-fix.
 - **Mark files as already downloaded (per device).** Track which files this device
   has downloaded and show a marker on the row, so you can tell at a glance whether
   you already grabbed volume 4 and don't fetch it twice. Covers both raw ebook
