@@ -29,7 +29,11 @@ public class FavoriteLibraryRoutingTests
     private static T WithContext<T>(T model, string? favCookie) where T : PageModel
     {
         var http = new DefaultHttpContext();
-        if (favCookie is not null) http.Request.Headers.Cookie = $"{Favorites.Cookie}={favCookie}";
+        // The favorite lives in the settings cookie now. A raw unescaped value is
+        // fine in a request Cookie header: parsing splits on ';' and the first '=',
+        // and unescaping is a no-op without '%'.
+        if (favCookie is not null)
+            http.Request.Headers.Cookie = $"{DeviceSettings.Cookie}=retina=1&gray=0&lang=&fav={favCookie}";
         model.PageContext = new PageContext { HttpContext = http };
         return model;
     }
@@ -52,8 +56,8 @@ public class FavoriteLibraryRoutingTests
         Assert.IsType<PageResult>(result);                 // no redirect into the missing library
         Assert.Equal(2, model.Libraries.Count);            // the real list is shown instead
         var setCookie = model.Response.Headers.SetCookie.ToString();
-        Assert.Contains(Favorites.Cookie, setCookie);      // the stale cookie is cleared
-        Assert.Contains("expires=Thu, 01 Jan 1970", setCookie);
+        Assert.Contains(DeviceSettings.Cookie, setCookie);   // the stale favorite is cleared
+        Assert.Contains("fav%3D;", setCookie);               // ...by writing an empty fav
     }
 
     [Fact]

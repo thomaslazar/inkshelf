@@ -158,6 +158,44 @@ public class EndpointTests
     }
 
     [Fact]
+    public async Task Saving_settings_keeps_the_favorite_library()
+    {
+        // The hazard of one shared cookie: a settings save that builds a fresh
+        // DeviceSettings instead of using `with` silently wipes the favorite, and
+        // the symptom (favorite vanishes after visiting Settings) points nowhere
+        // near the cause.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        // Favorite a library, then save unrelated settings. Both go through the
+        // client's own cookie container — do NOT set a Cookie header by hand, it
+        // fights the container and drops the antiforgery cookie.
+        var fav = await client.PostAsync("/favorite", new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["libraryId"] = "lib_keep",
+            }));
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, fav.StatusCode);
+
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["grayscale"] = "on",
+                ["lang"] = "de",
+            }));
+
+        var setCookie = string.Join(" ", saved.Headers.GetValues("Set-Cookie"));
+        Assert.Contains("fav%3Dlib_keep", setCookie);   // the favorite survived the save
+        Assert.Contains("gray%3D1", setCookie);         // and the new choice was applied
+    }
+
+    [Fact]
     public async Task Settings_get_renders_form_with_checkboxes()
     {
         using var factory = CreateFactory();
