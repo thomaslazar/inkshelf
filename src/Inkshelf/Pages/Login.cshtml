@@ -3,11 +3,7 @@
 <p class="logo"><img src="~/img/logo-black.png" alt="Inkshelf" /></p>
 @if (Model.Error is not null) { <p role="alert">@L[Model.Error]</p> }
 <form method="post" class="login-form">
-    @* id + for + an explicit type, on top of the autocomplete hints: older reader
-       engines and WebView autofill often key on id and on an explicit
-       input[type=text]/input[type=password] pair rather than on autocomplete,
-       which is why credentials may not reach the device's password store. *@
-    <p><label for="Username">@L["Username"]<br /><input id="Username" name="Username" type="text" autocomplete="username" /></label></p>
-    <p><label for="Password">@L["Password"]<br /><input id="Password" name="Password" type="password" autocomplete="current-password" /></label></p>
+    <p><label>@L["Username"]<br /><input name="Username" autocomplete="username" /></label></p>
+    <p><label>@L["Password"]<br /><input name="Password" type="password" autocomplete="current-password" /></label></p>
     <p><button type="submit">@L["Log in"]</button></p>
 </form>
