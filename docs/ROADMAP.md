@@ -69,26 +69,16 @@ Settings to add to the per-device settings system:
   this app and dropped — not worth losing `CultureInfo`; UI localisation was
   pursued instead, see Done.)
 
-## Security
-
-Test-coverage follow-ups from the hardening work (non-blocking):
-
-- **`ConvertLock` cancellation test.** The keyed convert lock's cancellation path
-  (a queued `AcquireAsync` that gets canceled) unwinds its ref-count but isn't
-  exercised by a test. Add one asserting `ActiveKeys` returns to 0 and the
-  semaphore isn't left stuck.
-- **Archive-ceiling test: assert no partial file.** The `MaxArchiveBytes`
-  over-limit test checks the `NotFound` outcome; also assert the cache dir is empty
-  afterward, so a regression that wrote a partial `.tmp`/`.epub` before aborting
-  would be caught.
-- **`Favorites` force-secure test.** `TokenStore` has forced-vs-default
-  `Secure`-flag tests; `Favorites.Set` applies the same rule but is untested — add
-  the mirror pair for symmetry.
-
 ## Done
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Security test follow-ups** — the gaps left by the hardening work are covered:
+  `ConvertLock`'s cancellation path (a queued `AcquireAsync` that gets canceled
+  unwinds its ref-count and leaves the semaphore usable), the archive-ceiling
+  paths assert the cache dir is empty afterward (no partial `.epub`, no orphan
+  `.dl.tmp`), and `Favorites.Set` has the forced-vs-default `Secure`-flag pair
+  mirroring `TokenStore`.
 - **Item detail page** — a per-item page at `/item/{id}` (reached by the row
   title/cover) showing the full metadata (larger cover, multiple authors/series/
   narrators as filter links, genres, tags, publisher/year, plain description),
