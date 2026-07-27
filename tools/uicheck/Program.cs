@@ -8,7 +8,8 @@ using Microsoft.Playwright;
 // NOT a substitute for the e-reader: desktop Chromium does not reproduce the old
 // e-ink engine (no object-fit, no flex gap), so device testing stays mandatory
 // for engine-specific rendering. Authenticated pages (Library/Item/Converted)
-// need a real ABS session and are not covered here.
+// ARE covered — see the UICHECK_AUTHED block below, which run.sh enables against
+// the seeded local ABS.
 //
 // To extend as features land: add Check(...) calls below (a new page, a new
 // language cookie, new expected/forbidden strings). Run with tools/uicheck/run.sh.
@@ -52,14 +53,17 @@ async Task Check(string label, string? settingsCookie, string path,
     Console.WriteLine($"[{label}] HTTP {status}");
 }
 
-// The settings cookie is "<retina><grayscale><lang>", e.g. "10de" = retina on,
-// grayscale off, German. No cookie = English (the source-string keys).
+// The settings cookie is keyed: "retina=1&gray=0&lang=de&fav=" = retina on,
+// grayscale off, German, no favorite. No cookie = English (the source-string
+// keys). Playwright sets the cookie value raw, which is what the server reads
+// after its own unescaping, so no %-escaping is needed here.
+const string De = "retina=1&gray=0&lang=de&fav=";
 
-await Check("login-de", "10de", "/login",
+await Check("login-de", De, "/login",
     mustContain: ["Anmelden", "Passwort", "Benutzername"],
     mustNotContain: ["Log in", "Password", "Username"]);
 
-await Check("settings-de", "10de", "/settings",
+await Check("settings-de", De, "/settings",
     mustContain: ["Einstellungen", "Sprache", "Speichern", "Bibliotheken", "Deutsch"],
     mustNotContain: ["Save", "Language"]);
 
@@ -78,7 +82,7 @@ await Check("settings-en", null, "/settings",
 if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
 {
     var ctx = await browser.NewContextAsync(new() { ViewportSize = new() { Width = vpW, Height = vpH } });
-    await ctx.AddCookiesAsync([ new() { Name = "inkshelf_settings", Value = "10de", Url = baseUrl } ]);
+    await ctx.AddCookiesAsync([ new() { Name = "inkshelf_settings", Value = De, Url = baseUrl } ]);
     var page = await ctx.NewPageAsync();
 
     async Task Shot(string label) =>

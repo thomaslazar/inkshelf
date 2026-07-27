@@ -19,15 +19,17 @@ public class IndexModel : PageModel
     public async Task<IActionResult> OnGetAsync([FromQuery] string? all, CancellationToken ct)
     {
         Libraries = await _api.GetLibrariesAsync(ct);
-        var fav = Favorites.Read(Request);
-        if (fav is not null && string.IsNullOrEmpty(all))
+        var settings = DeviceSettings.Read(Request);
+        var fav = settings.Fav;
+        if (!string.IsNullOrEmpty(fav) && string.IsNullOrEmpty(all))
         {
             // Only honor the favorite if it still exists on the ABS we're pointed
             // at now — a cookie saved against a different ABS would otherwise
-            // redirect into a library this one doesn't have. Drop the stale cookie
-            // and fall through to the list rather than looping on a dead link.
+            // redirect into a library this one doesn't have. Drop the stale
+            // favorite and fall through to the list rather than looping on a dead
+            // link.
             if (Libraries.Any(l => l.Id == fav)) return Redirect($"/library/{fav}");
-            Favorites.Clear(Response);
+            DeviceSettings.Set(Response, settings with { Fav = "" });
         }
         return Page();
     }

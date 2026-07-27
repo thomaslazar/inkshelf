@@ -27,8 +27,9 @@ public static class SessionEndpoints
         {
             try { await antiforgery.ValidateRequestAsync(ctx); }
             catch (AntiforgeryValidationException) { return Results.BadRequest(); }
-            if (Favorites.Read(ctx.Request) == libraryId) Favorites.Clear(ctx.Response);
-            else Favorites.Set(ctx.Response, libraryId);
+            // Toggle: favoriting the library you already favorited clears it.
+            var s = DeviceSettings.Read(ctx.Request);
+            DeviceSettings.Set(ctx.Response, s with { Fav = s.Fav == libraryId ? "" : libraryId });
             return Results.Redirect($"/library/{libraryId}");
         }).DisableAntiforgery();
     }

@@ -89,7 +89,7 @@ public class EndpointTests
         using var factory = CreateFactory();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         var req = new HttpRequestMessage(HttpMethod.Get, "/");
-        req.Headers.Add("Cookie", "inkshelf_fav_library=lib9");
+        req.Headers.Add("Cookie", "inkshelf_settings=retina=1&gray=0&lang=&fav=lib9");
         var res = await client.SendAsync(req);
         // A favorite is now validated against the current ABS's library list
         // (so a cookie from a different ABS can't redirect into a missing
@@ -106,7 +106,7 @@ public class EndpointTests
         using var factory = CreateFactory();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         var req = new HttpRequestMessage(HttpMethod.Get, "/?all=1");
-        req.Headers.Add("Cookie", "inkshelf_fav_library=lib9");
+        req.Headers.Add("Cookie", "inkshelf_settings=retina=1&gray=0&lang=&fav=lib9");
         var res = await client.SendAsync(req);
         // Bypasses fav redirect; no session -> falls through to /login
         Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
@@ -143,7 +143,7 @@ public class EndpointTests
         Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/settings", response.Headers.Location?.OriginalString);
         var setCookie = response.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
-        Assert.Contains("inkshelf_settings=10", setCookie); // retina on, grayscale off → "10"
+        Assert.Contains("inkshelf_settings=retina%3D1%26gray%3D0", setCookie); // retina on, grayscale off
     }
 
     [Fact]
@@ -155,6 +155,81 @@ public class EndpointTests
         var response = await client.PostAsync("/settings", content: null);
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Saving_settings_keeps_the_favorite_library()
+    {
+        // The hazard of one shared cookie: a settings save that builds a fresh
+        // DeviceSettings instead of using `with` silently wipes the favorite, and
+        // the symptom (favorite vanishes after visiting Settings) points nowhere
+        // near the cause.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        // Favorite a library, then save unrelated settings. Both go through the
+        // client's own cookie container — do NOT set a Cookie header by hand, it
+        // fights the container and drops the antiforgery cookie.
+        var fav = await client.PostAsync("/favorite", new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["libraryId"] = "lib_keep",
+            }));
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, fav.StatusCode);
+
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["grayscale"] = "on",
+                ["lang"] = "de",
+            }));
+
+        var setCookie = string.Join(" ", saved.Headers.GetValues("Set-Cookie"));
+        Assert.Contains("fav%3Dlib_keep", setCookie);   // the favorite survived the save
+        Assert.Contains("gray%3D1", setCookie);         // and the new choice was applied
+    }
+
+    [Fact]
+    public async Task Toggling_the_favorite_keeps_the_other_settings()
+    {
+        // The reverse hazard: a /favorite toggle that builds a fresh DeviceSettings
+        // instead of using `with` silently wipes retina/grayscale/lang. Tap the
+        // favorite star, silently lose your language setting.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        // Save settings first, then toggle the favorite. Both go through the
+        // client's own cookie container — do NOT set a Cookie header by hand, it
+        // fights the container and drops the antiforgery cookie.
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["grayscale"] = "on",
+                ["lang"] = "de",
+            }));
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, saved.StatusCode);
+
+        var fav = await client.PostAsync("/favorite", new FormUrlEncodedContent(
+            new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["libraryId"] = "lib_keep",
+            }));
+
+        var setCookie = string.Join(" ", fav.Headers.GetValues("Set-Cookie"));
+        Assert.Contains("lang%3Dde", setCookie);   // the language choice survived the toggle
+        Assert.Contains("gray%3D1", setCookie);    // and grayscale did too
     }
 
     [Fact]

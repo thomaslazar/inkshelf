@@ -14,9 +14,16 @@ public static class SettingsEndpoints
 
             var form = await ctx.Request.ReadFormAsync();
             // Unchecked checkboxes send no field → absent == off. lang comes from
-            // the <select>; Read sanitises it on the next request.
-            var settings = new DeviceSettings(
-                form.ContainsKey("retina"), form.ContainsKey("grayscale"), form["lang"].ToString());
+            // the <select>; DeviceSettings sanitises it on both write (Serialize)
+            // and read.
+            // `with`, NOT a fresh instance — the favorite lives in this same cookie
+            // and constructing a new record would wipe it.
+            var settings = DeviceSettings.Read(ctx.Request) with
+            {
+                Retina = form.ContainsKey("retina"),
+                Grayscale = form.ContainsKey("grayscale"),
+                Lang = form["lang"].ToString(),
+            };
             DeviceSettings.Set(ctx.Response, settings);
             return Results.Redirect("/settings"); // PRG: back to the page, showing saved state
         }).DisableAntiforgery();

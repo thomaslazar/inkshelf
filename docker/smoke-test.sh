@@ -41,17 +41,69 @@ code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$INKSHELF_URL/cover/$IT
 echo "  ok: /cover/$ITEM_ID ($code)"
 
 # Download a plain ebook (epub fixture) and convert a comic (cbz fixture).
-EPUB_ID=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=200" -H "Authorization: Bearer $TOKEN" \
-  | python3 -c "import sys,json;print(next(r['id'] for r in json.load(sys.stdin)['results'] if (r.get('media') or {}).get('ebookFormat')=='epub'))")
-CBZ_ID=$(curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=200" -H "Authorization: Bearer $TOKEN" \
-  | python3 -c "import sys,json;print(next(r['id'] for r in json.load(sys.stdin)['results'] if (r.get('media') or {}).get('ebookFormat')=='cbz'))")
-# ?warm=1 builds + caches the EPUB and returns OK (the listing's XHR); a plain
-# /convert downloads it. Both 200.
-for p in "/download/$EPUB_ID" "/convert/$CBZ_ID?warm=1" "/convert/$CBZ_ID" "/convert/$CBZ_ID?fresh=1"; do
-    code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$INKSHELF_URL$p")
-    [ "$code" = "200" ] || fail "GET $p expected 200 got $code"
-    echo "  ok: $p ($code)"
-done
+# Pick the comic by TITLE, not by ebookFormat: FOUR seeded fixtures are cbz and
+# three are deliberately broken (Big Comic Vol. 1 oversized, Corrupt Archive,
+# Broken Page), so selecting on format alone is a coin flip that lands on a
+# broken one and makes the happy path look like a regression.
+by_title() { # title -> item id
+    curl -sf "$ABS_URL/api/libraries/$LIBRARY_ID/items?limit=200" -H "Authorization: Bearer $TOKEN" \
+      | python3 -c "import sys,json
+t=sys.argv[1]
+for r in json.load(sys.stdin)['results']:
+    if (((r.get('media') or {}).get('metadata') or {}).get('title')) == t:
+        print(r['id']); break
+else:
+    sys.exit('no seeded item titled ' + t)" "$1"
+}
+EPUB_ID=$(by_title "The Silent Sea")   || fail "could not find the epub fixture"
+CBZ_ID=$(by_title "Neon Blade Vol. 1") || fail "could not find the good cbz fixture"
+BAD_ID=$(by_title "Corrupt Archive")   || fail "could not find the corrupt cbz fixture"
+
+# Conversion runs in a BACKGROUND worker, so ?warm=1 answers 202 with the current
+# status until the job settles and only then 200 "done" — it is not the instant
+# 200 this asserted back when conversion was inline.
+#
+# Poll ?status=1, NOT ?warm=1: every non-status request calls KickAsync, so
+# polling with warm=1 re-queues the job and a deterministic failure is never
+# observable as 'failed' — it reads 'queued' forever. status=1 is the read-only
+# probe, and it is what the listing's own row JS polls.
+kick() { curl -sf -o /dev/null -b "$JAR" "$INKSHELF_URL/convert/$1?warm=1" || fail "kick /convert/$1 failed"; }
+status_until() { # id want [timeout-secs]
+    local id=$1 want=$2 max=${3:-90} body=""
+    for _ in $(seq 1 "$max"); do
+        body=$(curl -s -b "$JAR" "$INKSHELF_URL/convert/$id?status=1")
+        [ "$body" = "$want" ] && { echo "  ok: /convert/$id?status=1 -> $body"; return 0; }
+        sleep 1
+    done
+    fail "/convert/$id?status=1 never reached '$want' (last: '$body')"
+}
+
+code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$INKSHELF_URL/download/$EPUB_ID")
+[ "$code" = "200" ] || fail "GET /download/$EPUB_ID expected 200 got $code"
+echo "  ok: /download/$EPUB_ID ($code)"
+
+# Happy path: the good comic converts, then a plain /convert serves the file.
+kick "$CBZ_ID"; status_until "$CBZ_ID" done
+code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$INKSHELF_URL/convert/$CBZ_ID")
+[ "$code" = "200" ] || fail "GET /convert/$CBZ_ID expected 200 got $code"
+echo "  ok: /convert/$CBZ_ID ($code)"
+
+# fresh=1 discards the cache entry and re-queues, so the file is NOT ready yet and
+# the plain (non-warm) response redirects to the listing rather than serving it.
+code=$(curl -s -o /dev/null -w "%{http_code}" -b "$JAR" "$INKSHELF_URL/convert/$CBZ_ID?fresh=1")
+[ "$code" = "302" ] || fail "GET /convert/$CBZ_ID?fresh=1 expected 302 (re-queued) got $code"
+echo "  ok: /convert/$CBZ_ID?fresh=1 ($code, re-queued)"
+status_until "$CBZ_ID" done
+
+# One deliberate negative: a broken archive must settle as Failed and explain
+# itself, so the seeded broken fixtures stay meaningful. The per-reason coverage
+# (TooLarge / BadArchive / ConvertError) lives in tools/uicheck and the unit
+# tests; this just proves the failure path is wired end to end without a browser.
+kick "$BAD_ID"; status_until "$BAD_ID" failed
+body=$(curl -sf -b "$JAR" "$INKSHELF_URL/convert/$BAD_ID/why") || fail "GET /convert/$BAD_ID/why failed"
+echo "$body" | grep -qi "could not be read\|konnte nicht gelesen" \
+    || fail "/convert/$BAD_ID/why did not explain the BadArchive failure"
+echo "  ok: /convert/$BAD_ID/why (explains the failure)"
 
 rm -f "$JAR"
 echo "SMOKE PASS"

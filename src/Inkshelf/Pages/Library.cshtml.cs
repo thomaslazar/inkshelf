@@ -45,7 +45,7 @@ public class LibraryModel : PageModel
     public async Task<IActionResult> OnGetAsync([FromQuery] int page = 1, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(Id)) return NotFound();
-        IsFavorite = Favorites.Read(Request) == Id;
+        IsFavorite = DeviceSettings.Read(Request).Fav == Id;
 
         var libraries = await _api.GetLibrariesAsync(ct);
         var library = libraries.FirstOrDefault(l => l.Id == Id);

@@ -21,15 +21,6 @@ Settings to add to the per-device settings system:
   works everywhere but has reader-imposed margins (not full-bleed) — for devices
   that can't do fixed-layout. (Our EPUB is already epubcheck-clean; the warning is
   the device's EPUB3 limitation, not our bug.)
-- **Structured settings cookie (refactor).** `DeviceSettings` packs its values into
-  one positional string (e.g. `"10de"` = retina, grayscale, lang). Positional
-  encoding is opaque and gets brittle as settings grow: meaning is by index, only
-  the last field can be variable-length, and every addition is another hand-rolled
-  parse plus a legacy shape to keep reading. Move to a keyed value in the same
-  cookie (JSON `{"retina":1,"lang":"de"}` — ASP.NET URL-encodes cookie values, so
-  braces/quotes round-trip), with backward-compat for existing `"10"`/`"10de"`
-  cookies. Do this *before* adding the settings above. Consider bringing the
-  sibling `Favorites` cookie (same packed pattern) along for consistency.
 
 ## Conversion / rendering
 
@@ -50,6 +41,77 @@ Settings to add to the per-device settings system:
 
 ## Browsing & reading
 
+- **Login credentials aren't offered to the e-reader's password store
+  (investigation).** The e-ink e-reader's browser never offers to save the
+  Inkshelf username/password, so every login is hand-typed on a slow keyboard.
+  Safari on macOS saves it fine against the same deployment, which rules out
+  most of the obvious causes — so this is device-specific, not a broken form.
+
+  **Ruled out** (don't re-test these):
+  - *The form markup.* `autocomplete="username"` / `current-password` were
+    always present, and the input elements are byte-identical across every
+    revision of `Login.cshtml` — the view's history only ever changed the
+    heading, a CSS class and localisation. Adding `id`/`for`/explicit
+    `type="text"` changed nothing on the device.
+  - *Insecure origin.* Fails on the proxied HTTPS deployment as well as the
+    plain-HTTP dev server, and a self-signed-cert HTTPS dev run didn't help
+    either.
+  - *`Cache-Control: no-cache, no-store`* on `/login` (set automatically by the
+    antiforgery token, not by us). Safari saves the credentials in spite of it,
+    and it has been there since the first scaffold anyway.
+
+  - *`display: "standalone"` in `wwwroot/site.webmanifest`.* A standalone launch
+    renders without browser chrome, and the save prompt is chrome — but the
+    device opens Inkshelf from an ordinary bookmark in a normal tab, so
+    standalone never applies. Confirmed the hard way: removing the `display` key
+    and retesting on the device changed nothing, so it was put back. (Worth
+    knowing regardless: that value is stock favicon-generator boilerplate from
+    `c57aa9a`, not a deliberate choice, and nothing relies on it.)
+  - *Scheme, cert validity and origin form.* Safari saves against the dev server
+    over plain HTTP **and** over self-signed HTTPS, on a bare LAN IP.
+
+  So the app is serving a form that competent stores accept; only that engine
+  declines. Remaining candidates, cheapest first:
+  - **The device's own password-saving setting**, or a site allow/block list in
+    its store. Free to check, and check it first.
+  - **A stale entry already in the store** for that origin, suppressing a
+    re-prompt. Worth distinguishing "never prompts" from "prompts but never
+    autofills later" — they point at different causes.
+  - **`<button type="submit">` vs `<input type="submit">`.** Some very old
+    engines only treat the latter as a login submit. Swapping it touches
+    styling, so it needs a layout check.
+  - **The engine may simply have no form-login password manager**, in which case
+    there is nothing to fix and the item should be closed as won't-fix.
+- **Mark files as already downloaded (per device).** Track which files this device
+  has downloaded and show a marker on the row, so you can tell at a glance whether
+  you already grabbed volume 4 and don't fetch it twice. Covers both raw ebook
+  downloads and converted EPUBs. Distinct from the shipped read/unread toggle:
+  that is per-*user* ABS media progress and means "I read this", whereas this is
+  per-*device* and means "the file is on this reader".
+  Promising approach, no JS needed: the download itself is a plain `<a>` hitting
+  our own endpoint, so the download **response** can `Set-Cookie` and append the
+  id — automatic rather than a thing you have to remember to tick, which is the
+  whole point. Key on item id plus file ino, since the detail page offers
+  per-file downloads and a multi-file item needs per-file marks.
+  Open question is the cookie ceiling: ~4 KB, ABS ids are UUIDs, and the cookie
+  rides every request on a slow e-ink connection. Likely wants a short id hash
+  (first ~8 hex chars) plus a rolling cap with FIFO eviction — a "recently
+  downloaded" window, not a permanent ledger. Keep it in its **own** cookie, not
+  the settings one: settings are small and stable, this list grows and churns.
+- **Sort the Converted view, newest first.** `/converted` currently lists cached
+  EPUBs in whatever order the cache enumeration yields. Default it to
+  **converted-at descending** so the most recently converted comic is at the top —
+  that's the one you actually came to fetch. Then expose the other useful orders
+  (title, series, author) as sort links; `Pages/Support/SortLinks.cs` already does
+  this for the library listing, so reuse it rather than rolling a second
+  mechanism. The sort key is available without extra ABS calls: the cache
+  filenames carry the item id and the files carry an mtime, and the view already
+  batch-fetches title/series/author for its rows.
+  Considered and deliberately left out: **filtering** (by series or otherwise) —
+  the list is per-device and short, so newest-first plus the existing sort links
+  should be enough, and a filter UI costs more than it saves; and **paging** —
+  for the same reason. Revisit either only if a real cache grows big enough to
+  make scrolling painful.
 - **Screenful pagination (investigation).** Spike whether we can size a page to
   exactly one screenful instead of a fixed 10. The `scr` cookie already reports
   the viewport (CSS w×h×dpr), so server-side we could compute
@@ -73,12 +135,19 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Structured settings cookie** — `DeviceSettings` stores a keyed value
+  (`retina=1&gray=0&lang=de&fav=lib_x`) instead of a positional string, so adding
+  a setting is one key and an absent key falls back to that setting's documented
+  default. The favorite library folded into the same cookie, retiring
+  `inkshelf_fav_library` and leaving one preferences cookie; legacy positional
+  values and the old favorite cookie are still read, so existing devices keep
+  their settings.
 - **Security test follow-ups** — the gaps left by the hardening work are covered:
   `ConvertLock`'s cancellation path (a queued `AcquireAsync` that gets canceled
   unwinds its ref-count and leaves the semaphore usable), the archive-ceiling
   paths assert the cache dir is empty afterward (no partial `.epub`, no orphan
-  `.dl.tmp`), and `Favorites.Set` has the forced-vs-default `Secure`-flag pair
-  mirroring `TokenStore`.
+  `.dl.tmp`), and the preferences cookie's `Set` has the forced-vs-default
+  `Secure`-flag pair mirroring `TokenStore`.
 - **Item detail page** — a per-item page at `/item/{id}` (reached by the row
   title/cover) showing the full metadata (larger cover, multiple authors/series/
   narrators as filter links, genres, tags, publisher/year, plain description),
