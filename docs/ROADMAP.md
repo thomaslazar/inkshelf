@@ -41,6 +41,28 @@ Settings to add to the per-device settings system:
 
 ## Browsing & reading
 
+- **Login credentials aren't offered to the e-reader's password store
+  (investigation).** The e-ink e-reader's browser never offers to save the
+  Inkshelf username/password, so every login is hand-typed on a slow keyboard.
+  Cause unknown; worth a spike because the likely fixes are trivial.
+  `autocomplete="username"` / `autocomplete="current-password"` are **already**
+  on the inputs, so the usual culprit is ruled out. Remaining candidates, in the
+  order worth trying:
+  - **Insecure origin.** Many password stores refuse to save on `http://`. Check
+    whether the failure only happens against the plain-HTTP dev server and not
+    the proxied HTTPS deployment — that alone could explain it, and would mean
+    nothing is broken.
+  - **No `id` attributes.** The inputs carry only `name`; older engines and
+    WebView autofill frequently key on `id`, and the `<label>` wraps its input
+    instead of pairing via `for`/`id`.
+  - **Implicit input type.** The username field has no `type`, so it defaults to
+    text — valid HTML, but a naive scanner looking for `input[type=text]` beside
+    an `input[type=password]` may not recognise the pair.
+  - **The device's own setting.** Password saving may be off, or its store may
+    need the site added explicitly.
+  Adding `id` + `for` + an explicit `type="text"` is a zero-risk change that
+  might just fix it, so try that before deeper diagnosis. Verification has to
+  happen on the device — no desktop browser reproduces that engine's store.
 - **Mark files as already downloaded (per device).** Track which files this device
   has downloaded and show a marker on the row, so you can tell at a glance whether
   you already grabbed volume 4 and don't fetch it twice. Covers both raw ebook
