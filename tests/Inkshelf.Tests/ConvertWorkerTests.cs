@@ -192,6 +192,7 @@ public class ConvertWorkerTests
 
         Assert.Equal(ConvertStatus.Failed, queue.Status(path));
         Assert.False(File.Exists(path));
+        Assert.Empty(Directory.GetFiles(dir.Path)); // no partial .epub, no orphan .dl.tmp
     }
 
     [Fact]
@@ -231,6 +232,7 @@ public class ConvertWorkerTests
 
         Assert.Equal(ConvertFailReason.TooLarge, queue.FailureFor(path)!.Value.Reason);
         Assert.Null(queue.FailureFor(path)!.Value.ArchiveBytes);
+        Assert.Empty(Directory.GetFiles(dir.Path)); // spool aborted mid-copy leaves nothing behind
     }
 
     [Fact]

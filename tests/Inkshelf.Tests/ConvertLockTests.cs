@@ -35,4 +35,27 @@ public class ConvertLockTests
         (await l.AcquireAsync("B", default)).Dispose();
         Assert.Equal(0, l.ActiveKeys);
     }
+
+    [Fact]
+    public async Task Canceling_a_queued_acquire_unwinds_its_ref_without_stranding_the_lock()
+    {
+        var l = new ConvertLock();
+        var held = await l.AcquireAsync("A", default);
+
+        using var cts = new CancellationTokenSource();
+        var queued = l.AcquireAsync("A", cts.Token);   // blocked behind `held`
+        cts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => queued);
+
+        Assert.Equal(1, l.ActiveKeys);                 // canceled ref undone, holder's remains
+        held.Dispose();
+        Assert.Equal(0, l.ActiveKeys);                 // map self-cleaned
+
+        // The real regression guard: a cancel that wrongly consumed a permit would
+        // leave the semaphore at 0 and hang this acquire.
+        var again = l.AcquireAsync("A", default);
+        Assert.True(again.IsCompleted);
+        (await again).Dispose();
+        Assert.Equal(0, l.ActiveKeys);
+    }
 }
