@@ -13,6 +13,16 @@ public class DeviceSettingsTests
         return ctx.Request;
     }
 
+    private static HttpRequest RequestWithCookies(string? settings, string? legacyFav)
+    {
+        var ctx = new DefaultHttpContext();
+        var parts = new List<string>();
+        if (settings is not null) parts.Add($"{DeviceSettings.Cookie}={settings}");
+        if (legacyFav is not null) parts.Add($"{DeviceSettings.LegacyFavCookie}={legacyFav}");
+        if (parts.Count > 0) ctx.Request.Headers.Cookie = string.Join("; ", parts);
+        return ctx.Request;
+    }
+
     [Fact]
     public void Read_absent_cookie_returns_default()
     {
@@ -172,6 +182,68 @@ public class DeviceSettingsTests
     public void Read_accepts_script_subtag_up_to_eight_chars()
     {
         Assert.Equal("zh-hant", DeviceSettings.Read(RequestWithCookie("00zh-hant")).Lang);
+    }
+
+    [Fact]
+    public void Serialize_includes_fav()
+    {
+        var s = new DeviceSettings(true, false, "de") { Fav = "lib_abc" };
+        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc", s.Serialize());
+    }
+
+    [Fact]
+    public void Read_parses_fav()
+    {
+        Assert.Equal("lib_abc", DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=lib_abc")).Fav);
+    }
+
+    [Fact]
+    public void Read_picks_up_the_legacy_fav_cookie_when_the_key_is_absent()
+    {
+        // Legacy positional settings + the old separate favorite cookie: the state
+        // every device is in at deploy time.
+        Assert.Equal("lib_old", DeviceSettings.Read(RequestWithCookies("10de", "lib_old")).Fav);
+        // Also when there is no settings cookie at all.
+        Assert.Equal("lib_old", DeviceSettings.Read(RequestWithCookies(null, "lib_old")).Fav);
+    }
+
+    [Fact]
+    public void An_empty_fav_key_does_not_resurrect_the_legacy_cookie()
+    {
+        // `fav=` present-but-empty means deliberately un-favorited. Falling back to
+        // the legacy cookie here would bring back a favorite the user just cleared.
+        var s = DeviceSettings.Read(RequestWithCookies("retina=1&gray=0&lang=&fav=", "lib_old"));
+        Assert.Equal("", s.Fav);
+    }
+
+    [Fact]
+    public void Set_deletes_the_legacy_fav_cookie()
+    {
+        var ctx = new DefaultHttpContext();
+        DeviceSettings.Set(ctx.Response, new DeviceSettings(true, false, "") { Fav = "lib_x" });
+        var setCookie = ctx.Response.Headers.SetCookie.ToString();
+        // Deletion is a Set-Cookie with an expiry in the past.
+        Assert.Contains(DeviceSettings.LegacyFavCookie, setCookie);
+        Assert.Contains("expires=Thu, 01 Jan 1970", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("x&retina=0", "")]           // the injection the form value could carry
+    [InlineData("lib_a-b_9", "lib_a-b_9")]   // legitimate ABS id shapes survive
+    [InlineData("has space", "")]
+    [InlineData("semi;colon", "")]
+    [InlineData("per%cent", "")]
+    public void Fav_is_sanitized_on_the_way_into_the_cookie(string raw, string expected)
+    {
+        var s = new DeviceSettings(true, false, "") { Fav = raw };
+        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}", s.Serialize());
+    }
+
+    [Fact]
+    public void Fav_is_sanitized_on_the_way_out_of_the_cookie()
+    {
+        // A hand-edited cookie must not smuggle an unsafe id into Index's redirect.
+        Assert.Equal("", DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=a b")).Fav);
     }
 
     // Minimal IServiceProvider that returns one AbsOptions instance (mirrors how
