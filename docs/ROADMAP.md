@@ -44,25 +44,39 @@ Settings to add to the per-device settings system:
 - **Login credentials aren't offered to the e-reader's password store
   (investigation).** The e-ink e-reader's browser never offers to save the
   Inkshelf username/password, so every login is hand-typed on a slow keyboard.
-  Cause unknown; worth a spike because the likely fixes are trivial.
-  `autocomplete="username"` / `autocomplete="current-password"` are **already**
-  on the inputs, so the usual culprit is ruled out. Remaining candidates, in the
-  order worth trying:
-  - **Insecure origin.** Many password stores refuse to save on `http://`. Check
-    whether the failure only happens against the plain-HTTP dev server and not
-    the proxied HTTPS deployment — that alone could explain it, and would mean
-    nothing is broken.
-  - **No `id` attributes.** The inputs carry only `name`; older engines and
-    WebView autofill frequently key on `id`, and the `<label>` wraps its input
-    instead of pairing via `for`/`id`.
-  - **Implicit input type.** The username field has no `type`, so it defaults to
-    text — valid HTML, but a naive scanner looking for `input[type=text]` beside
-    an `input[type=password]` may not recognise the pair.
-  - **The device's own setting.** Password saving may be off, or its store may
-    need the site added explicitly.
-  Adding `id` + `for` + an explicit `type="text"` is a zero-risk change that
-  might just fix it, so try that before deeper diagnosis. Verification has to
-  happen on the device — no desktop browser reproduces that engine's store.
+  Safari on macOS saves it fine against the same deployment, which rules out
+  most of the obvious causes — so this is device-specific, not a broken form.
+
+  **Ruled out** (don't re-test these):
+  - *The form markup.* `autocomplete="username"` / `current-password` were
+    always present, and the input elements are byte-identical across every
+    revision of `Login.cshtml` — the view's history only ever changed the
+    heading, a CSS class and localisation. Adding `id`/`for`/explicit
+    `type="text"` changed nothing on the device.
+  - *Insecure origin.* Fails on the proxied HTTPS deployment as well as the
+    plain-HTTP dev server, and a self-signed-cert HTTPS dev run didn't help
+    either.
+  - *`Cache-Control: no-cache, no-store`* on `/login` (set automatically by the
+    antiforgery token, not by us). Safari saves the credentials in spite of it,
+    and it has been there since the first scaffold anyway.
+
+  **Leading hypothesis: `display: "standalone"` in `wwwroot/site.webmanifest`.**
+  Launched from a home-screen shortcut, a standalone web app renders without
+  browser chrome — and the "save password?" prompt *is* chrome, so the store is
+  never asked. The timeline fits: the manifest arrived in `c57aa9a`, after the
+  point the user remembers saving working. **Discriminating test:** on the
+  device, open the site by typing the URL into a normal browser tab instead of
+  using the shortcut. Prompt appears → confirmed.
+
+  If confirmed, it's a **tradeoff, not a bug fix**: `display: "browser"` keeps
+  the manifest's icon and name but launches in a normal tab, restoring the
+  prompt at the cost of the chrome-free reading area that standalone buys on an
+  e-ink screen. Decide which is worth more before changing it.
+
+  Otherwise the remaining candidates are the device's own password-saving
+  setting or a site allow-list in its store (free to check first), then
+  `<button type="submit">` vs `<input type="submit">` — some very old engines
+  only treat the latter as a login submit, and swapping it touches styling.
 - **Mark files as already downloaded (per device).** Track which files this device
   has downloaded and show a marker on the row, so you can tell at a glance whether
   you already grabbed volume 4 and don't fetch it twice. Covers both raw ebook
