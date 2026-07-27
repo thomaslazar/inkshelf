@@ -27,8 +27,8 @@ Settings to add to the per-device settings system:
 - **Conversion speed.** First conversion of a big comic is ~60–90 s (ImageSharp
   resizing ~280 pages, serially). Parallelise page processing. Trades against
   memory, though: parallelising raises the per-conversion peak (more pages held
-  at once), so this is deferred in favour of the low-memory serial path shipped
-  under Runtime footprint.
+  at once), so this is deferred in favour of the low-memory serial path already
+  shipped (see the runtime-footprint entries under Done).
 - **Disable conversion via config.** An `AbsOptions` flag / env var (e.g.
   `CONVERSION_ENABLED`, default `true`, mirroring `DIAG_ENABLED`) to turn the
   whole CBZ/CBR→EPUB system off — for e-readers that read comic archives natively
@@ -122,15 +122,6 @@ Settings to add to the per-device settings system:
   this interacts with search results. Decide feasibility + approach before
   committing.
 
-## Runtime footprint
-
-- **Baseline trim.** Smaller idle wins beyond the GC + streaming work already
-  shipped: disabling unused ASP.NET Core features / logging providers,
-  `PublishTrimmed`. Native AOT is off the table (CLAUDE.md); GC configuration
-  carried the bulk. (`InvariantGlobalization` was measured at ~4 MiB resident on
-  this app and dropped — not worth losing `CultureInfo`; UI localisation was
-  pursued instead, see Done.)
-
 ## Done
 
 Shipped; kept as a short record (full detail in git history / the PR).
@@ -179,8 +170,11 @@ Shipped; kept as a short record (full detail in git history / the PR).
   page's bytes held); ImageSharp's pool released per conversion.
 - **Runtime footprint (idle)** — Workstation GC + `ConserveMemory` baked into
   the image; measured on-box (resting ~897 → ~554 MiB from GC alone, streaming
-  + pool-release cut the rest); container memory-limit guidance added. Baseline
-  trim remains (see backlog).
+  + pool-release cut the rest); container memory-limit guidance added. Further
+  trimming was considered and dropped: GC config carried the bulk,
+  `InvariantGlobalization` measured only ~4 MiB and cost `CultureInfo`, and
+  `PublishTrimmed` risks reflection breakage in Razor Pages for little gain.
+  Native AOT is off the table per CLAUDE.md.
 - **Per-device settings + retina/grayscale** — a server-written
   `inkshelf_settings` cookie (`DeviceSettings`) with a plain-`<form>` Settings
   page (cog link in the Index/Library heads) exposing a **retina** toggle
