@@ -233,6 +233,7 @@ public class DeviceSettingsTests
     [InlineData("has space", "")]
     [InlineData("semi;colon", "")]
     [InlineData("per%cent", "")]
+    [InlineData("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "")] // 65 chars, all allowed
     public void Fav_is_sanitized_on_the_way_into_the_cookie(string raw, string expected)
     {
         var s = new DeviceSettings(true, false, "") { Fav = raw };
@@ -243,7 +244,11 @@ public class DeviceSettingsTests
     public void Fav_is_sanitized_on_the_way_out_of_the_cookie()
     {
         // A hand-edited cookie must not smuggle an unsafe id into Index's redirect.
-        Assert.Equal("", DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=a b")).Fav);
+        // URL-escaped, as a browser would actually send it after a hand edit — a
+        // raw space would make the request-cookie parser reject the whole cookie
+        // before Read ever reaches SanitizeId.
+        var v = DeviceSettings.Read(RequestWithCookie("retina%3D1%26gray%3D0%26lang%3D%26fav%3Da%20b"));
+        Assert.Equal("", v.Fav);
     }
 
     // Minimal IServiceProvider that returns one AbsOptions instance (mirrors how

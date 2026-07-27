@@ -266,7 +266,7 @@ Add to `tests/Inkshelf.Tests/DeviceSettingsTests.cs`. The helper below is needed
     }
 
     [Theory]
-    [InlineData("x&retina=0", "x")]          // the injection the form value could carry
+    [InlineData("x&retina=0", "")]           // the injection the form value could carry
     [InlineData("lib_a-b_9", "lib_a-b_9")]   // legitimate ABS id shapes survive
     [InlineData("has space", "")]
     [InlineData("semi;colon", "")]
