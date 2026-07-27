@@ -41,6 +41,20 @@ Settings to add to the per-device settings system:
 
 ## Browsing & reading
 
+- **Sort the Converted view, newest first.** `/converted` currently lists cached
+  EPUBs in whatever order the cache enumeration yields. Default it to
+  **converted-at descending** so the most recently converted comic is at the top —
+  that's the one you actually came to fetch. Then expose the other useful orders
+  (title, series, author) as sort links; `Pages/Support/SortLinks.cs` already does
+  this for the library listing, so reuse it rather than rolling a second
+  mechanism. The sort key is available without extra ABS calls: the cache
+  filenames carry the item id and the files carry an mtime, and the view already
+  batch-fetches title/series/author for its rows.
+  Considered and deliberately left out: **filtering** (by series or otherwise) —
+  the list is per-device and short, so newest-first plus the existing sort links
+  should be enough, and a filter UI costs more than it saves; and **paging** —
+  for the same reason. Revisit either only if a real cache grows big enough to
+  make scrolling painful.
 - **Screenful pagination (investigation).** Spike whether we can size a page to
   exactly one screenful instead of a fixed 10. The `scr` cookie already reports
   the viewport (CSS w×h×dpr), so server-side we could compute
@@ -75,8 +89,8 @@ Shipped; kept as a short record (full detail in git history / the PR).
   `ConvertLock`'s cancellation path (a queued `AcquireAsync` that gets canceled
   unwinds its ref-count and leaves the semaphore usable), the archive-ceiling
   paths assert the cache dir is empty afterward (no partial `.epub`, no orphan
-  `.dl.tmp`), and `Favorites.Set` has the forced-vs-default `Secure`-flag pair
-  mirroring `TokenStore`.
+  `.dl.tmp`), and the preferences cookie's `Set` has the forced-vs-default
+  `Secure`-flag pair mirroring `TokenStore`.
 - **Item detail page** — a per-item page at `/item/{id}` (reached by the row
   title/cover) showing the full metadata (larger cover, multiple authors/series/
   narrators as filter links, genres, tags, publisher/year, plain description),
