@@ -4,10 +4,10 @@ using Microsoft.Extensions.Primitives;
 
 namespace Inkshelf.Auth;
 
-// Per-device rendering preferences, stored in a server-written cookie. Modeled
-// on Favorites: static Read/Set, same cookie-flag rules. Distinct from the
-// JS-written "scr" device probe — this is user CHOICE, scr is device TRUTH; the
-// two are read together where conversion happens.
+// Per-device rendering preferences plus the favorite library, stored in one
+// server-written cookie via static Read/Set. Distinct from the JS-written "scr"
+// device probe — this is user CHOICE, scr is device TRUTH; the two are read
+// together where conversion happens.
 public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
 {
     public const string Cookie = "inkshelf_settings";

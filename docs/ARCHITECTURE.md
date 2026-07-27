@@ -27,8 +27,8 @@ src/Inkshelf/
     AbsModels.cs          Response DTOs (three separate metadata shapes — see below).
     AbsFilter.cs          Encodes ABS facet filters (authors.<b64>, series.<b64>).
     AbsExceptions.cs      AbsAuthException / AbsUnauthorizedException / AbsLoginFailedException.
-  Auth/                 TokenStore (encrypted cookie), Tokens, Favorites (fav-library
-                        cookie), DeviceSettings (per-device settings cookie).
+  Auth/                 TokenStore (encrypted cookie), Tokens, DeviceSettings
+                        (per-device settings + favorite library, one cookie).
   Convert/              CBZ/CBR → fixed-layout EPUB.
     ConvertService.cs     Orchestrates the /convert kick (detail → validate → cache → enqueue).
     ConvertQueue.cs       In-memory job registry + Channel producer (singleton).
@@ -113,8 +113,8 @@ repo root (inside the devcontainer) must stay green.
   `gap`).
 - **Cookie `Secure` derives from config, not just `Request.IsHttps`.** Behind a
   TLS-terminating proxy `IsHttps` is spoofable, so the flag is
-  `ForceSecureCookies || Request.IsHttps`. `TokenStore` and `Favorites` must apply
-  the same rule — keep them in sync.
+  `ForceSecureCookies || Request.IsHttps`. `TokenStore` and `DeviceSettings` must
+  apply the same rule — keep them in sync.
 - **Conversion runs in the background.** The `/convert/{id}` request only *kicks*
   a conversion: fetch item detail, validate the format, compute the per-device
   cache path, capture the caller's ABS access token, and enqueue a job on
@@ -144,6 +144,11 @@ repo root (inside the devcontainer) must stay green.
   via `ScreenTarget.FromCookie(scr, retina, grayscale)` into a `RenderTarget`, so
   a real conversion and the "✓ converted" badge agree. Grayscale is part of the
   cache key (`-g` marker); retina already changes `maxW/maxH`.
+  The settings cookie is a **keyed** value (`retina=1&gray=0&lang=de&fav=lib_x`),
+  parsed with `QueryHelpers.ParseQuery`: a new setting is one key, and an absent
+  key falls back to that setting's own default rather than to `false`. The
+  favorite library is a field in it, not a second cookie — so every write is a
+  read-modify-write via `with`, or it silently drops the other fields.
 - **Conversion is serialized and resource-bounded.** `ConvertService` and
   `ConvertWorker` share `ConvertLock` (a singleton keyed by cache-output path)
   with a double-checked `File.Exists`, so concurrent jobs for the same target

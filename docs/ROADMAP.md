@@ -21,15 +21,6 @@ Settings to add to the per-device settings system:
   works everywhere but has reader-imposed margins (not full-bleed) — for devices
   that can't do fixed-layout. (Our EPUB is already epubcheck-clean; the warning is
   the device's EPUB3 limitation, not our bug.)
-- **Structured settings cookie (refactor).** `DeviceSettings` packs its values into
-  one positional string (e.g. `"10de"` = retina, grayscale, lang). Positional
-  encoding is opaque and gets brittle as settings grow: meaning is by index, only
-  the last field can be variable-length, and every addition is another hand-rolled
-  parse plus a legacy shape to keep reading. Move to a keyed value in the same
-  cookie (JSON `{"retina":1,"lang":"de"}` — ASP.NET URL-encodes cookie values, so
-  braces/quotes round-trip), with backward-compat for existing `"10"`/`"10de"`
-  cookies. Do this *before* adding the settings above. Consider bringing the
-  sibling `Favorites` cookie (same packed pattern) along for consistency.
 
 ## Conversion / rendering
 
@@ -73,6 +64,13 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Structured settings cookie** — `DeviceSettings` stores a keyed value
+  (`retina=1&gray=0&lang=de&fav=lib_x`) instead of a positional string, so adding
+  a setting is one key and an absent key falls back to that setting's documented
+  default. The favorite library folded into the same cookie, retiring
+  `inkshelf_fav_library` and leaving one preferences cookie; legacy positional
+  values and the old favorite cookie are still read, so existing devices keep
+  their settings.
 - **Security test follow-ups** — the gaps left by the hardening work are covered:
   `ConvertLock`'s cancellation path (a queued `AcquireAsync` that gets canceled
   unwinds its ref-count and leaves the semaphore usable), the archive-ceiling
