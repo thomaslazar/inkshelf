@@ -271,7 +271,9 @@ public class ConvertedRenderTests
         var html = await (await client.SendAsync(Request(factory, "/converted"))).Content.ReadAsStringAsync();
 
         Assert.Contains("My Comic", html);
-        Assert.Contains(">EPUB", html);                          // cached state (current ebook)
+        // Cached state, keyed on the title only that branch renders — a bare ">EPUB"
+        // would also match a raw epub file's format label.
+        Assert.Contains("title=\"Already converted", html);      // cached state (current ebook)
         Assert.Contains($"/library/{LibId}?filter=", html);     // series/author link into the item's library
     }
 

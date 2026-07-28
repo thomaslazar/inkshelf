@@ -95,7 +95,9 @@ public class ItemRenderTests
         Assert.Contains("My Comic.pdf", html);                       // every ebook file listed
         Assert.Contains($"/download/{ItemId}?file=2", html);         // non-primary download by ino
         Assert.Contains($"/download/{ItemId}\"", html);              // primary download (no file=)
-        Assert.Contains(">EPUB", html);                               // primary cbz cached (shared key)
+        // The cached state, discriminated by the title only that branch renders —
+        // NOT by a bare ">EPUB", which the file-format span also emits for a raw epub.
+        Assert.Contains("title=\"Already converted", html);          // primary cbz cached (shared key)
         Assert.Contains($"action=\"/read/{ItemId}\"", html);         // read toggle
     }
 
