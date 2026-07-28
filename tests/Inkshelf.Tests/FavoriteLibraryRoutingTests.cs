@@ -57,7 +57,7 @@ public class FavoriteLibraryRoutingTests
         Assert.Equal(2, model.Libraries.Count);            // the real list is shown instead
         var setCookie = model.Response.Headers.SetCookie.ToString();
         Assert.Contains(DeviceSettings.Cookie, setCookie);   // the stale favorite is cleared
-        Assert.Contains("fav%3D;", setCookie);               // ...by writing an empty fav
+        Assert.Contains("fav%3D%26did", setCookie);          // ...by writing an empty fav
     }
 
     [Fact]

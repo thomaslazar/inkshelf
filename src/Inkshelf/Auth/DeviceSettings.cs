@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
+using System.Security.Cryptography;
 
 namespace Inkshelf.Auth;
 
@@ -23,6 +24,14 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // covers it and `with { Fav = ... }` still works.
     public string Fav { get; init; } = "";
 
+    // An opaque per-device handle, minted by Set (below) and used to key this
+    // device's downloaded-file marks. An init property for the same reason as Fav:
+    // the existing three-argument construction sites keep compiling.
+    //
+    // NOT a secret and NOT derived from anything the browser exposes — we mint it,
+    // so no fingerprinting is involved and no privacy countermeasure applies to it.
+    public string Did { get; init; } = "";
+
     // Keyed, NOT positional: "retina=1&gray=0&lang=de&fav=". Looks like a query
     // string because it is parsed by QueryHelpers, but it is a cookie value —
     // Response.Cookies.Append escapes the & and = to %26/%3D and the request side
@@ -31,7 +40,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // different things for fav (see Read).
     public string Serialize() =>
         $"retina={(Retina ? 1 : 0)}&gray={(Grayscale ? 1 : 0)}"
-        + $"&lang={SanitizeLang(Lang)}&fav={SanitizeId(Fav)}";
+        + $"&lang={SanitizeLang(Lang)}&fav={SanitizeId(Fav)}&did={SanitizeId(Did)}";
 
     public static DeviceSettings Read(HttpRequest req)
     {
@@ -52,6 +61,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
             // un-favorited; falling back to the legacy cookie on empty would
             // resurrect a favorite the user just cleared.
             Fav = q.TryGetValue("fav", out var fav) ? SanitizeId(fav.ToString()) : LegacyFav(req),
+            Did = q.TryGetValue("did", out var did) ? SanitizeId(did.ToString()) : "",
         };
     }
 
@@ -95,8 +105,14 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
         return s;
     }
 
-    public static void Set(HttpResponse res, DeviceSettings settings)
+    // Returns the settings as written, including any id minted here — the download
+    // endpoints need it to record a mark for a device seen for the first time.
+    // Minting lives in Set so that no call site can write this cookie without an
+    // id; every write path (POST /settings, POST /favorite, Index's stale-favorite
+    // clear) therefore establishes one.
+    public static DeviceSettings Set(HttpResponse res, DeviceSettings settings)
     {
+        if (string.IsNullOrEmpty(settings.Did)) settings = settings with { Did = NewDid() };
         var forceSecure = res.HttpContext.RequestServices?.GetService<AbsOptions>()?.ForceSecureCookies ?? false;
         res.Cookies.Append(Cookie, settings.Serialize(), new CookieOptions
         {
@@ -110,5 +126,10 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
         // The favorite now lives in the settings cookie. Drop the old one so it
         // can't linger and shadow a later un-favorite.
         res.Cookies.Delete(LegacyFavCookie, new CookieOptions { Path = "/" });
+        return settings;
     }
+
+    // 16 hex chars from a crypto RNG: unique enough for a household, and inside
+    // SanitizeId's allowlist so it survives its own round trip.
+    private static string NewDid() => System.Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant();
 }
