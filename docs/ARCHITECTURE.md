@@ -98,7 +98,11 @@ repo root (inside the devcontainer) must stay green.
   a "converted" badge always agrees across pages. The `/converted` view is the EPUB
   cache read back: `EpubCache.ListVariants` reverse-parses filenames into item ids,
   filtered to the current device's target, then one cross-library
-  `POST /api/items/batch/get` supplies metadata.
+  `POST /api/items/batch/get` supplies metadata. It sorts in-process — newest
+  conversion first by default, with series/title/author as sort links — keyed on
+  `CachedVariant.ConvertedAtUtc`, the cached file's own write time. That is
+  deliberately not the `mtimeMs` in the cache filename, which is the *source*
+  ebook's mtime and exists to invalidate the entry.
 - **Convert is per-file, but the cache key never carries the file ino.** The
   detail page can convert any cbz/cbr in an item via `/convert/{id}?file={ino}`,
   but the key stays `{itemId}-{size}-{mtimeMs}-…` using the chosen file's

@@ -178,7 +178,16 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await Shot("failed-row-de");
         Expect("failed-row-de", await page.InnerTextAsync("body"), "warum?");
 
-        Console.WriteLine("[authed] index / library / item / converted / convert-click / convert-failed (toolarge/badarchive/converterror) / failed-row captured");
+        // Converted view again, now that a conversion has actually landed — this is
+        // where the sortbar exists (it's hidden on the empty state). Waiting on the
+        // selector doubles as "the conversion finished".
+        await page.GotoAsync(baseUrl + "/converted");
+        await page.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 30000 });
+        await Shot("converted-sorted-de");
+        Expect("converted-sorted-de", await page.InnerTextAsync("body"),
+            "Sortierung:", "Konvertiert", "Serien", "Titel", "Autor");
+
+        Console.WriteLine("[authed] index / library / item / converted / convert-click / convert-failed (toolarge/badarchive/converterror) / failed-row / converted-sorted captured");
     }
     catch (Exception ex)
     {

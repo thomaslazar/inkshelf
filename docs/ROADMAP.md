@@ -98,20 +98,6 @@ Settings to add to the per-device settings system:
   (first ~8 hex chars) plus a rolling cap with FIFO eviction — a "recently
   downloaded" window, not a permanent ledger. Keep it in its **own** cookie, not
   the settings one: settings are small and stable, this list grows and churns.
-- **Sort the Converted view, newest first.** `/converted` currently lists cached
-  EPUBs in whatever order the cache enumeration yields. Default it to
-  **converted-at descending** so the most recently converted comic is at the top —
-  that's the one you actually came to fetch. Then expose the other useful orders
-  (title, series, author) as sort links; `Pages/Support/SortLinks.cs` already does
-  this for the library listing, so reuse it rather than rolling a second
-  mechanism. The sort key is available without extra ABS calls: the cache
-  filenames carry the item id and the files carry an mtime, and the view already
-  batch-fetches title/series/author for its rows.
-  Considered and deliberately left out: **filtering** (by series or otherwise) —
-  the list is per-device and short, so newest-first plus the existing sort links
-  should be enough, and a filter UI costs more than it saves; and **paging** —
-  for the same reason. Revisit either only if a real cache grows big enough to
-  make scrolling painful.
 - **Screenful pagination (investigation).** Spike whether we can size a page to
   exactly one screenful instead of a fixed 10. The `scr` cookie already reports
   the viewport (CSS w×h×dpr), so server-side we could compute
@@ -126,6 +112,14 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Converted view sorting** — `/converted` defaults to newest conversion first
+  (the one you came to fetch) with Converted / Series / Title / Author sort links.
+  The timestamp is the cached EPUB's own write time, exposed as
+  `CachedVariant.ConvertedAtUtc` — deliberately not the source-ebook `mtimeMs`
+  that the cache filename carries as an invalidation key. Sorting is a two-state
+  toggle rather than the library listing's off/asc/desc cycle, because a locally
+  sorted list has no server-side default order to fall back to. Filtering and
+  paging were considered and left out: the list is per-device and short.
 - **Structured settings cookie** — `DeviceSettings` stores a keyed value
   (`retina=1&gray=0&lang=de&fav=lib_x`) instead of a positional string, so adding
   a setting is one key and an absent key falls back to that setting's documented

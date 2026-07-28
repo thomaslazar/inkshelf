@@ -149,6 +149,34 @@ public class ConvertedRenderTests
     }
 
     [Fact]
+    public async Task Descending_series_reverses_the_unseried_grouping_too()
+    {
+        // ACCEPTED BEHAVIOUR, pinned deliberately. `desc` reverses the whole list,
+        // so "unseried last" inverts and Apple Days (no series) leads. Keeping it
+        // last in both directions would need per-key ordering instead of one
+        // Reverse(); the owner judged that not worth the branching. This test
+        // exists so a later "fix" is a conscious change, not a silent one.
+        var html = await GetConvertedAsync("?sort=series&desc=1", Seed());
+        Assert.Equal(new[] { "Apple Days", "Zebra Tales", "Middle Road" }, TitleOrder(html));
+    }
+
+    [Fact]
+    public async Task Renders_a_sortbar_with_the_active_field_marked()
+    {
+        var html = await GetConvertedAsync("?sort=title", Seed());
+
+        Assert.Contains("class=\"sortbar\"", html);
+        Assert.Contains("/converted?sort=converted&amp;desc=1", html);   // default view link
+        Assert.Contains("/converted?sort=series", html);
+        Assert.Contains("/converted?sort=author", html);
+        // Title is active and ascending, so its own link flips to descending
+        // and it carries the ascending arrow. Razor HTML-encodes the ↑ (U+2191)
+        // in text content, same as elsewhere in this suite (e.g. "EPUB &#10003;").
+        Assert.Contains("/converted?sort=title&amp;desc=1", html);
+        Assert.Contains("&#x2191;", html);
+    }
+
+    [Fact]
     public async Task Conversion_order_ignores_the_source_mtime_in_the_filename()
     {
         // THE TRAP. CachedVariant.MtimeMs is the SOURCE ebook's mtime, not the
