@@ -185,7 +185,7 @@ Leave `EpubCacheTests.EnforceCap_deletes_oldest_until_under_cap` untouched. It s
 - [ ] **Step 5: Run the tests**
 
 Run: `dotnet test`
-Expected: PASS, **244** tests — 244 from Task 1, plus the new one, minus the deleted `Touch` test.
+Expected: PASS, **243** tests — 244 from Task 1, plus the new one, minus the deleted `Touch` test, minus `ConvertServiceTests.KickAsync_touches_cached_file_on_serve` which asserted the very behaviour being removed.
 
 - [ ] **Step 6: Fix the env-var docs**
 
@@ -461,7 +461,7 @@ Run: `dotnet test --filter "FullyQualifiedName~ConvertedRenderTests"`
 Expected: PASS, including the five pre-existing tests in the file — the empty-cache, grayscale-mismatch, batch-failure and Index-link tests must all still pass untouched.
 
 Then: `dotnet test`
-Expected: PASS, 252 tests (244 + 8).
+Expected: PASS, 251 tests (243 + 8).
 
 - [ ] **Step 5: Commit**
 
@@ -538,7 +538,7 @@ Run: `dotnet test --filter "FullyQualifiedName~ConvertedRenderTests"`
 Expected: PASS.
 
 Then: `dotnet test`
-Expected: PASS, 253 tests (252 + 1).
+Expected: PASS, 252 tests (251 + 1).
 
 Then: `dotnet format Inkshelf.sln --verify-no-changes`
 Expected: no output, exit 0. If it reports changes, run `dotnet format Inkshelf.sln` and re-run the suite.
@@ -615,7 +615,7 @@ If the uicheck change and the docs feel like separate concerns, split into two c
 
 ## Done criteria
 
-- `dotnet test` reports 253 passing; `dotnet format Inkshelf.sln --verify-no-changes` is clean.
+- `dotnet test` reports 252 passing; `dotnet format Inkshelf.sln --verify-no-changes` is clean.
 - `tools/uicheck/run.sh` passes and `shots/converted-de.png` shows the German sortbar without horizontal overflow.
 - `/converted` with no query parameters lists the most recently converted comic first.
 - Each of the four sort links works, the active one shows an arrow, and clicking it flips direction.
