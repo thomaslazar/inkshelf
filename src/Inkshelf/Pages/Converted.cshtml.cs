@@ -16,8 +16,9 @@ public class ConvertedModel : PageModel
     private readonly AbsApiClient _api;
     private readonly EpubCache _cache;
     private readonly ConvertQueue _queue;
-    public ConvertedModel(AbsApiClient api, EpubCache cache, ConvertQueue queue)
-    { _api = api; _cache = cache; _queue = queue; }
+    private readonly DownloadMarks _marks;
+    public ConvertedModel(AbsApiClient api, EpubCache cache, ConvertQueue queue, DownloadMarks marks)
+    { _api = api; _cache = cache; _queue = queue; _marks = marks; }
 
     public List<ItemRowModel> Rows { get; private set; } = new();
     public bool LoadError { get; private set; }
@@ -63,6 +64,7 @@ public class ConvertedModel : PageModel
     {
         var settings = DeviceSettings.Read(Request);
         var target = ScreenTarget.FromCookie(Request.Cookies["scr"], settings.Retina, settings.Grayscale);
+        var markSet = settings.Did.Length == 0 ? new HashSet<string>() : _marks.Read(settings.Did);
 
         // Cache entries for THIS device. Only the SET of item ids matters for the
         // batch fetch — row state is recomputed below from the current ebook file —
@@ -95,8 +97,10 @@ public class ConvertedModel : PageModel
             var links = new LibraryLinks(it.LibraryId ?? "", null, null, null, null, false);
             var state = ConvertRowStateResolver.Resolve(item, m, target, _cache, _queue);
             if (state == ConvertRowState.Converting) AnyConverting = true;
+            var rawDownloaded = markSet.Contains(DownloadMarks.RawKey(it.Id, null));
+            var epubDownloaded = markSet.Contains(DownloadMarks.EpubKey(it.Id, null));
             built.Add((new ItemRowModel(item, links, m.Metadata?.Authors, m.Metadata?.Series,
-                state, "/converted", finished.Contains(it.Id)), m.Metadata));
+                state, "/converted", finished.Contains(it.Id), rawDownloaded, epubDownloaded), m.Metadata));
         }
 
         IEnumerable<(ItemRowModel Row, AbsBatchMetadata? Meta)> ordered = ActiveSort switch

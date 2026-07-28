@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using Inkshelf;
 using Inkshelf.Abs;
 using Inkshelf.Convert;
 using Microsoft.AspNetCore.DataProtection;
@@ -115,6 +116,75 @@ public class ListingRenderTests
     }
 
     [Fact]
+    public async Task A_downloaded_action_renders_the_arrow_and_an_unmarked_one_does_not()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        const string did = "abc123def4560000";
+        var settings = $"retina=0&gray=0&lang=&fav=&did={did}";
+
+        // Nothing marked yet.
+        var plain = await (await client.SendAsync(LibraryRequest(factory, settings))).Content.ReadAsStringAsync();
+        Assert.DoesNotContain("&#8595;", plain);
+
+        // Mark the RAW ebook for this device, then re-render.
+        factory.Services.GetRequiredService<DownloadMarks>()
+            .Add(did, DownloadMarks.RawKey(ItemId, null));
+        var marked = await (await client.SendAsync(LibraryRequest(factory, settings))).Content.ReadAsStringAsync();
+        Assert.Contains("&#8595;", marked);
+    }
+
+    [Fact]
+    public async Task A_raw_mark_does_not_mark_the_epub_action()
+    {
+        // The row offers two different files. Marking one must not light up the
+        // other — the whole reason keys carry a d:/e: discriminator.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        const string did = "abc123def4560000";
+        // Cached EPUB so the convert action is in its Cached state.
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H), "epub");
+        factory.Services.GetRequiredService<DownloadMarks>()
+            .Add(did, DownloadMarks.RawKey(ItemId, null));
+
+        var html = await (await client.SendAsync(LibraryRequest(factory,
+            $"retina=0&gray=0&lang=&fav=&did={did}"))).Content.ReadAsStringAsync();
+
+        // Exactly one arrow: on Download, not on EPUB.
+        Assert.Single(Regex.Matches(html, "&#8595;"));
+        Assert.DoesNotContain("EPUB &#8595;", html);
+    }
+
+    [Fact]
+    public async Task The_cached_epub_action_no_longer_renders_a_checkmark()
+    {
+        // The label already says EPUB rather than Convert, so the checkmark was
+        // decoration — and dropping it leaves the arrow as the only glyph in that
+        // column. Asserting the exact old string rather than a bare "&#10003;",
+        // because the read-state button legitimately renders one for "✓ Read".
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H), "epub");
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        Assert.DoesNotContain("EPUB &#10003;", html);
+        Assert.Contains(">EPUB", html);                                   // label survives
+        Assert.DoesNotContain("data-warm", PrimaryConvertAnchor(html));   // and it IS the cached state
+    }
+
+    [Fact]
     public async Task Converting_row_has_data_warm_and_poll_and_noscript_refresh_but_regen_stays_plain()
     {
         using var cacheDir = new TempDir();
@@ -159,7 +229,6 @@ public class ListingRenderTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(response.Headers.CacheControl?.NoStore == true, "Expected Cache-Control: no-store.");
 
-        Assert.Contains("EPUB &#10003;", html);
         Assert.DoesNotContain("data-warm", PrimaryConvertAnchor(html));
         Assert.DoesNotContain("<meta http-equiv=\"refresh\"", html);
 
@@ -187,7 +256,6 @@ public class ListingRenderTests
         var grayResponse = await client.SendAsync(LibraryRequest(factory, settings: "01"));
         var grayHtml = await grayResponse.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, grayResponse.StatusCode);
-        Assert.Contains("EPUB &#10003;", grayHtml);
         Assert.DoesNotContain("data-warm", PrimaryConvertAnchor(grayHtml));
 
         // No settings cookie → default (colour) target; the "-g" file isn't its
@@ -195,7 +263,6 @@ public class ListingRenderTests
         var colourResponse = await client.SendAsync(LibraryRequest(factory));
         var colourHtml = await colourResponse.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, colourResponse.StatusCode);
-        Assert.DoesNotContain("EPUB &#10003;", colourHtml);
         Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(colourHtml));
         Assert.Contains(">Convert</a>", PrimaryConvertAnchor(colourHtml));
     }
@@ -241,7 +308,6 @@ public class ListingRenderTests
         var html = await (await client.SendAsync(req)).Content.ReadAsStringAsync();
 
         Assert.Contains("Results for", html);
-        Assert.Contains("EPUB &#10003;", html);
         Assert.DoesNotContain("data-warm", PrimaryConvertAnchor(html));
     }
 

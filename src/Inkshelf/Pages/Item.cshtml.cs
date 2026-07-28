@@ -10,14 +10,16 @@ public class ItemModel : PageModel
     private readonly AbsApiClient _api;
     private readonly EpubCache _cache;
     private readonly ConvertQueue _queue;
-    public ItemModel(AbsApiClient api, EpubCache cache, ConvertQueue queue)
-    { _api = api; _cache = cache; _queue = queue; }
+    private readonly DownloadMarks _marks;
+    public ItemModel(AbsApiClient api, EpubCache cache, ConvertQueue queue, DownloadMarks marks)
+    { _api = api; _cache = cache; _queue = queue; _marks = marks; }
 
     [FromRoute] public string Id { get; set; } = "";
 
     // One downloadable ebook file: its display name/format, the download href,
     // and (for cbz/cbr) the convert action to render via _ConvertAction.
-    public record FileRow(string Name, string Format, string DownloadHref, ConvertActionModel? Convert);
+    public record FileRow(string Name, string Format, string DownloadHref, ConvertActionModel? Convert,
+        bool Downloaded = false);
 
     public string LibraryId { get; private set; } = "";
     public string LibraryName { get; private set; } = "";
@@ -51,6 +53,7 @@ public class ItemModel : PageModel
 
         var ds = Auth.DeviceSettings.Read(Request);
         var target = ScreenTarget.FromCookie(Request.Cookies["scr"], ds.Retina, ds.Grayscale);
+        var marks = ds.Did.Length == 0 ? new HashSet<string>() : _marks.Read(ds.Did);
 
         try { Read = (await _api.GetFinishedItemIdsAsync(ct)).Contains(Id); }
         catch (HttpRequestException) { Read = false; }
@@ -60,18 +63,21 @@ public class ItemModel : PageModel
         {
             if (f.FileType != "ebook" || f.Metadata is null) continue;
             var isPrimary = f.Ino is not null && f.Ino == primaryIno;
+            var keyIno = isPrimary ? null : f.Ino;
             var fmt = f.Metadata.Ext?.TrimStart('.').ToLowerInvariant() ?? "";
             var name = f.Metadata.Filename ?? f.Ino ?? "file";
             var dl = isPrimary ? $"/download/{Id}" : $"/download/{Id}?file={Uri.EscapeDataString(f.Ino!)}";
+            var rawDownloaded = marks.Contains(DownloadMarks.RawKey(Id, keyIno));
 
             ConvertActionModel? convert = null;
             if (fmt is "cbz" or "cbr")
             {
                 var state = ConvertRowStateResolver.ResolveFor(
                     Id, f.Metadata.Size, f.Metadata.MtimeMs, fmt, target, _cache, _queue);
-                convert = new ConvertActionModel(Id, isPrimary ? null : f.Ino, state, $"/item/{Id}");
+                convert = new ConvertActionModel(Id, keyIno, state, $"/item/{Id}",
+                    marks.Contains(DownloadMarks.EpubKey(Id, keyIno)));
             }
-            Files.Add(new FileRow(name, fmt.ToUpperInvariant(), dl, convert));
+            Files.Add(new FileRow(name, fmt.ToUpperInvariant(), dl, convert, rawDownloaded));
         }
         return Page();
     }

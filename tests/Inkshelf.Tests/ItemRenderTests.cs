@@ -95,7 +95,7 @@ public class ItemRenderTests
         Assert.Contains("My Comic.pdf", html);                       // every ebook file listed
         Assert.Contains($"/download/{ItemId}?file=2", html);         // non-primary download by ino
         Assert.Contains($"/download/{ItemId}\"", html);              // primary download (no file=)
-        Assert.Contains("EPUB &#10003;", html);                      // primary cbz cached (shared key)
+        Assert.Contains(">EPUB", html);                               // primary cbz cached (shared key)
         Assert.Contains($"action=\"/read/{ItemId}\"", html);         // read toggle
     }
 

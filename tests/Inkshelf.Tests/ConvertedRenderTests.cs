@@ -175,7 +175,7 @@ public class ConvertedRenderTests
         Assert.Contains("/converted?sort=author", html);
         // Title is active and ascending, so its own link flips to descending
         // and it carries the ascending arrow. Razor HTML-encodes the ↑ (U+2191)
-        // in text content, same as elsewhere in this suite (e.g. "EPUB &#10003;").
+        // in text content, same as elsewhere in this suite (e.g. the "✓ Read" button).
         Assert.Contains("/converted?sort=title&amp;desc=1", html);
         Assert.Contains("&#x2191;", html);
     }
@@ -271,7 +271,7 @@ public class ConvertedRenderTests
         var html = await (await client.SendAsync(Request(factory, "/converted"))).Content.ReadAsStringAsync();
 
         Assert.Contains("My Comic", html);
-        Assert.Contains("EPUB &#10003;", html);                 // cached state (current ebook)
+        Assert.Contains(">EPUB", html);                          // cached state (current ebook)
         Assert.Contains($"/library/{LibId}?filter=", html);     // series/author link into the item's library
     }
 

@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Inkshelf;
 using Inkshelf.Abs;
 using Inkshelf.Auth;
 using Inkshelf.Convert;
@@ -73,7 +74,8 @@ public class FavoriteLibraryRoutingTests
     {
         using var dir = new TempCacheDir();
         var model = WithContext(
-            new LibraryModel(LibrariesClient("lib-1"), new EpubCache(dir.Path), new ConvertQueue()),
+            new LibraryModel(LibrariesClient("lib-1"), new EpubCache(dir.Path), new ConvertQueue(),
+                new DownloadMarks(System.IO.Path.Combine(dir.Path, "marks"))),
             favCookie: null);
         model.Id = "not-here"; // e.g. a stale favorite from another ABS, hit directly
         var result = await model.OnGetAsync();

@@ -50,10 +50,10 @@
     @if (!string.IsNullOrEmpty(fmt))
     {
         <div class="actions">
-            <a href="/download/@item.Id">@L["Download"]</a>
+            <a href="/download/@item.Id">@L["Download"]@if (Model.RawDownloaded) { <text> &#8595;</text> }</a>
             @if (Model.State != ConvertRowState.NotConvertible)
             {
-                <partial name="_ConvertAction" model="new Inkshelf.Pages.ConvertActionModel(item.Id, null, Model.State, Model.ReturnUrl)" />
+                <partial name="_ConvertAction" model="new Inkshelf.Pages.ConvertActionModel(item.Id, null, Model.State, Model.ReturnUrl, Model.EpubDownloaded)" />
             }
             <form class="read-form" method="post" action="/read/@item.Id">
                 @Html.AntiForgeryToken()
