@@ -10,7 +10,7 @@ and `docs/ROADMAP.md` for what's left.
 
 ## Big picture
 
-ASP.NET Core, .NET 10, **no AOT**. Razor Pages render HTML; minimal-API endpoints
+ASP.NET Core, .NET 10. Razor Pages render HTML; minimal-API endpoints
 serve streams and actions. Stateless — the ABS JWT lives in an encrypted cookie
 (Data Protection), so there is no server-side session to scale or persist.
 

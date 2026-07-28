@@ -168,7 +168,6 @@ Shipped; kept as a short record (full detail in git history / the PR).
   trimming was considered and dropped: GC config carried the bulk,
   `InvariantGlobalization` measured only ~4 MiB and cost `CultureInfo`, and
   `PublishTrimmed` risks reflection breakage in Razor Pages for little gain.
-  Native AOT is off the table per CLAUDE.md.
 - **Per-device settings + retina/grayscale** — a server-written
   `inkshelf_settings` cookie (`DeviceSettings`) with a plain-`<form>` Settings
   page (cog link in the Index/Library heads) exposing a **retina** toggle
