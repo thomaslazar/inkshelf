@@ -3,10 +3,12 @@ namespace Inkshelf;
 // Which files each device has already downloaded, so a row can say "you already
 // pulled this one onto this reader". One append-only file per device id, keys one
 // per line. Deliberately NOT in the EPUB cache's own directory listing: this
-// lives in a `marks/` subdirectory, and every cache operation globs
-// non-recursively for *.epub / *.tmp, so eviction can never delete marks.
+// lives in a `marks/` subdirectory, and every cache glob is extension-scoped
+// (*.epub, *.tmp) while a valid device id can never contain a dot, so eviction
+// never matches a marks file.
 //
-// A singleton over a directory path, mirroring EpubCache.
+// A singleton over a directory path, mirroring EpubCache. Registered as a DI
+// singleton and hit concurrently by web requests, so writes are serialised.
 public sealed class DownloadMarks
 {
     // Reading marks refreshes the file's timestamp so pruning tracks "this device
@@ -15,6 +17,7 @@ public sealed class DownloadMarks
     private static readonly TimeSpan TouchAfter = TimeSpan.FromDays(1);
 
     private readonly string _dir;
+    private readonly object _gate = new();
     public DownloadMarks(string dir) { _dir = dir; Directory.CreateDirectory(_dir); }
 
     // The `d:`/`e:` prefix is load-bearing: an item's raw ebook and its converted
@@ -25,6 +28,9 @@ public sealed class DownloadMarks
     private static string Key(string kind, string itemId, string? ino) =>
         string.IsNullOrEmpty(ino) ? $"{kind}:{itemId}" : $"{kind}:{itemId}:{ino}";
 
+    // Unlocked: a concurrent Add can at worst leave the final line mid-write, and
+    // the loop below already skips empty lines, so a reader never sees corruption,
+    // only a possibly-not-yet-visible last key.
     public HashSet<string> Read(string did)
     {
         var set = new HashSet<string>(StringComparer.Ordinal);
@@ -43,12 +49,17 @@ public sealed class DownloadMarks
     public void Add(string did, string key)
     {
         if (PathFor(did) is not { } path) return;
-        try
+        // Check-then-append must be atomic, or concurrent downloads race: both see
+        // the key missing, both append, or one appends mid-write of the other.
+        lock (_gate)
         {
-            if (Read(did).Contains(key)) { File.SetLastWriteTimeUtc(path, DateTime.UtcNow); return; }
-            File.AppendAllText(path, key + Environment.NewLine);
+            try
+            {
+                if (Read(did).Contains(key)) { File.SetLastWriteTimeUtc(path, DateTime.UtcNow); return; }
+                File.AppendAllText(path, key + Environment.NewLine);
+            }
+            catch (IOException) { }
         }
-        catch (IOException) { }
     }
 
     public void Prune(TimeSpan maxAge)

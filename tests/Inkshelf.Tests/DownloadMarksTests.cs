@@ -92,6 +92,23 @@ public class DownloadMarksTests
     }
 
     [Fact]
+    public void Concurrent_Add_calls_do_not_lose_or_corrupt_marks()
+    {
+        using var dir = new TempDir();
+        var m = new DownloadMarks(dir.Path);
+        const int count = 200;
+        var keys = Enumerable.Range(0, count)
+            .Select(i => DownloadMarks.RawKey($"item{i}", null)).ToArray();
+
+        Parallel.ForEach(keys, key => m.Add(Did, key));
+
+        var lines = File.ReadAllLines(Path.Combine(dir.Path, Did));
+        Assert.DoesNotContain(lines, l => l.Length == 0);
+        var set = m.Read(Did);
+        foreach (var key in keys) Assert.Contains(key, set);
+    }
+
+    [Fact]
     public void Prune_deletes_stale_devices_and_keeps_fresh_ones()
     {
         using var dir = new TempDir();

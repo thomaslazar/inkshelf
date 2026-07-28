@@ -59,8 +59,9 @@ builder.Services.AddHttpClient<AbsApiClient>(ConfigureAbs).AddHttpMessageHandler
 // gives it the BaseAddress + required User-Agent. See AbsDownloadClient.
 builder.Services.AddHttpClient<AbsDownloadClient>(ConfigureAbs);
 builder.Services.AddSingleton(new EpubCache(cachePath));
-// Marks live in a SUBDIRECTORY of the cache dir on purpose: every cache operation
-// globs non-recursively for *.epub / *.tmp, so eviction can't reach them.
+// Marks live in a SUBDIRECTORY of the cache dir on purpose: every cache glob is
+// extension-scoped (*.epub, *.tmp) and a valid device id can't contain a dot,
+// so eviction never matches a marks file — see EpubCacheTests for the guard.
 builder.Services.AddSingleton(new DownloadMarks(Path.Combine(cachePath, "marks")));
 builder.Services.AddSingleton<EpubConverter>();
 builder.Services.AddSingleton<ConvertLock>();
