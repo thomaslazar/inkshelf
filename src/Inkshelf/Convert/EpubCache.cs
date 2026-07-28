@@ -25,14 +25,6 @@ public class EpubCache
         }
     }
 
-    // Bump a served file's timestamp so EnforceCap treats recently-used entries as
-    // "new" (approximate LRU — serving a file doesn't otherwise touch its mtime).
-    public void Touch(string path)
-    {
-        try { if (File.Exists(path)) File.SetLastWriteTimeUtc(path, DateTime.UtcNow); }
-        catch (IOException) { }
-    }
-
     // Delete orphan .tmp files (a crash/shutdown between EpubWriter's temp write
     // and its atomic rename leaves one). Called once at worker startup.
     public void SweepTemp()
@@ -43,8 +35,12 @@ public class EpubCache
         }
     }
 
-    // Evict oldest-by-write-time entries until total cache bytes are under the cap.
-    // No-op when maxBytes <= 0 or already under. Best-effort (ignores IO races).
+    // Evict oldest-by-conversion-time entries until total cache bytes are under the
+    // cap. FIFO, not LRU, and deliberately so: this cache bridges one expensive
+    // conversion to one download, after which the EPUB lives on the reader. Nothing
+    // re-stamps a served file, so write time stays the conversion time — which is
+    // also what /converted sorts on. No-op when maxBytes <= 0 or already under.
+    // Best-effort (ignores IO races).
     public void EnforceCap(long maxBytes)
     {
         if (maxBytes <= 0) return;

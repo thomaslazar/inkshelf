@@ -94,22 +94,6 @@ public class EpubCacheTests
     }
 
     [Fact]
-    public void Touch_bumps_last_write_time()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "inkshelf-cache-" + Guid.NewGuid().ToString("N"));
-        var cache = new Inkshelf.Convert.EpubCache(dir);
-        try
-        {
-            var p = Path.Combine(dir, "x-1-1-10x10.epub");
-            File.WriteAllBytes(p, new byte[10]);
-            File.SetLastWriteTimeUtc(p, DateTime.UtcNow.AddDays(-1));
-            cache.Touch(p);
-            Assert.True(File.GetLastWriteTimeUtc(p) > DateTime.UtcNow.AddMinutes(-1));
-        }
-        finally { Directory.Delete(dir, true); }
-    }
-
-    [Fact]
     public void ListVariants_round_trips_PathFor_including_hyphenated_id_and_grayscale()
     {
         var dir = TempDirPath();

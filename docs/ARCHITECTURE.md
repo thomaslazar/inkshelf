@@ -197,7 +197,7 @@ All config is read once into `AbsOptions` at startup (`Program.cs`). Keys:
 | `TRUSTED_PROXY` | (unset) | comma-separated IPs/CIDRs allowed to set forwarded headers; unset = trust all |
 | `DIAG_ENABLED` | `true` | map the `/diag` probe endpoint |
 | `MaxArchiveBytes` | `524288000` (500 MB) | refuse larger ebook archives (OOM guard) |
-| `MaxCacheBytes` | `1073741824` (1 GB) | LRU-evict the EPUB cache past this |
+| `MaxCacheBytes` | `5368709120` (5 GiB) | evict oldest conversions past this |
 | `MaxConcurrentConversions` | `1` | cap on concurrent background `ConvertWorker` conversion loops |
 
 ## Security
