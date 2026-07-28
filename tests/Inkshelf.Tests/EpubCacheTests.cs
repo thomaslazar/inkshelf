@@ -140,4 +140,22 @@ public class EpubCacheTests
         File.WriteAllText(Path.Combine(dir, "i1-100-200-1730x2246.epub"), "e"); // valid
         Assert.Single(c.ListVariants());
     }
+
+    [Fact]
+    public void ListVariants_reports_the_files_own_write_time_not_the_source_mtime()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+
+        // The filename's mtime field is the SOURCE ebook's mtime (cache-key input).
+        // Give the file a write time deliberately unrelated to it, so a mix-up shows.
+        var path = cache.PathFor("item1", 111, 222, 375, 812);
+        File.WriteAllText(path, "epub");
+        var written = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(path, written);
+
+        var v = Assert.Single(cache.ListVariants());
+        Assert.Equal(222, v.MtimeMs);                  // still the source mtime
+        Assert.Equal(written, v.ConvertedAtUtc);       // and the real conversion time
+    }
 }

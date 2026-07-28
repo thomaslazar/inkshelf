@@ -59,22 +59,28 @@ public class EpubCache
     }
 
     // One cached EPUB, decoded back into its cache-key parts. Mirrors PathFor.
+    // NOTE two different timestamps live here: MtimeMs is the SOURCE ebook file's
+    // mtime in ABS, part of the cache key so a changed source invalidates the
+    // entry. ConvertedAtUtc is when WE wrote this EPUB. Anything user-facing about
+    // "when was this converted" wants ConvertedAtUtc.
     public sealed record CachedVariant(
-        string ItemId, long Size, long MtimeMs, int MaxW, int MaxH, bool Grayscale, string Path);
+        string ItemId, long Size, long MtimeMs, int MaxW, int MaxH, bool Grayscale, string Path,
+        DateTime ConvertedAtUtc);
 
     // Enumerate cached EPUBs, parsing each filename back into its parts. Parsed
     // RIGHT-TO-LEFT (dims, then mtime, then size) so an item id containing '-'
     // (a UUID) survives intact. Filenames that don't match PathFor are skipped.
     public IEnumerable<CachedVariant> ListVariants()
     {
-        foreach (var path in Directory.EnumerateFiles(_dir, "*.epub"))
+        foreach (var f in new DirectoryInfo(_dir).EnumerateFiles("*.epub"))
         {
-            if (TryParse(path) is { } v) yield return v;
+            if (TryParse(f) is { } v) yield return v;
         }
     }
 
-    private static CachedVariant? TryParse(string path)
+    private static CachedVariant? TryParse(FileInfo file)
     {
+        var path = file.FullName;
         var name = System.IO.Path.GetFileNameWithoutExtension(path); // drops ".epub"
         var grayscale = name.EndsWith("-g", StringComparison.Ordinal);
         if (grayscale) name = name[..^2];
@@ -98,6 +104,6 @@ public class EpubCache
 
         var itemId = name[..d3];
         if (itemId.Length == 0) return null;
-        return new CachedVariant(itemId, size, mtimeMs, maxW, maxH, grayscale, path);
+        return new CachedVariant(itemId, size, mtimeMs, maxW, maxH, grayscale, path, file.LastWriteTimeUtc);
     }
 }
