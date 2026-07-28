@@ -10,7 +10,7 @@
     @switch (Model.State)
     {
         case ConvertRowState.Cached:
-            <a href="@baseHref" title="@L["Already converted — downloads right away"]">EPUB &#10003;</a>
+            <a href="@baseHref" title="@L["Already converted — downloads right away"]">@if (Model.Downloaded) { <text>EPUB &#8595;</text> } else { <text>EPUB</text> }</a>
             break;
         case ConvertRowState.Converting:
             <a href="@baseHref" data-warm data-poll data-why="@whyHref">@L["Converting…"]</a>

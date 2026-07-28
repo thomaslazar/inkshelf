@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Inkshelf;
 using Inkshelf.Abs;
 using Inkshelf.Auth;
 using Inkshelf.Convert;
@@ -57,7 +58,7 @@ public class FavoriteLibraryRoutingTests
         Assert.Equal(2, model.Libraries.Count);            // the real list is shown instead
         var setCookie = model.Response.Headers.SetCookie.ToString();
         Assert.Contains(DeviceSettings.Cookie, setCookie);   // the stale favorite is cleared
-        Assert.Contains("fav%3D;", setCookie);               // ...by writing an empty fav
+        Assert.Contains("fav%3D%26did", setCookie);          // ...by writing an empty fav
     }
 
     [Fact]
@@ -73,7 +74,8 @@ public class FavoriteLibraryRoutingTests
     {
         using var dir = new TempCacheDir();
         var model = WithContext(
-            new LibraryModel(LibrariesClient("lib-1"), new EpubCache(dir.Path), new ConvertQueue()),
+            new LibraryModel(LibrariesClient("lib-1"), new EpubCache(dir.Path), new ConvertQueue(),
+                new DownloadMarks(System.IO.Path.Combine(dir.Path, "marks"))),
             favCookie: null);
         model.Id = "not-here"; // e.g. a stale favorite from another ABS, hit directly
         var result = await model.OnGetAsync();

@@ -141,7 +141,10 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await Shot("convert-clicked-de");
         if (label.Contains("&#x", StringComparison.Ordinal))
             failures.Add($"convert-clicked: HTML entity leaked into JS label: \"{label}\"");
-        if (!label.Contains("Konvert", StringComparison.Ordinal) && !label.Contains("EPUB", StringComparison.Ordinal))
+        // The JS never mints its own "done" state: it may still be converting
+        // ("Konvert...") or must land on exactly "EPUB" — never "EPUB ↓", which
+        // means "already downloaded" and must only ever come from the server.
+        if (!label.Contains("Konvert", StringComparison.Ordinal) && label != "EPUB")
             failures.Add($"convert-clicked: unexpected label \"{label}\"");
 
         // Failure reasons: each seeded broken comic must land on the German reason
@@ -186,6 +189,14 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await Shot("converted-sorted-de");
         Expect("converted-sorted-de", await page.InnerTextAsync("body"),
             "Sortierung:", "Konvertiert", "Serien", "Titel", "Autor");
+
+        // The retired checkmark must be gone and no download arrow present yet:
+        // nothing has been downloaded in this run.
+        var convertedHtml = await page.ContentAsync();
+        if (convertedHtml.Contains("EPUB &#10003;", StringComparison.Ordinal))
+            failures.Add("converted-sorted-de: the retired EPUB checkmark is still rendered");
+        if (convertedHtml.Contains("EPUB &#8595;", StringComparison.Ordinal))
+            failures.Add("converted-sorted-de: a download arrow is rendered before anything was downloaded");
 
         Console.WriteLine("[authed] index / library / item / converted / convert-click / convert-failed (toolarge/badarchive/converterror) / failed-row / converted-sorted captured");
     }

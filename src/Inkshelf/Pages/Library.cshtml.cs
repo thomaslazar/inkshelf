@@ -13,8 +13,9 @@ public class LibraryModel : PageModel
     private readonly AbsApiClient _api;
     private readonly EpubCache _cache;
     private readonly ConvertQueue _queue;
-    public LibraryModel(AbsApiClient api, EpubCache cache, ConvertQueue queue)
-    { _api = api; _cache = cache; _queue = queue; }
+    private readonly DownloadMarks _marks;
+    public LibraryModel(AbsApiClient api, EpubCache cache, ConvertQueue queue, DownloadMarks marks)
+    { _api = api; _cache = cache; _queue = queue; _marks = marks; }
 
     [FromRoute] public string Id { get; set; } = "";
     [FromQuery] public string? Q { get; set; }
@@ -45,7 +46,9 @@ public class LibraryModel : PageModel
     public async Task<IActionResult> OnGetAsync([FromQuery] int page = 1, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(Id)) return NotFound();
-        IsFavorite = DeviceSettings.Read(Request).Fav == Id;
+        var ds = DeviceSettings.Read(Request);
+        IsFavorite = ds.Fav == Id;
+        _markSet = ds.Did.Length == 0 ? new HashSet<string>() : _marks.Read(ds.Did);
 
         var libraries = await _api.GetLibrariesAsync(ct);
         var library = libraries.FirstOrDefault(l => l.Id == Id);
@@ -86,6 +89,7 @@ public class LibraryModel : PageModel
     // empty and rows fall back to the comma-joined name strings.
     private Dictionary<string, AbsBatchMedia> _structured = new();
     private HashSet<string> _finished = new();
+    private HashSet<string> _markSet = new();
     // Decoded active facet filter (group + value id), for resolving its label.
     private string? _filterGroup;
     private string? _filterValue;
@@ -121,7 +125,10 @@ public class LibraryModel : PageModel
             if (f is "cbz" or "cbr") state = ConvertRowState.Convert;
         }
         var ret = Request.Path + Request.QueryString; // exact current listing URL
-        return new ItemRowModel(item, Links, media?.Metadata?.Authors, media?.Metadata?.Series, state, ret, _finished.Contains(item.Id));
+        var rawDownloaded = _markSet.Contains(DownloadMarks.RawKey(item.Id, null));
+        var epubDownloaded = _markSet.Contains(DownloadMarks.EpubKey(item.Id, null));
+        return new ItemRowModel(item, Links, media?.Metadata?.Authors, media?.Metadata?.Series, state, ret,
+            _finished.Contains(item.Id), rawDownloaded, epubDownloaded);
     }
 
     // Per-row convert state, precomputed so the head (which renders before the

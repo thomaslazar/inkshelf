@@ -92,8 +92,8 @@ public class DeviceSettingsTests
     [Fact]
     public void Serialize_emits_keyed_pairs()
     {
-        Assert.Equal("retina=1&gray=0&lang=de&fav=", new DeviceSettings(true, false, "de").Serialize());
-        Assert.Equal("retina=1&gray=1&lang=&fav=", new DeviceSettings(true, true, "").Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=", new DeviceSettings(true, false, "de").Serialize());
+        Assert.Equal("retina=1&gray=1&lang=&fav=&did=", new DeviceSettings(true, true, "").Serialize());
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public class DeviceSettingsTests
         // The `&` and `=` are escaped to %26/%3D on the way out and unescaped on the
         // way in. This test exists so a framework change can't break that silently.
         var ctx = new DefaultHttpContext();
-        DeviceSettings.Set(ctx.Response, new DeviceSettings(false, true, "pt-br"));
+        var written = DeviceSettings.Set(ctx.Response, new DeviceSettings(false, true, "pt-br"));
 
         var value = ctx.Response.Headers.SetCookie.ToString().Split(';')[0].Split('=', 2)[1];
         Assert.Contains("%26", value);              // the separators really are escaped
@@ -145,7 +145,9 @@ public class DeviceSettingsTests
         ctx2.Request.Headers.Cookie = $"{DeviceSettings.Cookie}={value}";
 
         var read = DeviceSettings.Read(ctx2.Request);
-        Assert.Equal(new DeviceSettings(false, true, "pt-br"), read);
+        // Set mints a Did, so compare against what it actually wrote rather than
+        // a fresh record (which would default Did to "").
+        Assert.Equal(written, read);
     }
 
     [Fact]
@@ -188,7 +190,7 @@ public class DeviceSettingsTests
     public void Serialize_includes_fav()
     {
         var s = new DeviceSettings(true, false, "de") { Fav = "lib_abc" };
-        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc", s.Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=", s.Serialize());
     }
 
     [Fact]
@@ -237,7 +239,7 @@ public class DeviceSettingsTests
     public void Fav_is_sanitized_on_the_way_into_the_cookie(string raw, string expected)
     {
         var s = new DeviceSettings(true, false, "") { Fav = raw };
-        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}", s.Serialize());
+        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=", s.Serialize());
     }
 
     [Fact]
@@ -249,6 +251,51 @@ public class DeviceSettingsTests
         // before Read ever reaches SanitizeId.
         var v = DeviceSettings.Read(RequestWithCookie("retina%3D1%26gray%3D0%26lang%3D%26fav%3Da%20b"));
         Assert.Equal("", v.Fav);
+    }
+
+    [Fact]
+    public void Set_mints_a_device_id_when_absent_and_returns_it()
+    {
+        var ctx = new DefaultHttpContext();
+        var written = DeviceSettings.Set(ctx.Response, new DeviceSettings(true, false, "de"));
+
+        Assert.NotEqual("", written.Did);
+        Assert.Equal(16, written.Did.Length);
+        Assert.Matches("^[0-9a-f]{16}$", written.Did);
+        // ...and it really went into the cookie, not just the return value.
+        Assert.Contains($"did%3D{written.Did}", ctx.Response.Headers.SetCookie.ToString());
+    }
+
+    [Fact]
+    public void Set_keeps_an_existing_device_id()
+    {
+        var ctx = new DefaultHttpContext();
+        var written = DeviceSettings.Set(ctx.Response,
+            new DeviceSettings(true, false, "") { Did = "abc123def456abcd" });
+        Assert.Equal("abc123def456abcd", written.Did);
+    }
+
+    [Fact]
+    public void Read_parses_the_device_id()
+    {
+        var s = DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&did=feedface00001111"));
+        Assert.Equal("feedface00001111", s.Did);
+    }
+
+    [Fact]
+    public void Read_sanitizes_a_hostile_device_id_to_empty()
+    {
+        // The id becomes part of a file path, so a traversal shape must collapse.
+        Assert.Equal("", DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&did=../../etc/passwd")).Did);
+        Assert.Equal("", DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&did=a/b")).Did);
+    }
+
+    [Fact]
+    public void Two_mints_differ()
+    {
+        var a = DeviceSettings.Set(new DefaultHttpContext().Response, DeviceSettings.Default).Did;
+        var b = DeviceSettings.Set(new DefaultHttpContext().Response, DeviceSettings.Default).Did;
+        Assert.NotEqual(a, b);
     }
 
     // Minimal IServiceProvider that returns one AbsOptions instance (mirrors how

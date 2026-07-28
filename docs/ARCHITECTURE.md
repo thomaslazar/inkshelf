@@ -144,6 +144,12 @@ from the repo root (inside the devcontainer) must stay green, and
   TLS-terminating proxy `IsHttps` is spoofable, so it's
   `ForceSecureCookies || Request.IsHttps`. `TokenStore` and `DeviceSettings` must
   agree.
+- **The device id is a trust boundary.** It arrives in a cookie and becomes a
+  filename, so it goes through `SanitizeId`; blank or invalid means "no marks",
+  never a fallback name that would pool devices into one bucket.
+- **Download marks live in a `marks/` subdirectory of the EPUB cache.** That is
+  safe because every cache glob is extension-scoped (`*.epub`, `*.tmp`) and a
+  device id can't contain a dot — don't widen one of those patterns.
 
 ## Adding a new X
 

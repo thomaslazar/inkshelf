@@ -107,7 +107,7 @@ else
                 <span class="file-format">@f.Format</span>
             </div>
             <div class="file-actions">
-                <a href="@f.DownloadHref">@L["Download"]</a>
+                <a href="@f.DownloadHref">@L["Download"]@if (f.Downloaded) { <text> &#8595;</text> }</a>
                 @if (f.Convert is not null)
                 {
                     <partial name="_ConvertAction" model="f.Convert" />

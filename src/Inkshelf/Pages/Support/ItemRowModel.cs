@@ -16,4 +16,6 @@ public record ItemRowModel(
     IReadOnlyList<AbsSeriesRef>? Series = null,
     ConvertRowState State = ConvertRowState.NotConvertible,
     string ReturnUrl = "/",
-    bool Read = false);
+    bool Read = false,
+    bool RawDownloaded = false,
+    bool EpubDownloaded = false);

@@ -142,4 +142,26 @@ public class EpubCacheTests
         Assert.Equal(222, v.MtimeMs);                  // still the source mtime
         Assert.Equal(written, v.ConvertedAtUtc);       // and the real conversion time
     }
+
+    [Fact]
+    public void EnforceCap_does_not_touch_a_marks_subdirectory()
+    {
+        // Marks live under the cache dir. What makes that safe is that every cache
+        // glob is EXTENSION-scoped (*.epub, *.tmp) while a valid device id can never
+        // contain a dot — so recursion alone is harmless. The real risk is a WIDENED
+        // pattern: change EnforceCap's "*.epub" to "*" and this test fails, because
+        // eviction then counts and deletes the marks file.
+        var dir = TempDirPath();
+        var cache = new EpubCache(dir);
+        var marks = Path.Combine(dir, "marks");
+        Directory.CreateDirectory(marks);
+        File.WriteAllText(Path.Combine(marks, "abc123def4560000"), "d:item1\n");
+        for (var i = 0; i < 3; i++)
+            File.WriteAllBytes(Path.Combine(dir, $"item{i}-1-1-10x10.epub"), new byte[100]);
+
+        cache.EnforceCap(150);   // forces eviction of at least one epub
+
+        Assert.True(File.Exists(Path.Combine(marks, "abc123def4560000")));
+        Assert.DoesNotContain(cache.ListVariants(), v => v.ItemId == "marks");
+    }
 }
