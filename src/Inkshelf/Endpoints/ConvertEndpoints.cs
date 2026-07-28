@@ -8,7 +8,7 @@ public static class ConvertEndpoints
     public static void MapConvertEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/convert/{id}", async (string id, string? fresh, string? warm,
-            string? status, string? file, string? @return, HttpContext httpContext, ConvertService convert, CancellationToken ct) =>
+            string? status, string? file, string? @return, HttpContext httpContext, ConvertService convert, DownloadMarks marks, CancellationToken ct) =>
         {
             var ds = DeviceSettings.Read(httpContext.Request);
             var t = ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"], ds.Retina, ds.Grayscale);
@@ -27,9 +27,14 @@ public static class ConvertEndpoints
                     ? Results.Text("done")
                     : Results.Text(Text(result.Status), statusCode: StatusCodes.Status202Accepted);
 
-            return result.Status == ConvertStatus.Done
-                ? Results.File(result.FilePath!, "application/epub+zip", fileDownloadName: result.DownloadName)
-                : Results.Redirect(LocalReturn(@return));
+            if (result.Status != ConvertStatus.Done) return Results.Redirect(LocalReturn(@return));
+
+            // Mark BEFORE streaming: we can't tell a completed transfer from an
+            // aborted one anyway (see the spec), and the marker is advisory.
+            var did = string.IsNullOrEmpty(ds.Did) ? DeviceSettings.Set(httpContext.Response, ds).Did : ds.Did;
+            marks.Add(did, DownloadMarks.EpubKey(id, file));
+
+            return Results.File(result.FilePath!, "application/epub+zip", fileDownloadName: result.DownloadName);
         });
     }
 
