@@ -26,17 +26,21 @@ public class DownloadMarkEndpointTests
     private const string ItemId = "item1";
     private const string Did = "abc123def4560000";
 
-    // Expanded item detail with one primary epub file.
-    private const string DetailJson = """
+    private const string Ino = "9999";
+
+    // Expanded item detail: one primary epub file, plus a second ebook in
+    // libraryFiles so the `?file={ino}` branch has something to resolve.
+    private const string DetailJson = $$"""
         {"media":{"metadata":{"title":"A Book","authorName":"An Author"},
-         "ebookFile":{"ebookFormat":"epub","metadata":{"filename":"a.epub","size":10,"mtimeMs":20} } } }
+         "ebookFile":{"ebookFormat":"epub","metadata":{"filename":"a.epub","size":10,"mtimeMs":20} } },
+         "libraryFiles":[{"ino":"{{Ino}}","fileType":"ebook","metadata":{"filename":"b.epub","size":11,"mtimeMs":21} }]}
         """;
 
     private static StubHandler MakeStub() => new(req =>
     {
         var path = req.RequestUri!.AbsolutePath;
         if (path == $"/api/items/{ItemId}") return StubHandler.Json(DetailJson);
-        if (path == $"/api/items/{ItemId}/ebook")
+        if (path == $"/api/items/{ItemId}/ebook" || path == $"/api/items/{ItemId}/ebook/{Ino}")
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent("epub-bytes"u8.ToArray()) };
         if (path == "/api/me") return StubHandler.Json("""{"mediaProgress":[]}""");
         return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -122,5 +126,31 @@ public class DownloadMarkEndpointTests
         await client.SendAsync(req);
 
         Assert.Empty(factory.Services.GetRequiredService<DownloadMarks>().Read(Did));
+    }
+
+    [Fact]
+    public async Task A_per_file_download_marks_that_file_and_not_the_primary()
+    {
+        // The ino is what separates "I pulled this item's primary ebook" from
+        // "I pulled the second file in it". Swapping them would mark the wrong row
+        // action, and only an end-to-end request exercises that wiring.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
+        var protector = dp.CreateProtector("inkshelf.session.v1");
+        var req = new HttpRequestMessage(HttpMethod.Get, $"/download/{ItemId}?file={Ino}");
+        req.Headers.Add("Cookie",
+            $"inkshelf_session={Uri.EscapeDataString(protector.Protect("access\nrefresh"))}; "
+            + $"inkshelf_settings=retina=1&gray=0&lang=&fav=&did={Did}");
+
+        var res = await client.SendAsync(req);
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+
+        var marks = factory.Services.GetRequiredService<DownloadMarks>().Read(Did);
+        Assert.Contains(DownloadMarks.RawKey(ItemId, Ino), marks);
+        Assert.DoesNotContain(DownloadMarks.RawKey(ItemId, null), marks);
     }
 }

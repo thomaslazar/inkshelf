@@ -162,6 +162,6 @@ public class EpubCacheTests
         cache.EnforceCap(150);   // forces eviction of at least one epub
 
         Assert.True(File.Exists(Path.Combine(marks, "abc123def4560000")));
-        Assert.Empty(cache.ListVariants().Where(v => v.ItemId == "marks"));
+        Assert.DoesNotContain(cache.ListVariants(), v => v.ItemId == "marks");
     }
 }
