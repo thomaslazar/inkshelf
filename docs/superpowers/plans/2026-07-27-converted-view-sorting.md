@@ -491,6 +491,18 @@ Add to `tests/Inkshelf.Tests/ConvertedRenderTests.cs`:
 
 ```csharp
     [Fact]
+    public async Task Descending_series_reverses_the_unseried_grouping_too()
+    {
+        // ACCEPTED BEHAVIOUR, pinned deliberately. `desc` reverses the whole list,
+        // so "unseried last" inverts and Apple Days (no series) leads. Keeping it
+        // last in both directions would need per-key ordering instead of one
+        // Reverse(); the owner judged that not worth the branching. This test
+        // exists so a later "fix" is a conscious change, not a silent one.
+        var html = await GetConvertedAsync("?sort=series&desc=1", Seed());
+        Assert.Equal(new[] { "Apple Days", "Zebra Tales", "Middle Road" }, TitleOrder(html));
+    }
+
+    [Fact]
     public async Task Renders_a_sortbar_with_the_active_field_marked()
     {
         var html = await GetConvertedAsync("?sort=title", Seed());
@@ -538,7 +550,7 @@ Run: `dotnet test --filter "FullyQualifiedName~ConvertedRenderTests"`
 Expected: PASS.
 
 Then: `dotnet test`
-Expected: PASS, 252 tests (251 + 1).
+Expected: PASS, 253 tests (251 + 2).
 
 Then: `dotnet format Inkshelf.sln --verify-no-changes`
 Expected: no output, exit 0. If it reports changes, run `dotnet format Inkshelf.sln` and re-run the suite.
@@ -615,7 +627,7 @@ If the uicheck change and the docs feel like separate concerns, split into two c
 
 ## Done criteria
 
-- `dotnet test` reports 252 passing; `dotnet format Inkshelf.sln --verify-no-changes` is clean.
+- `dotnet test` reports 253 passing; `dotnet format Inkshelf.sln --verify-no-changes` is clean.
 - `tools/uicheck/run.sh` passes and `shots/converted-de.png` shows the German sortbar without horizontal overflow.
 - `/converted` with no query parameters lists the most recently converted comic first.
 - Each of the four sort links works, the active one shows an arrow, and clicking it flips direction.

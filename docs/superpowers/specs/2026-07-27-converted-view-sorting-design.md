@@ -138,6 +138,15 @@ local helper on the page model computes the next `desc` value.
 `Desc` reverses the result. An unrecognised `sort` value falls back to the
 default rather than throwing — it is a client-supplied string.
 
+**Descending reverses the whole list, including the grouping — accepted
+deliberately.** Under `?sort=series&desc=1` the "unseried last" grouping inverts
+too, so items with no series appear *first*. Keeping them last in both
+directions would mean per-key ordering instead of one `Reverse()`, and the
+owner judged the extra branching not worth it: descending simply means "reverse
+what you see". The same mechanism flips the title tiebreak within ties, which is
+unreachable for `converted` (tick precision) and symmetric elsewhere. A test
+pins this behaviour so a later "fix" cannot change it silently.
+
 The `series` comparator is kept as-is rather than rewritten: it already handles
 numeric sequence parsing and unseried items, and it is the current behaviour.
 
