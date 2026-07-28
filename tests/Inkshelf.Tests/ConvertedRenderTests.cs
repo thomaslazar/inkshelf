@@ -248,6 +248,18 @@ public class ConvertedRenderTests
             });
         });
 
+    // Same as Request, but carries a device id so download marks resolve.
+    private static HttpRequestMessage RequestAs(WebApplicationFactory<Program> factory, string url, string did)
+    {
+        var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
+        var protector = dp.CreateProtector("inkshelf.session.v1");
+        var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.Add("Cookie",
+            $"inkshelf_session={Uri.EscapeDataString(protector.Protect("access\nrefresh"))}; scr={W}x{H}x1; "
+            + $"inkshelf_settings=retina=0&gray=0&lang=&fav=&did={did}");
+        return req;
+    }
+
     private static HttpRequestMessage Request(WebApplicationFactory<Program> factory, string url)
     {
         var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
@@ -346,5 +358,27 @@ public class ConvertedRenderTests
         Assert.Contains("<a href=\"/?all=1\" class=\"home-link\"", html);
         Assert.Matches(@"Inkshelf v\d+\.\d+", html);
         Assert.DoesNotContain("@Model", html);
+    }
+
+    [Fact]
+    public async Task An_epub_mark_puts_the_arrow_on_the_EPUB_action_not_on_Download()
+    {
+        // /converted has its own raw/epub flag wiring, so swapping the two there
+        // would go unnoticed by the listing's and item page's tests.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        const string did = "abc123def4560000";
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H), "epub");
+        factory.Services.GetRequiredService<DownloadMarks>()
+            .Add(did, DownloadMarks.EpubKey(ItemId, null));
+
+        var html = await (await client.SendAsync(RequestAs(factory, "/converted", did))).Content.ReadAsStringAsync();
+
+        Assert.Contains("EPUB &#8595;", html);          // the converted file is marked
+        Assert.DoesNotContain("Download &#8595;", html); // the raw ebook is not
     }
 }

@@ -36,10 +36,20 @@ public class DownloadMarkEndpointTests
          "libraryFiles":[{"ino":"{{Ino}}","fileType":"ebook","metadata":{"filename":"b.epub","size":11,"mtimeMs":21} }]}
         """;
 
+    // A separate cbz item for the /convert/{id} tests — the /download endpoint's
+    // fixture above is an epub (not convertible).
+    private const string ComicId = "comic1";
+    private const long CSize = 555, CMtime = 666;
+    private static string ComicDetailJson() => $$"""
+        {"media":{"metadata":{"title":"A Comic","authorName":"An Author"},
+         "ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"a.cbz","size":{{CSize}},"mtimeMs":{{CMtime}} } } } }
+        """;
+
     private static StubHandler MakeStub() => new(req =>
     {
         var path = req.RequestUri!.AbsolutePath;
         if (path == $"/api/items/{ItemId}") return StubHandler.Json(DetailJson);
+        if (path == $"/api/items/{ComicId}") return StubHandler.Json(ComicDetailJson());
         if (path == $"/api/items/{ItemId}/ebook" || path == $"/api/items/{ItemId}/ebook/{Ino}")
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent("epub-bytes"u8.ToArray()) };
         if (path == "/api/me") return StubHandler.Json("""{"mediaProgress":[]}""");
@@ -152,5 +162,36 @@ public class DownloadMarkEndpointTests
         var marks = factory.Services.GetRequiredService<DownloadMarks>().Read(Did);
         Assert.Contains(DownloadMarks.RawKey(ItemId, Ino), marks);
         Assert.DoesNotContain(DownloadMarks.RawKey(ItemId, null), marks);
+    }
+
+    [Fact]
+    public async Task Converted_epub_download_records_an_epub_mark_and_not_a_raw_one()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        // Pre-seed the cached EPUB for this device's render target. No `scr`
+        // cookie is sent (mirrors Download()'s request), so ScreenTarget.FromCookie
+        // resolves to (0,0,1,false) — the same target the convert endpoint computes
+        // — and KickAsync sees ConvertStatus.Done, serving + marking immediately
+        // instead of only enqueuing a background job.
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        File.WriteAllText(cache.PathFor(ComicId, CSize, CMtime, 0, 0), "epub");
+
+        var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
+        var protector = dp.CreateProtector("inkshelf.session.v1");
+        var req = new HttpRequestMessage(HttpMethod.Get, $"/convert/{ComicId}?return=/");
+        req.Headers.Add("Cookie",
+            $"inkshelf_session={Uri.EscapeDataString(protector.Protect("access\nrefresh"))}; "
+            + $"inkshelf_settings=retina=1&gray=0&lang=&fav=&did={Did}");
+
+        var res = await client.SendAsync(req);
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+
+        var marks = factory.Services.GetRequiredService<DownloadMarks>().Read(Did);
+        Assert.Contains(DownloadMarks.EpubKey(ComicId, null), marks);
+        Assert.DoesNotContain(DownloadMarks.RawKey(ComicId, null), marks);
     }
 }

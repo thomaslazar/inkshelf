@@ -185,6 +185,31 @@ public class ListingRenderTests
     }
 
     [Fact]
+    public async Task A_cached_epub_marked_downloaded_renders_the_arrow_on_the_EPUB_label()
+    {
+        // Same glyph, different key: an e: mark must flip the CACHED row's own
+        // "EPUB" label to "EPUB ↓", distinct from the d: (raw) mark covered above.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H), "epub");
+
+        const string did = "abc123def4560000";
+        var settings = $"retina=0&gray=0&lang=&fav=&did={did}";
+
+        factory.Services.GetRequiredService<DownloadMarks>()
+            .Add(did, DownloadMarks.EpubKey(ItemId, null));
+
+        var html = await (await client.SendAsync(LibraryRequest(factory, settings))).Content.ReadAsStringAsync();
+
+        Assert.Contains("EPUB &#8595;", html);
+        Assert.DoesNotContain("data-warm", PrimaryConvertAnchor(html)); // still the cached state, not converting
+    }
+
+    [Fact]
     public async Task Converting_row_has_data_warm_and_poll_and_noscript_refresh_but_regen_stays_plain()
     {
         using var cacheDir = new TempDir();
