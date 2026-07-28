@@ -142,4 +142,24 @@ public class EpubCacheTests
         Assert.Equal(222, v.MtimeMs);                  // still the source mtime
         Assert.Equal(written, v.ConvertedAtUtc);       // and the real conversion time
     }
+
+    [Fact]
+    public void EnforceCap_does_not_touch_a_marks_subdirectory()
+    {
+        // Marks live under the cache dir. Every cache glob is non-recursive and
+        // extension-scoped, which is the only reason that's safe — this test fails
+        // if someone "simplifies" one of them to recurse.
+        var dir = TempDirPath();
+        var cache = new EpubCache(dir);
+        var marks = Path.Combine(dir, "marks");
+        Directory.CreateDirectory(marks);
+        File.WriteAllText(Path.Combine(marks, "abc123def4560000"), "d:item1\n");
+        for (var i = 0; i < 3; i++)
+            File.WriteAllBytes(Path.Combine(dir, $"item{i}-1-1-10x10.epub"), new byte[100]);
+
+        cache.EnforceCap(150);   // forces eviction of at least one epub
+
+        Assert.True(File.Exists(Path.Combine(marks, "abc123def4560000")));
+        Assert.Empty(cache.ListVariants().Where(v => v.ItemId == "marks"));
+    }
 }

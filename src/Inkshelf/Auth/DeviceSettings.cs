@@ -132,4 +132,8 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // 16 hex chars from a crypto RNG: unique enough for a household, and inside
     // SanitizeId's allowlist so it survives its own round trip.
     private static string NewDid() => System.Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant();
+
+    // Public so DownloadMarks can gate a cookie-supplied id before it becomes a
+    // file name. Reuses the one allowlist rather than restating it.
+    public static bool IsValidDid(string? did) => !string.IsNullOrEmpty(did) && SanitizeId(did) == did;
 }
