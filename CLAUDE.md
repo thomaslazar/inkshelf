@@ -15,6 +15,37 @@ container next to ABS. See `docs/superpowers/specs/` for the design.
 **Read `docs/ARCHITECTURE.md` before adding features** — it maps the structure and
 the load-bearing conventions (some look like cleanup targets but are deliberate).
 
+### What belongs in ARCHITECTURE.md — and what doesn't
+
+It is a **map, not a diary**. Most features should change it **not at all**: if a
+change fits the existing structure, there is nothing new to describe.
+
+The test for any line: **would this still be true if we rewrote the
+implementation but kept the design?** If no, it's a code comment, not
+architecture.
+
+Belongs:
+- The bird's-eye view — what shapes the design, not what it does.
+- The code map: where things live, one line each.
+- **Invariants, especially the ones phrased as an absence** — "never attach the
+  auth handler to `AbsAuthClient`", "don't unify the metadata DTOs", "don't
+  restore Server GC". These are the whole point: rules whose violation causes a
+  bug that isn't obvious from reading the code.
+- Deliberate exceptions and accepted risks.
+
+Does NOT belong:
+- **A per-feature entry.** Shipped work goes to `docs/ROADMAP.md`'s `## Done` and
+  `CHANGELOG.md`. A commit message of the form `docs: record <feature>` touching
+  this file is the smell.
+- How a module works step by step — that's an inline comment next to the code.
+- Endpoint/query-parameter reference, config tables, response shapes. `README.md`
+  owns operator-facing config; duplicating it here has already shipped a wrong
+  default.
+- Anything that changes when the implementation is refactored.
+
+If it grows every time a feature lands, it's being used as a changelog. Prune it
+rather than appending.
+
 ## Development environment
 - **All .NET development happens inside the devcontainer. No dotnet on the Mac host.**
 - Reopen the folder in the container, then work on a feature branch.
