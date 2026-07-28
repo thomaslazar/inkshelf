@@ -109,15 +109,118 @@ git commit -m "feat: expose when a cached epub was converted"
 
 ---
 
-### Task 2: Sort the Converted page
+### Task 2: Remove touch-on-serve; evict FIFO by conversion time
+
+`EpubCache.Touch` re-stamps a served file's write time so `EnforceCap` acts as approximate LRU. It is removed. Read section **A2** of the spec for the reasoning — the short version is that this cache bridges one expensive conversion to one download, and touch-on-serve protects already-consumed volumes while evicting the ones not yet fetched. Removing it also makes `ConvertedAtUtc` (Task 1) genuinely mean conversion time, which the next task relies on.
+
+**Files:**
+- Modify: `src/Inkshelf/Convert/EpubCache.cs` (delete `Touch`, reword `EnforceCap`'s comment)
+- Modify: `src/Inkshelf/Convert/ConvertService.cs:39` (drop the `Touch` call)
+- Modify: `docs/ARCHITECTURE.md:200`
+- Test: `tests/Inkshelf.Tests/ConvertServiceTests.cs`, `tests/Inkshelf.Tests/EpubCacheTests.cs`
+
+**Interfaces:**
+- Consumes: nothing from Task 1.
+- Produces: `EpubCache.Touch` no longer exists. `EnforceCap` still orders by `LastWriteTimeUtc` — unchanged code, new meaning (oldest conversion rather than least recently used).
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `tests/Inkshelf.Tests/ConvertServiceTests.cs`, reusing its existing `TempDir`, `DetailClient`, `DetailJson`, `TokenStoreWith` and `Service` helpers:
+
+```csharp
+    [Fact]
+    public async Task A_cache_hit_does_not_restamp_the_file()
+    {
+        // The cached EPUB's write time IS its conversion time, and /converted sorts
+        // on it. Serving a hit must not bump it — otherwise fetching an old comic
+        // would reorder it to "newest conversion", and cap eviction would protect
+        // volumes already on the reader while deleting ones not yet fetched.
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+        var target = new RenderTarget(100, 200, 1.0, false);
+        var path = cache.PathFor("item1", 1, 2, target.MaxW, target.MaxH);
+        File.WriteAllText(path, "epub");
+        var converted = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(path, converted);
+
+        var svc = Service(DetailClient(DetailJson("cbz", "T", "A", 1, 2)),
+            cache, new ConvertQueue(), TokenStoreWith("tok"));
+        var r = await svc.KickAsync("item1", fresh: false, target, default);
+
+        Assert.Equal(ConvertStatus.Done, r.Status);                    // it was a cache hit
+        Assert.Equal(converted, File.GetLastWriteTimeUtc(path));       // and it stayed put
+    }
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `dotnet test --filter "FullyQualifiedName~A_cache_hit_does_not_restamp"`
+Expected: FAIL — the write time comes back as roughly now instead of 2026-01-02, because `KickAsync` still calls `Touch`. This is the real red: the behaviour being removed.
+
+- [ ] **Step 3: Delete `Touch` and its call**
+
+In `src/Inkshelf/Convert/ConvertService.cs` line 39, drop the `Touch` call so the cache-hit branch becomes:
+
+```csharp
+        if (System.IO.File.Exists(path)) { return new KickResult(ConvertStatus.Done, path, downloadName); }
+```
+
+In `src/Inkshelf/Convert/EpubCache.cs`, delete the whole `Touch` method **and** its preceding comment block, then reword `EnforceCap`'s comment so it no longer claims LRU:
+
+```csharp
+    // Evict oldest-by-conversion-time entries until total cache bytes are under the
+    // cap. FIFO, not LRU, and deliberately so: this cache bridges one expensive
+    // conversion to one download, after which the EPUB lives on the reader. Nothing
+    // re-stamps a served file, so write time stays the conversion time — which is
+    // also what /converted sorts on. No-op when maxBytes <= 0 or already under.
+    // Best-effort (ignores IO races).
+```
+
+- [ ] **Step 4: Delete the now-meaningless test**
+
+Remove `EpubCacheTests.Touch_bumps_last_write_time` entirely (around line 97) — it tests a method that no longer exists.
+
+Leave `EpubCacheTests.EnforceCap_deletes_oldest_until_under_cap` untouched. It sets write times explicitly and asserts oldest-first eviction, which is exactly the FIFO behaviour that survives — it is the guard that this change didn't break eviction.
+
+- [ ] **Step 5: Run the tests**
+
+Run: `dotnet test`
+Expected: PASS, **244** tests — 244 from Task 1, plus the new one, minus the deleted `Touch` test.
+
+- [ ] **Step 6: Fix the env-var docs**
+
+`docs/ARCHITECTURE.md:200` is wrong on two counts — it says LRU, and its stated default is stale (1 GB, while `AbsOptions.MaxCacheBytes` is `5_368_709_120`). Replace the row:
+
+```
+| `MaxCacheBytes` | `1073741824` (1 GB) | LRU-evict the EPUB cache past this |
+```
+
+with:
+
+```
+| `MaxCacheBytes` | `5368709120` (5 GiB) | evict oldest conversions past this |
+```
+
+`README.md:140` already says "oldest entries are evicted past it" with the right default, so leave it alone.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add -A
+git commit -m "refactor: evict the epub cache FIFO, not touch-on-serve"
+```
+
+---
+
+### Task 3: Sort the Converted page
 
 **Files:**
 - Modify: `src/Inkshelf/Pages/Converted.cshtml.cs`
 - Test: `tests/Inkshelf.Tests/ConvertedRenderTests.cs`
 
 **Interfaces:**
-- Consumes: `CachedVariant.ConvertedAtUtc` from Task 1.
-- Produces: `ConvertedModel.Sort` (`string?`), `ConvertedModel.DescParam` (`string?`), `ConvertedModel.Desc` (`bool`), and `ConvertedModel.SortHref(string field)` returning the URL for toggling that field. Task 3 renders using these.
+- Consumes: `CachedVariant.ConvertedAtUtc` from Task 1, which means true conversion time only because Task 2 removed touch-on-serve.
+- Produces: `ConvertedModel.Sort` (`string?`), `ConvertedModel.DescParam` (`string?`), `ConvertedModel.Desc` (`bool`), and `ConvertedModel.SortHref(string field)` returning the URL for toggling that field. Task 4 renders using these.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -369,7 +472,7 @@ git commit -m "feat: sort the converted view, newest conversion first"
 
 ---
 
-### Task 3: The sortbar, plus docs
+### Task 4: The sortbar, plus docs
 
 **Files:**
 - Modify: `src/Inkshelf/Pages/Converted.cshtml`
@@ -379,7 +482,7 @@ git commit -m "feat: sort the converted view, newest conversion first"
 - Test: `tests/Inkshelf.Tests/ConvertedRenderTests.cs`
 
 **Interfaces:**
-- Consumes: `ConvertedModel.SortHref`, `.ActiveSort`, `.Desc` from Task 2.
+- Consumes: `ConvertedModel.SortHref`, `.ActiveSort`, `.Desc` from Task 3.
 - Produces: nothing consumed later.
 
 - [ ] **Step 1: Write the failing test**
@@ -442,7 +545,7 @@ Expected: no output, exit 0. If it reports changes, run `dotnet format Inkshelf.
 
 - [ ] **Step 5: Headless browser pass**
 
-**Do not add the sortbar assertion to the existing `converted-de` check.** That check runs *before* the Convert click in `Program.cs`, so nothing is converted yet, the page shows its empty state, and the Step 3 guard correctly hides the bar. Asserting there would fail.
+**Do not add the sortbar assertion to the existing `converted-de` check.** That check runs *before* the Convert click in `Program.cs`, so nothing is converted yet, the page shows its empty state, and the Step 3 guard in this task correctly hides the bar. Asserting there would fail.
 
 Instead add a **second** visit at the very end of the `UICHECK_AUTHED` block — after the failure-reason section, by which point the good `Neon Blade Vol. 1` conversion kicked off earlier has had ample time to finish. Waiting on the selector rather than a fixed sleep makes it deterministic:
 
@@ -518,3 +621,4 @@ If the uicheck change and the docs feel like separate concerns, split into two c
 - Each of the four sort links works, the active one shows an arrow, and clicking it flips direction.
 - A garbage `?sort=` value renders the default order rather than erroring.
 - Nothing sorts by `CachedVariant.MtimeMs`.
+- `EpubCache.Touch` no longer exists, and a cache hit leaves the file's write time alone.

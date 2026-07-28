@@ -59,6 +59,41 @@ take the **newest** `ConvertedAtUtc`. The existing code already dedupes to a set
 of item ids and recomputes row state from the current source file, so only the
 timestamp needs this reduction.
 
+### A2. Remove touch-on-serve; evict FIFO by conversion time
+
+`EpubCache.Touch` (called from `ConvertService.KickAsync` on every cache hit)
+re-stamped a served file's write time so `EnforceCap` behaved as approximate LRU.
+It is removed, along with its call site and its test.
+
+**Why.** LRU is right when a cache exists to serve repeated reads. This one
+exists to bridge exactly one gap — an expensive conversion to a single download —
+and once that download lands, the EPUB is on the e-reader and has served its
+purpose. Re-downloading is rare: a book you want to re-read stays on the device.
+
+Worse, touch-on-serve is actively inverted for the dominant workflow. Convert
+volumes 1–10 in a batch, then download one per day as you read. Each download
+marks the volume you have **already consumed** as hot, so when the cap trips
+eviction picks the coldest entries — the volumes not yet fetched, which are the
+ones still needed. FIFO evicts the oldest conversions, which are the ones most
+likely already pulled down.
+
+The counter-argument, recorded for honesty: a user whose workflow *does* involve
+re-downloading (two devices sharing one render target, or deleting finished books
+and re-reading weeks later) will occasionally pay a 60–90 s reconversion. It is
+non-destructive, and with `MaxCacheBytes` defaulting to 5 GiB most deployments
+never evict at all. Judged not worth keeping an inverted policy for.
+
+**Consequence, and why it matters here:** with nothing rewriting a cached EPUB
+after conversion, its `LastWriteTimeUtc` genuinely *is* its conversion time. So
+`ConvertedAtUtc` is an accurate name and the "Converted" sort label is truthful —
+without this, the field would have meant "converted, then bumped on each fetch".
+Regen via `?fresh=1` rewrites the file, so a re-converted entry correctly becomes
+the newest.
+
+`EnforceCap`'s ordering code is unchanged — it already orders by
+`LastWriteTimeUtc`. Only its comment and the `MaxCacheBytes` documentation change,
+from "least recently used" to "oldest conversion".
+
 ### B. Query binding
 
 Mirrors `Library.cshtml.cs`:
