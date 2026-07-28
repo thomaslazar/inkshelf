@@ -71,18 +71,26 @@ public class ConvertServiceTests
     }
 
     [Fact]
-    public async Task KickAsync_touches_cached_file_on_serve()
+    public async Task A_cache_hit_does_not_restamp_the_file()
     {
+        // The cached EPUB's write time IS its conversion time, and /converted sorts
+        // on it. Serving a hit must not bump it — otherwise fetching an old comic
+        // would reorder it to "newest conversion", and cap eviction would protect
+        // volumes already on the reader while deleting ones not yet fetched.
         using var dir = new TempDir();
         var cache = new EpubCache(dir.Path);
-        var path = cache.PathFor("item1", 123, 456, 100, 200);
+        var target = new RenderTarget(100, 200, 1.0, false);
+        var path = cache.PathFor("item1", 1, 2, target.MaxW, target.MaxH);
         File.WriteAllText(path, "epub");
-        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-2));
-        var svc = Service(DetailClient(DetailJson("cbz", "My: Comic", "Jane Doe", 123, 456)),
+        var converted = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(path, converted);
+
+        var svc = Service(DetailClient(DetailJson("cbz", "T", "A", 1, 2)),
             cache, new ConvertQueue(), TokenStoreWith("tok"));
-        var r = await svc.KickAsync("item1", fresh: false, new RenderTarget(100, 200, 1.0, false), default);
-        Assert.Equal(ConvertStatus.Done, r.Status);
-        Assert.True(File.GetLastWriteTimeUtc(path) > DateTime.UtcNow.AddMinutes(-1));
+        var r = await svc.KickAsync("item1", fresh: false, target, default);
+
+        Assert.Equal(ConvertStatus.Done, r.Status);                    // it was a cache hit
+        Assert.Equal(converted, File.GetLastWriteTimeUtc(path));       // and it stayed put
     }
 
     [Fact]

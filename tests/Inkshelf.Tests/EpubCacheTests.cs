@@ -94,22 +94,6 @@ public class EpubCacheTests
     }
 
     [Fact]
-    public void Touch_bumps_last_write_time()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "inkshelf-cache-" + Guid.NewGuid().ToString("N"));
-        var cache = new Inkshelf.Convert.EpubCache(dir);
-        try
-        {
-            var p = Path.Combine(dir, "x-1-1-10x10.epub");
-            File.WriteAllBytes(p, new byte[10]);
-            File.SetLastWriteTimeUtc(p, DateTime.UtcNow.AddDays(-1));
-            cache.Touch(p);
-            Assert.True(File.GetLastWriteTimeUtc(p) > DateTime.UtcNow.AddMinutes(-1));
-        }
-        finally { Directory.Delete(dir, true); }
-    }
-
-    [Fact]
     public void ListVariants_round_trips_PathFor_including_hyphenated_id_and_grayscale()
     {
         var dir = TempDirPath();
@@ -139,5 +123,23 @@ public class EpubCacheTests
         File.WriteAllText(Path.Combine(dir, "garbage.epub"), "e");
         File.WriteAllText(Path.Combine(dir, "i1-100-200-1730x2246.epub"), "e"); // valid
         Assert.Single(c.ListVariants());
+    }
+
+    [Fact]
+    public void ListVariants_reports_the_files_own_write_time_not_the_source_mtime()
+    {
+        using var dir = new TempDir();
+        var cache = new EpubCache(dir.Path);
+
+        // The filename's mtime field is the SOURCE ebook's mtime (cache-key input).
+        // Give the file a write time deliberately unrelated to it, so a mix-up shows.
+        var path = cache.PathFor("item1", 111, 222, 375, 812);
+        File.WriteAllText(path, "epub");
+        var written = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(path, written);
+
+        var v = Assert.Single(cache.ListVariants());
+        Assert.Equal(222, v.MtimeMs);                  // still the source mtime
+        Assert.Equal(written, v.ConvertedAtUtc);       // and the real conversion time
     }
 }

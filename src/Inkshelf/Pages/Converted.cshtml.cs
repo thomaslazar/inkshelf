@@ -23,24 +23,63 @@ public class ConvertedModel : PageModel
     public bool LoadError { get; private set; }
     public bool AnyConverting { get; private set; }
 
+    // desc binds as a STRING on purpose: ABS wants desc=1 and Razor's bool binder
+    // rejects "1", so a bool here makes every descending direction unreachable.
+    // Same rule as the library listing.
+    [FromQuery(Name = "sort")] public string? Sort { get; set; }
+    [FromQuery(Name = "desc")] public string? DescParam { get; set; }
+    public bool Desc => DescParam == "1";
+
+    // Two-state toggle, unlike the library listing's off/asc/desc cycle: this list
+    // is sorted locally, so there is no "let the server decide" state to return to.
+    // Clicking the active field flips direction; `converted` starts descending
+    // because newest-first is the point of the page.
+    public string SortHref(string field)
+    {
+        var nextDesc = ActiveSort == field ? !AppliedDesc : field == ConvertedKey;
+        return $"/converted?sort={field}" + (nextDesc ? "&desc=1" : "");
+    }
+
+    public const string ConvertedKey = "converted";
+    private static readonly string[] Keys = [ConvertedKey, "series", "title", "author"];
+
+    // `sort` is client-supplied, so anything unrecognised — absent, misspelled or
+    // hostile — means "the default view", which is newest conversion FIRST. `Desc`
+    // is what the query asked for; `AppliedDesc` is what the page actually did, and
+    // it keys off recognition, not off `Sort is null`: with a garbage value, `Desc`
+    // would be false and the page would render oldest-first, which is not the
+    // default it claims to fall back to. The two diverge on the default view.
+    private bool IsRecognised => Keys.Contains(Sort);
+    public string ActiveSort => IsRecognised ? Sort! : ConvertedKey;
+
+    // `Desc` is what the query asked for; `AppliedDesc` is what the page actually
+    // did. They differ on the default view (no recognised `sort`), where the list
+    // still renders newest-first even though `Desc` (from a missing/garbage
+    // `desc` param) is false. The arrow and hrefs must reflect the applied
+    // direction, not the raw query value, or they lie about what's on screen.
+    public bool AppliedDesc => IsRecognised ? Desc : true;
+
     public async Task<IActionResult> OnGetAsync(CancellationToken ct = default)
     {
         var settings = DeviceSettings.Read(Request);
         var target = ScreenTarget.FromCookie(Request.Cookies["scr"], settings.Retina, settings.Grayscale);
 
-        // Cache entries for THIS device. Only the SET of item ids matters here —
-        // state is recomputed below from the current ebook file's size/mtime, so
-        // which cached variant existed is irrelevant.
-        var ids = new HashSet<string>();
+        // Cache entries for THIS device. Only the SET of item ids matters for the
+        // batch fetch — row state is recomputed below from the current ebook file —
+        // but keep each item's newest conversion time for the default sort. An item
+        // can have more than one matching variant if the source changed and the
+        // older entry hasn't been evicted.
+        var convertedAt = new Dictionary<string, DateTime>();
         foreach (var v in _cache.ListVariants())
         {
             if (v.MaxW != target.MaxW || v.MaxH != target.MaxH || v.Grayscale != target.Grayscale) continue;
-            ids.Add(v.ItemId);
+            if (!convertedAt.TryGetValue(v.ItemId, out var seen) || v.ConvertedAtUtc > seen)
+                convertedAt[v.ItemId] = v.ConvertedAtUtc;
         }
-        if (ids.Count == 0) return Page();
+        if (convertedAt.Count == 0) return Page();
 
         List<AbsBatchItem> items;
-        try { items = await _api.GetItemsBatchAsync(ids.ToList(), ct); }
+        try { items = await _api.GetItemsBatchAsync(convertedAt.Keys.ToList(), ct); }
         catch (HttpRequestException) { LoadError = true; return Page(); }
 
         var finished = await FetchFinishedAsync(ct);
@@ -60,14 +99,25 @@ public class ConvertedModel : PageModel
                 state, "/converted", finished.Contains(it.Id)), m.Metadata));
         }
 
-        // series → sequence → title; items with no series sort last.
-        Rows = built
-            .OrderBy(b => HasSeries(b.Meta) ? 0 : 1)
-            .ThenBy(b => SeriesKey(b.Meta), StringComparer.OrdinalIgnoreCase)
-            .ThenBy(b => SeqKey(b.Meta))
-            .ThenBy(b => b.Row.Item.Media?.Metadata?.Title ?? "", StringComparer.OrdinalIgnoreCase)
-            .Select(b => b.Row)
-            .ToList();
+        IEnumerable<(ItemRowModel Row, AbsBatchMetadata? Meta)> ordered = ActiveSort switch
+        {
+            "series" => built
+                .OrderBy(b => HasSeries(b.Meta) ? 0 : 1)
+                .ThenBy(b => SeriesKey(b.Meta), StringComparer.OrdinalIgnoreCase)
+                .ThenBy(b => SeqKey(b.Meta))
+                .ThenBy(b => TitleKey(b), StringComparer.OrdinalIgnoreCase),
+            "title" => built.OrderBy(b => TitleKey(b), StringComparer.OrdinalIgnoreCase),
+            "author" => built
+                .OrderBy(b => AuthorKey(b.Meta), StringComparer.OrdinalIgnoreCase)
+                .ThenBy(b => TitleKey(b), StringComparer.OrdinalIgnoreCase),
+            // ConvertedAtUtc, not the source mtime in the filename.
+            _ => built
+                .OrderBy(b => convertedAt.TryGetValue(b.Row.Item.Id, out var at) ? at : DateTime.MinValue)
+                .ThenBy(b => TitleKey(b), StringComparer.OrdinalIgnoreCase),
+        };
+        var rows = ordered.Select(b => b.Row).ToList();
+        if (AppliedDesc) rows.Reverse();
+        Rows = rows;
         return Page();
     }
 
@@ -84,4 +134,10 @@ public class ConvertedModel : PageModel
         var seq = m?.Series is { Count: > 0 } s ? s[0].Sequence : null;
         return double.TryParse(seq, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : double.MaxValue;
     }
+
+    private static string TitleKey((ItemRowModel Row, AbsBatchMetadata? Meta) b) =>
+        b.Row.Item.Media?.Metadata?.Title ?? "";
+
+    private static string AuthorKey(AbsBatchMetadata? m) =>
+        m?.Authors is { Count: > 0 } a ? a[0].Name : "";
 }
