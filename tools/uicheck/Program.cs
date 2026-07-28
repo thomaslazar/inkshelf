@@ -187,6 +187,12 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         Expect("converted-sorted-de", await page.InnerTextAsync("body"),
             "Sortierung:", "Konvertiert", "Serien", "Titel", "Autor");
 
+        // The retired checkmark must be gone and no download arrow present yet:
+        // nothing has been downloaded in this run.
+        var convertedHtml = await page.ContentAsync();
+        if (convertedHtml.Contains("EPUB &#10003;", StringComparison.Ordinal))
+            failures.Add("converted-sorted-de: the retired EPUB checkmark is still rendered");
+
         Console.WriteLine("[authed] index / library / item / converted / convert-click / convert-failed (toolarge/badarchive/converterror) / failed-row / converted-sorted captured");
     }
     catch (Exception ex)

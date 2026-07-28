@@ -110,6 +110,7 @@ public class ConvertWorkerTests
     private static ConvertWorker Worker(ConvertQueue queue, IServiceScopeFactory scopes, EpubCache cache,
         long maxArchiveBytes = long.MaxValue) =>
         new(queue, scopes, new EpubConverter(), new ConvertLock(), cache,
+            new DownloadMarks(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "marks-" + Guid.NewGuid().ToString("N"))),
             new AbsOptions { MaxConcurrentConversions = 1, MaxArchiveBytes = maxArchiveBytes, MaxCacheBytes = long.MaxValue },
             NullLogger<ConvertWorker>.Instance);
 

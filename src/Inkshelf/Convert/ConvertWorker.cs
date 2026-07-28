@@ -17,19 +17,21 @@ public sealed class ConvertWorker : BackgroundService
     private readonly EpubConverter _converter;
     private readonly ConvertLock _lock;
     private readonly EpubCache _cache;
+    private readonly DownloadMarks _marks;
     private readonly AbsOptions _options;
     private readonly ILogger<ConvertWorker> _logger;
 
     public ConvertWorker(ConvertQueue queue, IServiceScopeFactory scopes, EpubConverter converter,
-        ConvertLock convertLock, EpubCache cache, AbsOptions options, ILogger<ConvertWorker> logger)
+        ConvertLock convertLock, EpubCache cache, DownloadMarks marks, AbsOptions options, ILogger<ConvertWorker> logger)
     {
         _queue = queue; _scopes = scopes; _converter = converter;
-        _lock = convertLock; _cache = cache; _options = options; _logger = logger;
+        _lock = convertLock; _cache = cache; _marks = marks; _options = options; _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _cache.SweepTemp(); // clear orphan .tmp from a prior crash/shutdown
+        _cache.SweepTemp();          // clear orphan .tmp from a prior crash/shutdown
+        _marks.Prune(TimeSpan.FromDays(30));   // forget devices that stopped visiting
 
         var loops = Math.Max(1, _options.MaxConcurrentConversions);
         var tasks = new Task[loops];

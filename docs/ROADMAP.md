@@ -82,22 +82,6 @@ Settings to add to the per-device settings system:
     styling, so it needs a layout check.
   - **The engine may simply have no form-login password manager**, in which case
     there is nothing to fix and the item should be closed as won't-fix.
-- **Mark files as already downloaded (per device).** Track which files this device
-  has downloaded and show a marker on the row, so you can tell at a glance whether
-  you already grabbed volume 4 and don't fetch it twice. Covers both raw ebook
-  downloads and converted EPUBs. Distinct from the shipped read/unread toggle:
-  that is per-*user* ABS media progress and means "I read this", whereas this is
-  per-*device* and means "the file is on this reader".
-  Promising approach, no JS needed: the download itself is a plain `<a>` hitting
-  our own endpoint, so the download **response** can `Set-Cookie` and append the
-  id — automatic rather than a thing you have to remember to tick, which is the
-  whole point. Key on item id plus file ino, since the detail page offers
-  per-file downloads and a multi-file item needs per-file marks.
-  Open question is the cookie ceiling: ~4 KB, ABS ids are UUIDs, and the cookie
-  rides every request on a slow e-ink connection. Likely wants a short id hash
-  (first ~8 hex chars) plus a rolling cap with FIFO eviction — a "recently
-  downloaded" window, not a permanent ledger. Keep it in its **own** cookie, not
-  the settings one: settings are small and stable, this list grows and churns.
 - **Screenful pagination (investigation).** Spike whether we can size a page to
   exactly one screenful instead of a fixed 10. The `scr` cookie already reports
   the viewport (CSS w×h×dpr), so server-side we could compute
@@ -112,6 +96,15 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Downloaded-file marks** — each download action shows whether *this device*
+  already fetched *that file* (`↓`), so working through a batch doesn't mean
+  re-downloading or skipping one. Keyed on a device id minted into the settings
+  cookie, with marks in a server-side file per device; deliberately not keyed on
+  the render target (a variant key, not an identity) or the ABS user (answers the
+  wrong question). The old `EPUB ✓` went with it: the label already says `EPUB`
+  rather than `Convert`, so the checkmark was decoration, and dropping it leaves
+  `↓` as the only glyph in that column. Marks for devices that stop visiting are
+  pruned after 30 days.
 - **Converted view sorting** — `/converted` defaults to newest conversion first
   (the one you came to fetch) with Converted / Series / Title / Author sort links.
   The timestamp is the cached EPUB's own write time, exposed as
