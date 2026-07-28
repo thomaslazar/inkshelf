@@ -20,7 +20,7 @@ tidier (see Alternatives).
 
 ## Scope
 
-**In:** a per-device identity, a server-side mark store, marks written by both
+**In:** retiring the `EPUB ✓` checkmark, a per-device identity, a server-side mark store, marks written by both
 download endpoints, an indicator on each download action wherever rows render
 (library listing, `/converted`, item detail file list), and pruning.
 
@@ -133,30 +133,42 @@ actually accurate: `HttpResponse.OnCompleted` also fires on client abort, and a
 mid-stream failure from ABS arrives after the response is already a 200 with a
 partial body, so neither approach can detect that.
 
-### E. Reading — and the `✓` collision
+### E. Reading — and retiring the `EPUB ✓` checkmark
 
-`_ConvertAction.cshtml` **already renders `EPUB ✓`**, where `✓` means "already
-converted, downloads right away". A second `✓` meaning "downloaded" would be
-ambiguous.
-
-Resolution: the downloaded indicator is **` ↓` appended to the action's existing
-label**.
+The downloaded indicator is **` ↓` appended to the action's existing label**, and
+**the existing `✓` on the cached-EPUB action is removed** as part of this change.
 
 ```
+Herunterladen            raw ebook not yet pulled
 Herunterladen ↓          raw ebook already pulled to this device
-EPUB ✓                   converted, not yet pulled
-EPUB ✓ ↓                 converted and pulled
+Konvertieren             not converted (clicking costs 60–90 s)
+EPUB                     converted, not yet pulled
+EPUB ↓                   converted and pulled
 ```
 
-`↓` is chosen because it is already proven to render on the target e-ink engine —
-the sort bar shipped it and it displays correctly on the device. Uniformly
-appending one glyph keeps a single rule and needs no new catalog keys.
+**Why the `✓` goes.** It was introduced (`f8829d2`) to mark "a row whose
+converted EPUB is already cached for this device" — i.e. clicking is instant
+rather than a conversion. But the *label already says that*: the states render as
+different words (`Konvertieren` vs `EPUB`, 12 characters against 4), so the
+glyph decorates a signal that is already unmissable. Keeping it would also force
+`EPUB ✓ ↓` — two glyphs of different meaning side by side, in the app's most
+crowded column. Removing it makes `↓` the only glyph in that column, with exactly
+one meaning.
 
-**This is the one decision only the device can settle.** The actions column is
-narrow, and the four-link sort bar is already the most crowded element in the
-app. If `EPUB ✓ ↓` wraps or overflows, the fallback is a label swap
-(`Herunterladen` → `Heruntergeladen`) rather than a glyph, at the cost of a new
-catalog key and a longer string. Verify before merge; do not silently adjust CSS.
+`↓` is chosen because it is already proven on the target e-ink engine: the sort
+bar shipped it and it renders correctly on the device.
+
+The `title="Already converted — downloads right away"` stays, so the explanation
+survives for any client that can show it.
+
+**Test consequence.** Six assertions across `ConvertedRenderTests`,
+`ItemRenderTests` and `ListingRenderTests` currently use `"EPUB &#10003;"` as the
+discriminator for "this row is cached", including a negative one
+(`ListingRenderTests:198`) proving a grayscale variant is not cached for a colour
+device. They need a new discriminator. Use **the absence of `data-warm`** — a
+cached row links straight to the file, while every other state carries
+`data-warm` for the JS kick. Matching bare `"EPUB"` is not sufficient: it is a
+substring that can occur in other page text.
 
 Marks render wherever a download action does: the library listing, `/converted`,
 and the item detail file list.
@@ -189,8 +201,11 @@ device, so a scan is cheap.
 - A download on a device with no id mints one and records the mark.
 - `{itemId}` and `{itemId}:{ino}` are distinct keys — a primary-ebook mark must
   not mark a specific file, or vice versa.
-- A marked item renders the indicator; an unmarked one does not; and the
-  `EPUB ✓ ↓` combination renders both states distinctly.
+- A marked item renders the indicator; an unmarked one does not.
+- A cached-but-not-downloaded action renders `EPUB` with no glyph; a
+  cached-and-downloaded one renders `EPUB ↓`.
+- The retired `✓` is gone: no rendered page contains `EPUB &#10003;`, and the
+  cached-vs-uncached tests discriminate on `data-warm` instead.
 - Two device ids do not see each other's marks.
 - A marks file older than 30 days is pruned; a fresh one is not.
 - A traversal-shaped `did` (`../../etc/passwd`, `..%2f..`) yields no marks and
@@ -203,7 +218,7 @@ device, so a scan is cheap.
 
 | Risk | Mitigation |
 |---|---|
-| `EPUB ✓ ↓` overflows the narrow actions column | Verify on device before merge; documented fallback is a label swap |
+| The actions column overflows on a narrow screen | Retiring the `✓` shortens it rather than lengthening it, so this change is net-neutral at worst; still verify on device before merge, and don't silently adjust CSS |
 | A cache glob becomes recursive and eats `marks/` | Explicit test asserting `EnforceCap` leaves marks alone |
 | Minting on a GET races and churns ids | Mint only on settings writes and downloads, never on page views |
 | A crafted `did` escapes the marks directory | `SanitizeId` allowlist; blank/invalid means no marks, never a fallback filename; covered by a test |
