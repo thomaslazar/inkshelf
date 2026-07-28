@@ -129,6 +129,15 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await Shot("converted-de");
         Expect("converted-de", await page.InnerTextAsync("body"), "Konvertiert");
 
+        // Item page of a COMIC — the only place ↻ Regenerate is offered now that
+        // listing rows have dropped it, so nothing else screenshots that button.
+        await page.GotoAsync(libUrl);
+        await page.FillAsync("input[name=q]", "Neon Blade");
+        await page.PressAsync("input[name=q]", "Enter");
+        await page.ClickAsync("a[href^='/item/']:has-text('Neon Blade')");
+        await Shot("item-comic-de");
+        Expect("item-comic-de", await page.InnerTextAsync("body"), "Neu erzeugen", "Herunterladen");
+
         // Live Convert-button click: label must flip to German, never a raw entity.
         await page.GotoAsync(libUrl);
         await page.FillAsync("input[name=q]", "Neon Blade");

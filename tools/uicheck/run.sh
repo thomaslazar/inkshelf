@@ -47,9 +47,18 @@ trap 'kill $APP 2>/dev/null' EXIT
 curl --retry-connrefused --retry 60 --retry-delay 1 -s -o /dev/null "http://127.0.0.1:$PORT/login" \
   || { echo "server never came up:"; tail -20 "$SCRIPT_DIR/app.log"; exit 2; }
 
-# Run the checks (no-auth + authenticated).
+# Run the checks (no-auth + authenticated) at the default e-reader viewport.
 BASE_URL="http://127.0.0.1:$PORT" OUT_DIR="$SCRIPT_DIR/shots" UICHECK_AUTHED=1 \
   dotnet run --project "$SCRIPT_DIR/uicheck.csproj" -c Debug --no-launch-profile
 RC=$?
-echo "screenshots: $SCRIPT_DIR/shots"
+
+# Second pass at phone width, into shots/phone/. The layout has a 600px
+# breakpoint and the e-reader viewport sits above it, so the default pass alone
+# never exercises the narrow branch.
+BASE_URL="http://127.0.0.1:$PORT" OUT_DIR="$SCRIPT_DIR/shots/phone" UICHECK_AUTHED=1 \
+  VIEWPORT_W=390 VIEWPORT_H=844 \
+  dotnet run --project "$SCRIPT_DIR/uicheck.csproj" -c Debug --no-launch-profile
+[ $? -ne 0 ] && RC=1
+
+echo "screenshots: $SCRIPT_DIR/shots (phone: $SCRIPT_DIR/shots/phone)"
 exit $RC

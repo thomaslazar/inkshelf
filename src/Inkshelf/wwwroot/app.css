@@ -1,31 +1,53 @@
-body { font-family: serif; margin: 1rem; line-height: 1.5; color: #000; background: #fff; }
+body { font-family: serif; font-size: 1.1rem; margin: 1rem; line-height: 1.5; color: #000; background: #fff; }
 a { color: #000; }
 img { max-width: 100%; height: auto; }
+
+/* Shared tap target. Sized for a finger, not a mouse: on a 6" e-ink panel
+   (~758 CSS px over ~90mm of glass, ~8.4 px/mm) a bare text link is ~24px tall
+   and lands well inside a 8-10mm fingertip contact patch. Padding alone gets
+   this to ~44px, so no min-height is needed.
+   The border is load-bearing, not decoration — it's what makes the target
+   boundary visible, which an underline never did.
+   Used on both <a> and <button>: rows mix links (Download) with form submits
+   (Mark read), so `font: inherit` is required or the button reverts to the UA
+   sans-serif. Spacing via margin — the target engine ignores flex `gap`. */
+.btn { display: inline-block; border: 1px solid #000; padding: .55rem .7rem;
+       margin: 0 .5rem .5rem 0; font: inherit; color: #000; background: #fff;
+       text-decoration: none; line-height: 1.2; cursor: pointer; }
+/* E-ink gives no hover and a slow repaint; an inverted press is the only
+   feedback that reliably shows up. */
+.btn:active { color: #fff; background: #000; }
 /* No flex `gap` / `object-fit` — the Tolino's browser ignores both. Use a
    fixed square cover slot (so text always starts at the same left offset) with
    a margin for spacing; the image keeps its natural ratio via max-width/height. */
 .item { display: flex; align-items: flex-start; padding: .5rem 0; border-bottom: 1px solid #ccc; }
-.item .cover { flex: 0 0 72px; width: 72px; height: 72px; margin-right: 1rem; text-align: center; }
+/* inline-block, not the default inline: the flex item is the wrapping
+   .cover-link anchor, so .cover is an ordinary inline span and width/height are
+   ignored on those. Without this the slot collapses to the content width — a
+   narrow strip for a placeholder letter, nothing at all for a cover that fails
+   to load — and the "text always starts at the same left offset" promise above
+   silently doesn't hold. */
+.item .cover-link { flex: 0 0 auto; }
+.item .cover { display: inline-block; width: 72px; height: 72px; margin-right: 1rem; text-align: center; }
 .item .cover img { max-width: 72px; max-height: 72px; width: auto; height: auto; }
 /* Placeholder shown when an item has no cover (title initial in a grey box). */
 .item .cover.placeholder { background: #eee; color: #999; font-size: 2rem; line-height: 72px; }
-/* max-width (not just flex:1 + min-width:0) because the Tolino's old flexbox
-   doesn't reliably reserve the fixed .actions column against a long, wrapping
-   body — without the cap, long titles overflow and render under the actions.
-   Mirrors the row's fixed slots: cover 72px + 1rem, actions 8.5rem + .75rem. */
-.item .body { flex: 1 1 auto; min-width: 0; max-width: calc(100% - 72px - 1rem - 8.5rem - .75rem); }
-nav.pager a, nav.pager span { margin-right: 1rem; }
+/* No max-width cap and no fixed side column any more: the actions live on their
+   own line inside .body, so nothing sits beside the title to collide with. */
+.item .body { flex: 1 1 auto; min-width: 0; }
+nav.pager span { margin-right: 1rem; }
 .sortbar { margin: .5rem 0; }
-/* Fixed-width right column so the middle (title/author) column does all the
-   line-wrapping and Download always sits at the same place. flex-basis + an
-   explicit width for the Tolino's older flex implementation. */
-.item .actions { flex: 0 0 8.5rem; width: 8.5rem; margin-left: .75rem; text-align: left; }
-.item .actions > a, .item .actions .convert { display: block; margin-bottom: .35rem; }
-.item .actions .regen { margin-left: .4rem; }
-/* No nowrap: a long localized action label ("Konvertieren (erneut)") plus the
-   Failed-state "why?" link must wrap WITHIN the fixed actions column, not run off
-   a narrow e-reader screen. "why?" gets its own line so it stays legible. */
-.item .actions .convert .why { display: block; }
+.sortbar-label { margin-right: .3rem; }
+/* Padded boxes instead of "·"-separated text links — the padding IS the
+   separation. Inline-block + margin (no flex gap) for the old engine. */
+.sortbar a, .tabs a, .tabs span { display: inline-block; padding: .5rem .6rem; margin: 0 .25rem .25rem 0; }
+/* Actions render below the title across the full row width rather than in a
+   fixed 8.5rem column. Three boxes across ~660px puts their centres 15-25mm
+   apart instead of 3.6mm, and the long German labels ("Als gelesen markieren")
+   stop wrapping — the old column was what starved them. */
+.item .actions { margin-top: .5rem; }
+/* Inline so the form doesn't break the horizontal run of buttons. */
+.item .actions .read-form, .item .actions .convert { display: inline; }
 /* Libraries list: large, full-width, well-separated tap targets so a device tap
    doesn't land on the wrong library. Block links (no flex gap for the Tolino). */
 .libraries { list-style: none; padding: 0; margin: 1rem 0; }
@@ -40,17 +62,19 @@ nav.pager a, nav.pager span { margin-right: 1rem; }
 .page-head { display: flex; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
 .crumb-sep { color: #666; }
 .fav-form { margin: 0 0 0 .6rem; }
-.fav-star { border: none; background: none; cursor: pointer; font-size: 1.8rem; line-height: 1; padding: 0; }
+/* Padding, not a bigger glyph: reaches a ~44px target without the star
+   dominating the heading it sits next to. */
+.fav-star { border: none; background: none; cursor: pointer; font-size: 1.8rem; line-height: 1; padding: .35rem .5rem; }
 .logo { text-align: center; }
 .logo img { max-width: 320px; width: 60%; height: auto; }
 .login-form { max-width: 320px; margin: 0 auto; text-align: center; }
 .login-form input { width: 100%; box-sizing: border-box; padding: .3rem; }
 .searchbar { margin-left: auto; }
-.searchbar input { padding: .2rem; }
+.searchbar input { padding: .5rem; font: inherit; }
 .logout-form { margin: 0 0 0 auto; }
 .tabs { margin: .5rem 0; font-weight: bold; }
 .totop { font-weight: normal; font-size: .8em; text-decoration: none; margin-left: .5rem; }
-.settings-link { margin-left: .4rem; flex: 0 0 auto; text-decoration: none; }
+.settings-link { margin-left: .4rem; flex: 0 0 auto; text-decoration: none; padding: .4rem; }
 .home-link { text-decoration: none; }
 .app-version { margin-top: 1.5rem; color: #666; }
 .settings-icon { display: block; height: 1.6em; width: auto; }
@@ -58,7 +82,10 @@ nav.pager a, nav.pager span { margin-right: 1rem; }
 .settings-form { margin: 1rem 0; }
 .settings-form label { cursor: pointer; }
 .item .actions .read-form { margin: 0; }
-.read-form .read-btn { display: block; border: none; background: none; padding: 0; margin-bottom: .35rem; font: inherit; color: #000; text-align: left; text-decoration: underline; cursor: pointer; }
+/* .btn now carries the whole look. This rule only stops the browser's default
+   button centring from fighting it — everything else it used to set (border,
+   padding, underline) is the button style's job. */
+.read-form .read-btn { text-align: left; }
 
 /* Item detail page — same defensive rules as .item (no flex gap / object-fit). */
 .detail { display: flex; align-items: flex-start; margin: 1rem 0; }
@@ -76,7 +103,31 @@ nav.pager a, nav.pager span { margin-right: 1rem; }
 .file-row { padding: .5rem 0; border-bottom: 1px solid #ccc; }
 .file-name { word-break: break-word; }
 .file-format { margin-left: .5rem; color: #666; }
-.file-actions { margin-top: .25rem; }
-.file-actions a { margin-right: .75rem; }
-.file-row .convert { white-space: nowrap; }
-.file-row .regen { margin-left: .4rem; }
+.file-actions { margin-top: .5rem; }
+/* No nowrap: this is the one place ↻ still exists, and it carries a full label
+   now, so the run must be free to wrap onto a second line. */
+.file-row .convert { display: inline; }
+
+/* Narrow screens (phones). One width breakpoint, deliberately not device
+   detection: `@media (monochrome)` reports 0 on e-ink, and `(update: slow)` —
+   the feature designed for exactly this — postdates the target engine by years,
+   so it would work on hardware we don't have and not on hardware we do.
+   `max-width` predates everything the engine could be missing.
+   Nothing here is e-ink-specific: big targets and high contrast are simply the
+   right design, and the phone layout only broke because a fixed side column
+   didn't fit in 390px. */
+@media (max-width: 600px) {
+    body { margin: .5rem; }
+    .item .cover { flex: 0 0 48px; width: 48px; height: 48px; margin-right: .6rem; }
+    .item .cover img { max-width: 48px; max-height: 48px; }
+    .item .cover.placeholder { font-size: 1.4rem; line-height: 48px; }
+    /* Full-width stacked beats wrapped horizontal here — still ~44px tall, and
+       the full width keeps neighbours unambiguous. width+border-box because a
+       <button> with display:block still shrink-to-fits; only the <a>s would
+       stretch otherwise, and Mark read would end up the odd one out. */
+    .item .actions .btn { display: block; width: 100%; box-sizing: border-box; margin-right: 0; }
+    .item .actions .read-form, .item .actions .convert { display: block; }
+    .detail-cover { flex: 0 0 96px; width: 96px; }
+    .detail-cover img { max-width: 96px; max-height: 144px; }
+    .searchbar { margin-left: 0; width: 100%; }
+}

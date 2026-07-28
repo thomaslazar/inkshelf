@@ -12,9 +12,11 @@ using Microsoft.Extensions.Http;
 namespace Inkshelf.Tests;
 
 // Renders a real /library/{id} response end-to-end (WebApplicationFactory +
-// stubbed ABS) and asserts the per-row convert markup. Locks down a real
-// regression: the regen "↻" anchor must stay a PLAIN link (no data-warm) or
-// the poll script overwrites its glyph, producing a duplicate "EPUB" row.
+// stubbed ABS) and asserts the per-row convert markup. Listing rows must carry
+// NO regen "↻" action — it was a ~14px target wedged beside Convert, and a
+// mistap costs a real conversion run. The regen link (and the regression that
+// it must stay a PLAIN link, or the poll script overwrites its glyph) now lives
+// on the item page; see ItemRenderTests.
 public class ListingRenderTests
 {
     private sealed class TempDir : IDisposable
@@ -95,22 +97,12 @@ public class ListingRenderTests
         return req;
     }
 
-    // Isolate the `class="regen"` anchor so a whole-page DoesNotContain check
-    // doesn't get tripped up by a converting row's primary anchor legitimately
-    // carrying data-warm.
-    private static string RegenAnchor(string html)
-    {
-        var match = Regex.Match(html, "<a class=\"regen\"[^>]*>");
-        Assert.True(match.Success, "Expected a regen anchor in the rendered listing.");
-        return match.Value;
-    }
-
-    // Isolate the row's PRIMARY convert anchor (the one before the regen ↻
-    // link) — a whole-page DoesNotContain("data-warm") would false-fail on the
-    // layout's own poll script, which references the attribute by name.
+    // Isolate the row's convert anchor — a whole-page DoesNotContain("data-warm")
+    // would false-fail on the layout's own poll script, which references the
+    // attribute by name.
     private static string PrimaryConvertAnchor(string html)
     {
-        var match = Regex.Match(html, $"<a href=\"/convert/{ItemId}\\?return=[^\"]*\"[^>]*>[^<]*</a>");
+        var match = Regex.Match(html, $"<a [^>]*href=\"/convert/{ItemId}\\?return=[^\"]*\"[^>]*>[^<]*</a>");
         Assert.True(match.Success, "Expected a primary convert anchor in the rendered listing.");
         return match.Value;
     }
@@ -210,7 +202,7 @@ public class ListingRenderTests
     }
 
     [Fact]
-    public async Task Converting_row_has_data_warm_and_poll_and_noscript_refresh_but_regen_stays_plain()
+    public async Task Converting_row_has_data_warm_and_poll_and_noscript_refresh_and_no_regen()
     {
         using var cacheDir = new TempDir();
         using var keysDir = new TempDir();
@@ -233,11 +225,11 @@ public class ListingRenderTests
         Assert.Contains("Converting&#x2026;", html);
         Assert.Contains("<noscript><meta http-equiv=\"refresh\" content=\"30\" /></noscript>", html);
 
-        Assert.DoesNotContain("data-warm", RegenAnchor(html));
+        Assert.DoesNotContain("class=\"btn regen\"", html);
     }
 
     [Fact]
-    public async Task Cached_row_renders_plain_epub_link_and_omits_refresh_and_regen_stays_plain()
+    public async Task Cached_row_renders_plain_epub_link_and_omits_refresh_and_no_regen()
     {
         using var cacheDir = new TempDir();
         using var keysDir = new TempDir();
@@ -257,7 +249,7 @@ public class ListingRenderTests
         Assert.DoesNotContain("data-warm", PrimaryConvertAnchor(html));
         Assert.DoesNotContain("<meta http-equiv=\"refresh\"", html);
 
-        Assert.DoesNotContain("data-warm", RegenAnchor(html));
+        Assert.DoesNotContain("class=\"btn regen\"", html);
     }
 
     // Task 6: row-state must be keyed on the SAME RenderTarget (scr probe + the

@@ -10,19 +10,22 @@
     @switch (Model.State)
     {
         case ConvertRowState.Cached:
-            <a href="@baseHref" title="@L["Already converted — downloads right away"]">@if (Model.Downloaded) { <text>EPUB &#8595;</text> } else { <text>EPUB</text> }</a>
+            <a class="btn" href="@baseHref" title="@L["Already converted — downloads right away"]">@if (Model.Downloaded) { <text>EPUB &#8595;</text> } else { <text>EPUB</text> }</a>
             break;
         case ConvertRowState.Converting:
-            <a href="@baseHref" data-warm data-poll data-why="@whyHref">@L["Converting…"]</a>
+            <a class="btn" href="@baseHref" data-warm data-poll data-why="@whyHref">@L["Converting…"]</a>
             break;
         case ConvertRowState.Failed:
-            <a href="@baseHref" data-warm data-why="@whyHref">@L["Convert (retry)"]</a>
-            <a class="why" href="@whyHref">@L["why?"]</a>
+            <a class="btn" href="@baseHref" data-warm data-why="@whyHref">@L["Convert (retry)"]</a>
+            <a class="btn why" href="@whyHref">@L["why?"]</a>
             break;
         default:
-            <a href="@baseHref" data-warm data-why="@whyHref">@L["Convert"]</a>
+            <a class="btn" href="@baseHref" data-warm data-why="@whyHref">@L["Convert"]</a>
             break;
     }
-    @* Plain link (no data-warm): the ↻ glyph must not become status text. *@
-    <a class="regen" href="@freshHref" title="@L["Regenerate"]">&#8635;</a>
+    @if (Model.ShowRegen)
+    {
+        @* Plain link (no data-warm): the ↻ glyph must not become status text. *@
+        <a class="btn regen" href="@freshHref" title="@L["Regenerate"]">&#8635; @L["Regenerate"]</a>
+    }
 </span>

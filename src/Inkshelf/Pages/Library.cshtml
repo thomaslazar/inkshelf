@@ -17,7 +17,7 @@
     </form>
     <form class="searchbar" method="get" action="/library/@Model.Id">
         <input type="search" name="q" value="@Model.Q" placeholder="@L["Search…"]" />
-        <button type="submit">@L["Search"]</button>
+        <button type="submit" class="btn">@L["Search"]</button>
     </form>
     <a class="settings-link" href="/settings" title="@L["Settings"]"><img src="~/img/gear-black.png" alt="@L["Settings"]" class="settings-icon" width="24" height="24" /></a>
 </div>
@@ -74,14 +74,15 @@ else
     {
         <p>@L["Filtered by"] <strong>@L[Model.FilterType!]@(Model.FilterName is null ? "" : $": {Model.FilterName}")</strong> · <a href="/library/@Model.Id">@L["clear"]</a></p>
     }
+    @* No "·" separators: the padded boxes do the separating now. *@
     <nav class="sortbar">
-        @L["Sort:"]
-        <a href="@Model.Links.SortHref("media.metadata.title")">@L["Title"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.title", Model.Sort, Model.Desc))</a> ·
-        <a href="@Model.Links.SortHref("media.metadata.authorNameLF")">@L["Author"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.authorNameLF", Model.Sort, Model.Desc))</a> ·
+        <span class="sortbar-label">@L["Sort:"]</span>
+        <a href="@Model.Links.SortHref("media.metadata.title")">@L["Title"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.title", Model.Sort, Model.Desc))</a>
+        <a href="@Model.Links.SortHref("media.metadata.authorNameLF")">@L["Author"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.authorNameLF", Model.Sort, Model.Desc))</a>
         <a href="@Model.Links.SortHref("addedAt")">@L["Added"]@(Inkshelf.Pages.SortLinks.Arrow("addedAt", Model.Sort, Model.Desc))</a>
         @if (!string.IsNullOrEmpty(Model.Series) || Model.Filter?.StartsWith("series.") == true)
         {
-            <text> · </text><a href="@Model.Links.SortHref("sequence")">@L["Sequence"]@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.Sort, Model.Desc))</a>
+            <a href="@Model.Links.SortHref("sequence")">@L["Sequence"]@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.Sort, Model.Desc))</a>
         }
     </nav>
     <partial name="_Pager" model="Model" />

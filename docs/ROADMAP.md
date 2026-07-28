@@ -96,6 +96,15 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **E-reader touch design pass** — every action became a finger-sized bordered
+  target (~48px, was ~24px with 5.6px gaps ≈ 0.7mm on an e-ink panel, so all
+  three row actions fit under one fingertip). Listing actions moved from a fixed
+  8.5rem side column onto their own full-width line below the title, which also
+  killed the `max-width: calc(…)` hack that column forced and stopped the long
+  German labels wrapping. Regen `↻` left listing rows for the item page — too
+  small a target to sit beside Convert when a mistap costs a conversion run. One
+  `max-width: 600px` breakpoint for phones; deliberately no device detection.
+
 - **Downloaded-file marks** — each download action shows whether *this device*
   already fetched *that file* (`↓`), so working through a batch doesn't mean
   re-downloading or skipping one. Keyed on a device id minted into the settings
