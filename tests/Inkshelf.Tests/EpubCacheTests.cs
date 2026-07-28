@@ -146,9 +146,11 @@ public class EpubCacheTests
     [Fact]
     public void EnforceCap_does_not_touch_a_marks_subdirectory()
     {
-        // Marks live under the cache dir. Every cache glob is non-recursive and
-        // extension-scoped, which is the only reason that's safe — this test fails
-        // if someone "simplifies" one of them to recurse.
+        // Marks live under the cache dir. What makes that safe is that every cache
+        // glob is EXTENSION-scoped (*.epub, *.tmp) while a valid device id can never
+        // contain a dot — so recursion alone is harmless. The real risk is a WIDENED
+        // pattern: change EnforceCap's "*.epub" to "*" and this test fails, because
+        // eviction then counts and deletes the marks file.
         var dir = TempDirPath();
         var cache = new EpubCache(dir);
         var marks = Path.Combine(dir, "marks");

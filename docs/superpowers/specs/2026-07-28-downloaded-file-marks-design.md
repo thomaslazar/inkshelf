@@ -127,9 +127,13 @@ endpoint: the page is server-rendered, so the check happens during render, which
 is also what keeps this at zero added JavaScript.
 
 A `marks/` **subdirectory** is safe inside the cache dir because every existing
-cache operation globs non-recursively for a specific extension —
-`ListVariants` and `EnforceCap` on `*.epub`, `SweepTemp` on `*.tmp`. So eviction
-can never delete marks, and no new configuration key is needed.
+cache operation globs for a specific **extension** — `ListVariants` and
+`EnforceCap` on `*.epub`, `SweepTemp` on `*.tmp`, `RemoveForItem` on
+`{itemId}-*.epub` — while a valid device id cannot contain a dot. So the
+protection is the extension scoping, not the fact that those globs happen to be
+non-recursive: recursion alone would still match nothing. **The risk to guard
+against is a widened pattern**, e.g. `*.epub` becoming `*`, which would make
+eviction count and delete marks files. No new configuration key is needed.
 
 The store is a singleton holding only the directory path, mirroring `EpubCache`.
 

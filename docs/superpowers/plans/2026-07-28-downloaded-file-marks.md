@@ -896,8 +896,8 @@ Expected: PASS. Then open `tools/uicheck/shots/library-de.png` and `converted-so
   filename, so it goes through `SanitizeId`; blank or invalid means "no marks",
   never a fallback name that would pool devices into one bucket.
 - **Download marks live in a `marks/` subdirectory of the EPUB cache.** That is
-  only safe because every cache operation globs non-recursively for a specific
-  extension — don't make one of those globs recursive.
+  safe because every cache glob is extension-scoped (`*.epub`, `*.tmp`) and a
+  device id can't contain a dot — don't widen one of those patterns.
 ```
 
 Do not describe the key scheme, the mint paths, or the arrow. Those are code comments and spec material.
