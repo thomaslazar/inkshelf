@@ -32,6 +32,10 @@ No sync between devices, by definition.
 
 ### A. Identity — a minted device id, not a derived one
 
+`Set` returns the effective settings (with the id it minted), so the download
+endpoints can write a mark for a device seen for the first time without
+duplicating the minting logic. Existing callers ignore the return.
+
 `did=<random>` becomes one more key in the `inkshelf_settings` cookie. It is
 minted **inside `DeviceSettings.Set` when absent**, so any write of that cookie
 guarantees an id and no call site can forget. The cookie is `HttpOnly`, so
@@ -106,8 +110,16 @@ keys.
 
 | Key form | Meaning |
 |---|---|
-| `{itemId}` | the item's primary ebook |
-| `{itemId}:{ino}` | one specific file on a multi-file item |
+| `d:{itemId}` | the item's primary **raw** ebook (`/download/{id}`) |
+| `d:{itemId}:{ino}` | one specific raw file on a multi-file item |
+| `e:{itemId}` | the item's primary converted **EPUB** (`/convert/{id}`) |
+| `e:{itemId}:{ino}` | the converted EPUB of one specific file |
+
+The `d:`/`e:` discriminator is load-bearing: an item's raw ebook and its
+converted EPUB are two different files reachable from the same row, so a single
+`{itemId}` key would make downloading the raw file light up the EPUB action as
+already fetched. Keys are opaque strings — built identically on write and on
+read, never parsed back.
 
 Reading loads the file into a `HashSet<string>` once per render; the page model
 then tests the handful of visible ids against it. No subset query and no API
@@ -199,8 +211,9 @@ device, so a scan is cheap.
 
 - A mint happens on a settings write, and the id round-trips through the cookie.
 - A download on a device with no id mints one and records the mark.
-- `{itemId}` and `{itemId}:{ino}` are distinct keys — a primary-ebook mark must
-  not mark a specific file, or vice versa.
+- All four key forms are distinct: a primary mark must not mark a specific file
+  and vice versa, and — the one that matters — **downloading the raw ebook must
+  not mark the converted EPUB as fetched**, nor the reverse.
 - A marked item renders the indicator; an unmarked one does not.
 - A cached-but-not-downloaded action renders `EPUB` with no glyph; a
   cached-and-downloaded one renders `EPUB ↓`.
