@@ -177,6 +177,34 @@ public class ConvertedRenderTests
     }
 
     [Fact]
+    public async Task Default_view_shows_the_applied_descending_arrow_not_the_query_direction()
+    {
+        // No `sort` param: query-direction Desc is false, but the page actually
+        // applies descending (newest-first). The arrow must reflect what's on
+        // screen, not the unset query value.
+        var html = await GetConvertedAsync("", Seed());
+        Assert.Contains("&#x2193;", html);
+    }
+
+    [Fact]
+    public async Task Default_views_converted_link_toggles_to_ascending_not_desc_again()
+    {
+        // The applied direction is already descending, so clicking "Converted"
+        // from the default view must offer the OTHER direction (no &desc=1) —
+        // not re-request the descending order already shown.
+        var html = await GetConvertedAsync("", Seed());
+        Assert.Contains("/converted?sort=converted\"", html);
+        Assert.DoesNotContain("/converted?sort=converted&amp;desc=1", html);
+    }
+
+    [Fact]
+    public async Task A_garbage_sort_value_renders_the_same_arrow_as_the_default_view()
+    {
+        var html = await GetConvertedAsync("?sort=../etc/passwd", Seed());
+        Assert.Contains("&#x2193;", html);
+    }
+
+    [Fact]
     public async Task Conversion_order_ignores_the_source_mtime_in_the_filename()
     {
         // THE TRAP. CachedVariant.MtimeMs is the SOURCE ebook's mtime, not the

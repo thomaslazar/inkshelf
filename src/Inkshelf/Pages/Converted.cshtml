@@ -16,10 +16,10 @@
 {
     <nav class="sortbar">
         @L["Sort:"]
-        <a href="@Model.SortHref("converted")">@L["Converted"]@(Inkshelf.Pages.SortLinks.Arrow("converted", Model.ActiveSort, Model.Desc))</a> ·
-        <a href="@Model.SortHref("series")">@L["Series"]@(Inkshelf.Pages.SortLinks.Arrow("series", Model.ActiveSort, Model.Desc))</a> ·
-        <a href="@Model.SortHref("title")">@L["Title"]@(Inkshelf.Pages.SortLinks.Arrow("title", Model.ActiveSort, Model.Desc))</a> ·
-        <a href="@Model.SortHref("author")">@L["Author"]@(Inkshelf.Pages.SortLinks.Arrow("author", Model.ActiveSort, Model.Desc))</a>
+        <a href="@Model.SortHref("converted")">@L["Converted"]@(Inkshelf.Pages.SortLinks.Arrow("converted", Model.ActiveSort, Model.AppliedDesc))</a> ·
+        <a href="@Model.SortHref("series")">@L["Series"]@(Inkshelf.Pages.SortLinks.Arrow("series", Model.ActiveSort, Model.AppliedDesc))</a> ·
+        <a href="@Model.SortHref("title")">@L["Title"]@(Inkshelf.Pages.SortLinks.Arrow("title", Model.ActiveSort, Model.AppliedDesc))</a> ·
+        <a href="@Model.SortHref("author")">@L["Author"]@(Inkshelf.Pages.SortLinks.Arrow("author", Model.ActiveSort, Model.AppliedDesc))</a>
     </nav>
 }
 @if (Model.LoadError)

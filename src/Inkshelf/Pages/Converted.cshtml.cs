@@ -36,7 +36,7 @@ public class ConvertedModel : PageModel
     // because newest-first is the point of the page.
     public string SortHref(string field)
     {
-        var nextDesc = ActiveSort == field ? !Desc : field == ConvertedKey;
+        var nextDesc = ActiveSort == field ? !AppliedDesc : field == ConvertedKey;
         return $"/converted?sort={field}" + (nextDesc ? "&desc=1" : "");
     }
 
@@ -50,7 +50,13 @@ public class ConvertedModel : PageModel
     // not the default it claims to fall back to.
     private bool IsRecognised => Keys.Contains(Sort);
     public string ActiveSort => IsRecognised ? Sort! : ConvertedKey;
-    private bool EffectiveDesc => IsRecognised ? Desc : true;
+
+    // `Desc` is what the query asked for; `AppliedDesc` is what the page actually
+    // did. They differ on the default view (no recognised `sort`), where the list
+    // still renders newest-first even though `Desc` (from a missing/garbage
+    // `desc` param) is false. The arrow and hrefs must reflect the applied
+    // direction, not the raw query value, or they lie about what's on screen.
+    public bool AppliedDesc => IsRecognised ? Desc : true;
 
     public async Task<IActionResult> OnGetAsync(CancellationToken ct = default)
     {
@@ -109,7 +115,7 @@ public class ConvertedModel : PageModel
                 .ThenBy(b => TitleKey(b), StringComparer.OrdinalIgnoreCase),
         };
         var rows = ordered.Select(b => b.Row).ToList();
-        if (EffectiveDesc) rows.Reverse();
+        if (AppliedDesc) rows.Reverse();
         Rows = rows;
         return Page();
     }
