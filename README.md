@@ -107,7 +107,8 @@ Mount a volume for each of these so state survives restarts:
 - `DataProtectionKeysPath` (e.g. `/keys`) — encryption keys for the session
   cookie; without persistence everyone is logged out on restart.
 - `CachePath` (e.g. `/cache`) — converted EPUBs; without persistence they're
-  rebuilt on demand.
+  rebuilt on demand. Also holds each device's downloaded-file marks (`marks/`);
+  without persistence, the "already downloaded" arrows are lost.
 
 Set a **container memory limit** (start with 1.5 GiB) so conversions can't pressure the host. Inkshelf's memory peaks during a conversion (bounded, one at a time), and .NET reads the cgroup limit to self-tune.
 
@@ -130,7 +131,7 @@ All configuration is via environment variables.
 |---------------------------|----------------------|-------------|
 | `ABS_URL`                 | — (**required**)     | Base URL of your Audiobookshelf server. |
 | `DataProtectionKeysPath`  | `<ContentRoot>/.keys`  | Where session-cookie encryption keys are persisted. Mount a volume to keep users logged in across restarts. |
-| `CachePath`               | `<ContentRoot>/.cache/epub` | Where converted EPUBs are cached. Mount a volume to keep conversions across restarts. |
+| `CachePath`               | `<ContentRoot>/.cache/epub` | Where converted EPUBs (and each device's downloaded-file marks, under `marks/`) are cached. Mount a volume to keep conversions and marks across restarts. |
 | `FORCE_SECURE_COOKIES`    | `false`              | Mark cookies `Secure` regardless of the request scheme. Set `true` when behind a TLS-terminating reverse proxy. |
 | `TRUSTED_PROXY`           | *(unset)*            | Comma-separated IPs/CIDRs permitted to set forwarded headers. Unset = trust the immediate hop. |
 | `DIAG_ENABLED`            | `true`               | Whether the unauthenticated `/diag` browser-probe endpoint is exposed. Set `false` to disable it. |

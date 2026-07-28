@@ -196,10 +196,10 @@ per day so rendering does not amplify writes. So "untouched" means *this device
 has not used the app*, rather than *has not downloaded* — otherwise a device that
 browsed for a month without downloading would be pruned mid-use.
 
-Files untouched for **30 days** are deleted. Swept at `ConvertWorker` startup
-(which already sweeps orphan `.tmp` files, so the hook exists) and
-opportunistically when a mark is written — the directory holds one small file per
-device, so a scan is cheap.
+Files untouched for **30 days** are deleted. Swept once, at `ConvertWorker`
+startup (which already sweeps orphan `.tmp` files, so the hook exists). A
+container that runs for months between deploys goes that long without a sweep —
+accepted, since the working set is small and a restart is the common case.
 
 ### G. Known limitations, accepted
 
@@ -210,6 +210,11 @@ device, so a scan is cheap.
 - **Clearing cookies loses the marks.** The file is orphaned rather than deleted —
   unreachable, and cleaned up by the 30-day sweep.
 - **A cancelled download still marks.** See section D.
+- **Two simultaneous first-ever downloads from an id-less device each mint their
+  own id and `Set-Cookie`.** The browser keeps only one, so the other download's
+  mark is orphaned under an id nobody carries — a missing arrow, not a wrong one.
+  The window closes as soon as the first cookie lands. No clean fix: the response
+  cookie is inherently per-request.
 
 ### H. Tests
 

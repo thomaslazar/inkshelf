@@ -32,7 +32,7 @@ Settings to add to the per-device settings system:
 - **Disable conversion via config.** An `AbsOptions` flag / env var (e.g.
   `CONVERSION_ENABLED`, default `true`, mirroring `DIAG_ENABLED`) to turn the
   whole CBZ/CBR→EPUB system off — for e-readers that read comic archives natively
-  and only want the raw download. When off: hide the Convert / EPUB ✓ / ↻ actions
+  and only want the raw download. When off: hide the Convert / EPUB / ↻ actions
   everywhere (rows and the detail page show only Download), skip registering
   `ConvertWorker`, don't map the `/convert` endpoints, and drop the `/converted`
   view plus its home-page link. The retina/grayscale settings only affect
@@ -104,7 +104,7 @@ Shipped; kept as a short record (full detail in git history / the PR).
   wrong question). The old `EPUB ✓` went with it: the label already says `EPUB`
   rather than `Convert`, so the checkmark was decoration, and dropping it leaves
   `↓` as the only glyph in that column. Marks for devices that stop visiting are
-  pruned after 30 days.
+  pruned at `ConvertWorker` startup, for any device untouched for 30 days.
 - **Converted view sorting** — `/converted` defaults to newest conversion first
   (the one you came to fetch) with Converted / Series / Title / Author sort links.
   The timestamp is the cached EPUB's own write time, exposed as
