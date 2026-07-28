@@ -43,12 +43,16 @@ public class ConvertedRenderTests
         return new HttpResponseMessage(HttpStatusCode.NotFound);
     });
 
-    // Three items whose alphabetical, series and author orders all differ from
-    // each other, so a wrong sort key cannot accidentally produce the right order.
+    // Three items whose alphabetical and author orders differ from each other.
+    // The series sequence is set to CONTRADICT the title order (Zebra Tales is
+    // sequence 1, Middle Road is sequence 2): title order alone would sort
+    // Middle Road before Zebra Tales, so a series sort that silently drops the
+    // sequence key and falls back to the title tiebreak produces the wrong order
+    // and gets caught, instead of accidentally matching it.
     private static string MultiBatchJson() => $$"""
         {"libraryItems":[
-          {"id":"a1","libraryId":"{{LibId}}","media":{"metadata":{"title":"Zebra Tales","authors":[{"id":"x","name":"Adams"}],"series":[{"id":"s1","name":"Alpha","sequence":"2"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"a.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } },
-          {"id":"b2","libraryId":"{{LibId}}","media":{"metadata":{"title":"Middle Road","authors":[{"id":"y","name":"Zimmer"}],"series":[{"id":"s1","name":"Alpha","sequence":"1"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"b.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } },
+          {"id":"a1","libraryId":"{{LibId}}","media":{"metadata":{"title":"Zebra Tales","authors":[{"id":"x","name":"Adams"}],"series":[{"id":"s1","name":"Alpha","sequence":"1"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"a.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } },
+          {"id":"b2","libraryId":"{{LibId}}","media":{"metadata":{"title":"Middle Road","authors":[{"id":"y","name":"Zimmer"}],"series":[{"id":"s1","name":"Alpha","sequence":"2"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"b.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } },
           {"id":"c3","libraryId":"{{LibId}}","media":{"metadata":{"title":"Apple Days","authors":[{"id":"z","name":"Mills"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"c.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } }
         ]}
         """;
@@ -128,9 +132,9 @@ public class ConvertedRenderTests
     [Fact]
     public async Task Sorts_by_series_sequence_with_unseried_last()
     {
-        // Alpha #1 = Middle Road, Alpha #2 = Zebra Tales, Apple Days has no series.
+        // Alpha #1 = Zebra Tales, Alpha #2 = Middle Road, Apple Days has no series.
         var html = await GetConvertedAsync("?sort=series", Seed());
-        Assert.Equal(new[] { "Middle Road", "Zebra Tales", "Apple Days" }, TitleOrder(html));
+        Assert.Equal(new[] { "Zebra Tales", "Middle Road", "Apple Days" }, TitleOrder(html));
     }
 
     [Fact]
@@ -157,7 +161,7 @@ public class ConvertedRenderTests
         // Reverse(); the owner judged that not worth the branching. This test
         // exists so a later "fix" is a conscious change, not a silent one.
         var html = await GetConvertedAsync("?sort=series&desc=1", Seed());
-        Assert.Equal(new[] { "Apple Days", "Zebra Tales", "Middle Road" }, TitleOrder(html));
+        Assert.Equal(new[] { "Apple Days", "Middle Road", "Zebra Tales" }, TitleOrder(html));
     }
 
     [Fact]
@@ -208,10 +212,12 @@ public class ConvertedRenderTests
     public async Task Conversion_order_ignores_the_source_mtime_in_the_filename()
     {
         // THE TRAP. CachedVariant.MtimeMs is the SOURCE ebook's mtime, not the
-        // conversion time, and it sits right next to the field we want. Here every
-        // file shares one source mtime while their write times differ, so anything
-        // sorting on MtimeMs produces an arbitrary order and fails this test while
-        // passing the others.
+        // conversion time, and it sits right next to the field we want. The two
+        // assertions below prove the premise that makes the ordering assertion
+        // meaningful: all three fixture files really do carry one identical,
+        // shared mtimeMs even though their write times (the seeded conversion
+        // times) differ, so a mix-up that sorts on MtimeMs instead has no write-time
+        // signal left to fall back on.
         using var cacheDir = new TempDir();
         using var keysDir = new TempDir();
         using var factory = CreateFactory(MultiStub(), cacheDir.Path, keysDir.Path);

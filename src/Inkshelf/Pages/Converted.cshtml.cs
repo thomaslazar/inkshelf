@@ -44,10 +44,11 @@ public class ConvertedModel : PageModel
     private static readonly string[] Keys = [ConvertedKey, "series", "title", "author"];
 
     // `sort` is client-supplied, so anything unrecognised — absent, misspelled or
-    // hostile — means "the default view", which is newest conversion FIRST. Note
-    // EffectiveDesc keys off recognition, not off `Sort is null`: with a garbage
-    // value, Desc would be false and the page would render oldest-first, which is
-    // not the default it claims to fall back to.
+    // hostile — means "the default view", which is newest conversion FIRST. `Desc`
+    // is what the query asked for; `AppliedDesc` is what the page actually did, and
+    // it keys off recognition, not off `Sort is null`: with a garbage value, `Desc`
+    // would be false and the page would render oldest-first, which is not the
+    // default it claims to fall back to. The two diverge on the default view.
     private bool IsRecognised => Keys.Contains(Sort);
     public string ActiveSort => IsRecognised ? Sort! : ConvertedKey;
 
