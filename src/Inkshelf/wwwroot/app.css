@@ -75,16 +75,25 @@ nav.pager span { margin-right: 1rem; }
 .logo img { max-width: 320px; width: 60%; height: auto; }
 .login-form { max-width: 320px; margin: 0 auto; text-align: center; }
 .login-form input { width: 100%; box-sizing: border-box; padding: .3rem; }
-.searchbar { margin-left: .6rem; }
+/* Always its own line, never "it happens to wrap": a full-width flex item can't
+   share a line, so the breadcrumb row keeps a fixed shape whatever the library
+   name's length. flex-basis AND width because the target engine honours the
+   latter more reliably; either alone produces the break. */
+.searchbar { flex: 0 0 100%; width: 100%; box-sizing: border-box; margin: .4rem 0 0; }
 .searchbar input { padding: .5rem; font: inherit; }
-.logout-form { margin: 0 0 0 .6rem; }
+/* Auto margin, so logout starts the right-hand control group and the cog sits
+   beside it rather than across the header from it. */
+.logout-form { margin: 0 0 0 auto; }
 .tabs { margin: .5rem 0; font-weight: bold; }
 .totop { font-weight: normal; font-size: .8em; text-decoration: none; margin-left: .5rem; display: inline-block; padding: .4rem .6rem; }
-/* The ONLY auto margin in .page-head, so the cog lands hard right on every page.
-   Several autos would split the free space between them instead, floating
-   whatever came earlier (logout, search) into the middle — which is why those
-   two now use fixed margins and pack left. */
+/* Exactly ONE auto margin may exist in .page-head — several would split the free
+   space between them and float the earlier one into the middle of the header
+   instead of pushing everything right. The cog carries it by default, since it
+   is the only control on every page. On the index, logout precedes the cog and
+   takes the auto over (above), so the pair travels right together; the cog then
+   needs a plain margin or there would be two. */
 .settings-link { margin-left: auto; flex: 0 0 auto; text-decoration: none; padding: .4rem; }
+.logout-form ~ .settings-link { margin-left: .4rem; }
 .home-link { text-decoration: none; }
 .app-version { margin-top: 1.5rem; color: #666; }
 .settings-icon { display: block; height: 1.6em; width: auto; }
@@ -148,5 +157,4 @@ nav.pager span { margin-right: 1rem; }
     .item .actions .read-form, .item .actions .convert { display: block; }
     .detail-cover { flex: 0 0 96px; width: 96px; }
     .detail-cover img { max-width: 96px; max-height: 144px; }
-    .searchbar { margin-left: 0; width: 100%; }
 }
