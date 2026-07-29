@@ -8,11 +8,12 @@
     <h1 class="page-title">
         <a href="/?all=1" class="home-link" title="@L["Libraries"]"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a>
         <a href="/?all=1">@L["Libraries"]</a>
+        @* No title crumb: the <h2> below already carries it, and repeating it
+           here cost two wrapped lines above the fold on a narrow screen. *@
         @if (!string.IsNullOrEmpty(Model.LibraryName))
         {
             <span class="crumb-sep">›</span> <a href="/library/@Model.LibraryId">@Model.LibraryName</a>
         }
-        <span class="crumb-sep">›</span> @(m?.Title ?? L["Item"])
     </h1>
     <a class="settings-link" href="/settings" title="@L["Settings"]"><img src="~/img/gear-black.png" alt="@L["Settings"]" class="settings-icon" width="24" height="24" /></a>
 </div>
@@ -79,11 +80,11 @@
     <input type="hidden" name="return" value="/item/@Model.Id" />
     @if (Model.Read)
     {
-        <button type="submit" class="read-btn" title="@L["Mark as unread"]">&#10003; @L["Read"]</button>
+        <button type="submit" class="btn read-btn" title="@L["Mark as unread"]">&#10003; @L["Read"]</button>
     }
     else
     {
-        <button type="submit" class="read-btn" title="@L["Mark as read"]">@L["Mark read"]</button>
+        <button type="submit" class="btn read-btn" title="@L["Mark as read"]">@L["Mark read"]</button>
     }
 </form>
 
@@ -107,7 +108,7 @@ else
                 <span class="file-format">@f.Format</span>
             </div>
             <div class="file-actions">
-                <a href="@f.DownloadHref">@L["Download"]@if (f.Downloaded) { <text> &#8595;</text> }</a>
+                <a class="btn" href="@f.DownloadHref">@L["Download"]@if (f.Downloaded) { <text> &#8595;</text> }</a>
                 @if (f.Convert is not null)
                 {
                     <partial name="_ConvertAction" model="f.Convert" />

@@ -17,7 +17,7 @@
     </form>
     <form class="searchbar" method="get" action="/library/@Model.Id">
         <input type="search" name="q" value="@Model.Q" placeholder="@L["Search…"]" />
-        <button type="submit">@L["Search"]</button>
+        <button type="submit" class="btn">@L["Search"]</button>
     </form>
     <a class="settings-link" href="/settings" title="@L["Settings"]"><img src="~/img/gear-black.png" alt="@L["Settings"]" class="settings-icon" width="24" height="24" /></a>
 </div>
@@ -27,12 +27,11 @@
     var books = Model.SearchResults?.Book ?? new();
     var series = Model.SearchResults?.Series ?? new();
     var authors = Model.SearchResults?.Authors ?? new();
-    <p>@L["Results for"] "<strong>@Model.Q</strong>" · <a href="/library/@Model.Id">@L["clear"]</a></p>
+    <p>@L["Results for"] "<strong>@Model.Q</strong>" <a class="btn" href="/library/@Model.Id">@L["clear"]</a></p>
+    @* No "·" separators, matching .sortbar — the padded boxes separate them. *@
     <nav class="tabs">
         @if (books.Count > 0) { <a href="#books">@L["Books"] (@books.Count)</a> } else { <span>@L["Books"] (0)</span> }
-        <span class="crumb-sep">·</span>
         @if (series.Count > 0) { <a href="#series">@L["Series"] (@series.Count)</a> } else { <span>@L["Series"] (0)</span> }
-        <span class="crumb-sep">·</span>
         @if (authors.Count > 0) { <a href="#authors">@L["Authors"] (@authors.Count)</a> } else { <span>@L["Authors"] (0)</span> }
     </nav>
     if (books.Count == 0 && series.Count == 0 && authors.Count == 0)
@@ -50,7 +49,7 @@
     if (series.Count > 0)
     {
         <h2 id="series">@L["Series"] <a class="totop" href="#top">↑</a></h2>
-        <ul>
+        <ul class="taplist">
             @foreach (var s in series)
             {
                 <li><a href="@Model.Links.FilterHref("series", s.Series.Id)">@s.Series.Name</a></li>
@@ -60,7 +59,7 @@
     if (authors.Count > 0)
     {
         <h2 id="authors">@L["Authors"] <a class="totop" href="#top">↑</a></h2>
-        <ul>
+        <ul class="taplist">
             @foreach (var a in authors)
             {
                 <li><a href="@Model.Links.FilterHref("authors", a.Id)">@a.Name</a></li>
@@ -72,16 +71,17 @@ else
 {
     if (Model.IsFiltered)
     {
-        <p>@L["Filtered by"] <strong>@L[Model.FilterType!]@(Model.FilterName is null ? "" : $": {Model.FilterName}")</strong> · <a href="/library/@Model.Id">@L["clear"]</a></p>
+        <p>@L["Filtered by"] <strong>@L[Model.FilterType!]@(Model.FilterName is null ? "" : $": {Model.FilterName}")</strong> <a class="btn" href="/library/@Model.Id">@L["clear"]</a></p>
     }
+    @* No "·" separators: the padded boxes do the separating now. *@
     <nav class="sortbar">
-        @L["Sort:"]
-        <a href="@Model.Links.SortHref("media.metadata.title")">@L["Title"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.title", Model.Sort, Model.Desc))</a> ·
-        <a href="@Model.Links.SortHref("media.metadata.authorNameLF")">@L["Author"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.authorNameLF", Model.Sort, Model.Desc))</a> ·
+        <span class="sortbar-label">@L["Sort:"]</span>
+        <a href="@Model.Links.SortHref("media.metadata.title")">@L["Title"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.title", Model.Sort, Model.Desc))</a>
+        <a href="@Model.Links.SortHref("media.metadata.authorNameLF")">@L["Author"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.authorNameLF", Model.Sort, Model.Desc))</a>
         <a href="@Model.Links.SortHref("addedAt")">@L["Added"]@(Inkshelf.Pages.SortLinks.Arrow("addedAt", Model.Sort, Model.Desc))</a>
         @if (!string.IsNullOrEmpty(Model.Series) || Model.Filter?.StartsWith("series.") == true)
         {
-            <text> · </text><a href="@Model.Links.SortHref("sequence")">@L["Sequence"]@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.Sort, Model.Desc))</a>
+            <a href="@Model.Links.SortHref("sequence")">@L["Sequence"]@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.Sort, Model.Desc))</a>
         }
     </nav>
     <partial name="_Pager" model="Model" />

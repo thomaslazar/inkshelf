@@ -137,20 +137,20 @@ public class ItemRenderTests
             + $"scr={W}x{H}x1; inkshelf_settings=retina=0&gray=0&lang=&fav=&did={did}");
         var html = await (await client.SendAsync(req)).Content.ReadAsStringAsync();
 
-        var primary = Regex.Match(html, $"<a href=\"/convert/{ItemId}\\?return=[^\"]*\"[^>]*>([^<]*)</a>");
+        var primary = Regex.Match(html, $"<a [^>]*href=\"/convert/{ItemId}\\?return=[^\"]*\"[^>]*>([^<]*)</a>");
         Assert.True(primary.Success, "Expected the primary file's convert anchor.");
         Assert.Contains("&#8595;", primary.Groups[1].Value);
 
-        var secondary = Regex.Match(html, $"<a href=\"/convert/{ItemId}\\?file=3&amp;return=[^\"]*\"[^>]*>([^<]*)</a>");
+        var secondary = Regex.Match(html, $"<a [^>]*href=\"/convert/{ItemId}\\?file=3&amp;return=[^\"]*\"[^>]*>([^<]*)</a>");
         Assert.True(secondary.Success, "Expected the non-primary file's convert anchor.");
         Assert.DoesNotContain("&#8595;", secondary.Groups[1].Value);
 
         // Raw Download arrow: primary (no file=) shows it, the pdf's (file=2) does not.
-        var primaryDownload = Regex.Match(html, $"<a href=\"/download/{ItemId}\">([^<]*)</a>");
+        var primaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\">([^<]*)</a>");
         Assert.True(primaryDownload.Success, "Expected the primary file's download anchor.");
         Assert.Contains("&#8595;", primaryDownload.Groups[1].Value);
 
-        var secondaryDownload = Regex.Match(html, $"<a href=\"/download/{ItemId}\\?file=2\">([^<]*)</a>");
+        var secondaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?file=2\">([^<]*)</a>");
         Assert.True(secondaryDownload.Success, "Expected the non-primary file's download anchor.");
         Assert.DoesNotContain("&#8595;", secondaryDownload.Groups[1].Value);
     }
@@ -167,5 +167,25 @@ public class ItemRenderTests
         var html = await (await client.SendAsync(Request(factory, $"/item/{ItemId}"))).Content.ReadAsStringAsync();
         Assert.Contains($"/convert/{ItemId}?return=", html);         // primary → no file=
         Assert.DoesNotContain($"/convert/{ItemId}?file=1", html);    // primary is NOT keyed by its ino
+    }
+
+    // The item page is the ONLY place regen is offered (listing rows dropped it —
+    // too small a target next to Convert). The old regression still applies here:
+    // the ↻ anchor must stay a PLAIN link. Give it data-warm and the poll script
+    // overwrites its glyph with status text, producing a duplicate "EPUB".
+    [Fact]
+    public async Task Item_page_offers_regen_and_it_stays_a_plain_link()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(Request(factory, $"/item/{ItemId}"))).Content.ReadAsStringAsync();
+
+        var regen = Regex.Match(html, "<a class=\"btn regen\"[^>]*>");
+        Assert.True(regen.Success, "Expected a regen anchor on the item page.");
+        Assert.Contains("fresh=1", regen.Value);
+        Assert.DoesNotContain("data-warm", regen.Value);
     }
 }

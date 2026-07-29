@@ -93,6 +93,13 @@ from the repo root (inside the devcontainer) must stay green, and
 - **Near-zero JS.** Only two inline scripts exist (`_Layout.cshtml`: the screen
   probe, the convert-warm XHR). Anything touching them needs a real-device test
   before merge. CSS stays defensive — no `object-fit`, no flex `gap`.
+- **No device-class detection; layout branches on width alone.** `@media
+  (monochrome)` reports 0 on e-ink, `(update: slow)` postdates the target engine,
+  and UA sniffing only ever knows the readers we enumerated — this project has
+  users on hardware we have never seen. The e-reader design *is* the design:
+  finger-sized targets and high contrast are right everywhere, so the base layout
+  is touch-first and one `max-width` breakpoint handles narrow screens. The `scr`
+  cookie sizes converted comic pages and must not grow into a layout switch.
 - **No local read state.** "Read" is ABS media progress, fetched per render and
   toggled through to ABS. A failed fetch degrades to all-unread rather than
   failing the page.

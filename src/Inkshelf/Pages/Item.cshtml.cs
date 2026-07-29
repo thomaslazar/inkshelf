@@ -75,7 +75,7 @@ public class ItemModel : PageModel
                 var state = ConvertRowStateResolver.ResolveFor(
                     Id, f.Metadata.Size, f.Metadata.MtimeMs, fmt, target, _cache, _queue);
                 convert = new ConvertActionModel(Id, keyIno, state, $"/item/{Id}",
-                    marks.Contains(DownloadMarks.EpubKey(Id, keyIno)));
+                    marks.Contains(DownloadMarks.EpubKey(Id, keyIno)), ShowRegen: true);
             }
             Files.Add(new FileRow(name, fmt.ToUpperInvariant(), dl, convert, rawDownloaded));
         }

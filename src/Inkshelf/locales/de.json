@@ -33,7 +33,7 @@
 
   "These settings apply to this device / browser only.": "Diese Einstellungen gelten nur für dieses Gerät / diesen Browser.",
   "Detected screen: {0}": "Erkannter Bildschirm: {0}",
-  "Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)": "Retina-Seiten (volle Auflösung; schärfer, aber schwerer – kann Reader mit wenig Speicher belasten)",
+  "Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)": "Retina-Seiten (volle Auflösung; schärfer, aber größere Dateien – kann Reader mit wenig Speicher belasten)",
   "Grayscale pages (smaller files on e-ink)": "Graustufen-Seiten (kleinere Dateien auf E-Ink)",
   "Save": "Speichern",
   "Language": "Sprache",

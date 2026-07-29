@@ -45,29 +45,32 @@
             <text> · </text>
             <a href="@Model.Links.SeriesHref(m!.SeriesName!)">@m!.SeriesName!</a>
         }
+        @{ var fmt = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat; }
+        @if (!string.IsNullOrEmpty(fmt))
+        {
+            @* Actions on their own full-width line, not a fixed side column: three
+               boxes across ~660px put their centres well clear of a fingertip,
+               and the long German labels stop wrapping. *@
+            <div class="actions">
+                <a class="btn" href="/download/@item.Id">@L["Download"]@if (Model.RawDownloaded) { <text> &#8595;</text> }</a>
+                @if (Model.State != ConvertRowState.NotConvertible)
+                {
+                    <partial name="_ConvertAction" model="new Inkshelf.Pages.ConvertActionModel(item.Id, null, Model.State, Model.ReturnUrl, Model.EpubDownloaded)" />
+                }
+                <form class="read-form" method="post" action="/read/@item.Id">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="read" value="@(Model.Read ? "0" : "1")" />
+                    <input type="hidden" name="return" value="@Model.ReturnUrl" />
+                    @if (Model.Read)
+                    {
+                        <button type="submit" class="btn read-btn" title="@L["Mark as unread"]">&#10003; @L["Read"]</button>
+                    }
+                    else
+                    {
+                        <button type="submit" class="btn read-btn" title="@L["Mark as read"]">@L["Mark read"]</button>
+                    }
+                </form>
+            </div>
+        }
     </div>
-    @{ var fmt = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat; }
-    @if (!string.IsNullOrEmpty(fmt))
-    {
-        <div class="actions">
-            <a href="/download/@item.Id">@L["Download"]@if (Model.RawDownloaded) { <text> &#8595;</text> }</a>
-            @if (Model.State != ConvertRowState.NotConvertible)
-            {
-                <partial name="_ConvertAction" model="new Inkshelf.Pages.ConvertActionModel(item.Id, null, Model.State, Model.ReturnUrl, Model.EpubDownloaded)" />
-            }
-            <form class="read-form" method="post" action="/read/@item.Id">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="read" value="@(Model.Read ? "0" : "1")" />
-                <input type="hidden" name="return" value="@Model.ReturnUrl" />
-                @if (Model.Read)
-                {
-                    <button type="submit" class="read-btn" title="@L["Mark as unread"]">&#10003; @L["Read"]</button>
-                }
-                else
-                {
-                    <button type="submit" class="read-btn" title="@L["Mark as read"]">@L["Mark read"]</button>
-                }
-            </form>
-        </div>
-    }
 </div>
