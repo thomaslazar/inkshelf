@@ -15,11 +15,14 @@
         <input type="hidden" name="libraryId" value="@Model.Id" />
         <button type="submit" class="fav-star" title="@(Model.IsFavorite ? L["Unset favorite"] : L["Set favorite"])">@(Model.IsFavorite ? "★" : "☆")</button>
     </form>
+    @* Cog BEFORE the search form. The search form is full-width (see .searchbar)
+       so it always takes its own line; anything after it would land BELOW it.
+       The cog therefore has to precede it to stay on the breadcrumb line. *@
+    <a class="settings-link" href="/settings" title="@L["Settings"]"><img src="~/img/gear-black.png" alt="@L["Settings"]" class="settings-icon" width="24" height="24" /></a>
     <form class="searchbar" method="get" action="/library/@Model.Id">
         <input type="search" name="q" value="@Model.Q" placeholder="@L["Search…"]" />
         <button type="submit" class="btn">@L["Search"]</button>
     </form>
-    <a class="settings-link" href="/settings" title="@L["Settings"]"><img src="~/img/gear-black.png" alt="@L["Settings"]" class="settings-icon" width="24" height="24" /></a>
 </div>
 
 @if (Model.IsSearch)
