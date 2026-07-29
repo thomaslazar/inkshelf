@@ -79,13 +79,27 @@ git commit -m "chore: bump version to ${VERSION_NUM}"
 ## Step 3: Changelog
 
 Generate `release-notes.md` with a **Highlights** section (3–5 plain-language
-bullets) and grouped conventional commits since the last tag:
+bullets) and grouped conventional commits since the last tag.
+
+**Every commit gets listed.** Group them — `docs:`/`test:`/`refactor:`/`chore:`
+belong under Internal, not the top — but never drop a type because it looks like
+noise. A reader scanning for "was my thing in this release" must be able to find
+it.
 
 ```bash
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 RANGE=$([ -n "$LAST_TAG" ] && echo "${LAST_TAG}..HEAD" || echo "HEAD")
-git log --oneline $RANGE --pretty="- %s" | grep -E "^- (feat|fix|refactor|docs|test|ci|chore):" | sort
+TYPES="feat|fix|revert|perf|refactor|docs|test|ci|build|chore|style"
+git log --oneline $RANGE --pretty="- %s" | grep -E "^- ($TYPES)(\(.+\))?!?: " | sort
+
+# Then prove nothing was dropped. Anything this prints other than merge commits
+# is a commit the grep missed — add it to the notes (and widen $TYPES).
+# A v0.4.0-era `revert:` was silently lost this way before the list was widened.
+git log $RANGE --pretty="%s" | grep -vE "^($TYPES)(\(.+\))?!?: " | grep -v "^Merge "
 ```
+
+Merge commits are the one legitimate omission: their content is precisely the
+commits already listed, so including them double-counts.
 
 Format:
 
@@ -100,6 +114,9 @@ Format:
 
 ### Fixes
 - fix: ...
+
+### Internal
+Refactors / Tests / Docs / Chore sub-lists.
 ```
 
 **GATE: open `release-notes.md` for the human to review and approve.** Make any
