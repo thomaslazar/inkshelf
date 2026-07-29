@@ -3,6 +3,99 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.4.0 — 2026-07-29
+
+### Highlights
+
+- **The whole UI is now sized for finger taps.** Actions were text links about
+  24px tall with 5.6px between them — on a 6" e-ink panel that put the three
+  actions on a listing row roughly 3.6mm apart, well inside a fingertip. Every
+  action is now a bordered target around 48px, and listing actions moved out of
+  the cramped side column onto their own full-width line under the title.
+- **You can see which files this device already downloaded.** A `↓` on the
+  Download and EPUB actions marks what this reader has already fetched, so
+  working through a batch no longer means guessing.
+- **The converted view sorts.** Newest conversion first by default, with sorting
+  by series, title or author.
+- **Phones get a usable layout.** One width breakpoint stacks the row actions
+  full-width below 600px. No device sniffing involved — the same finger-sized
+  design is simply correct everywhere.
+- Existing settings survive the upgrade: the preferences cookie changed shape
+  internally, but the old format and the old favourite-library cookie are still
+  read and migrated.
+
+### Features
+
+- feat: add a per-device downloaded-file mark store
+- feat: expose when a cached epub was converted
+- feat: mint a per-device id in the settings cookie
+- feat: record a mark when a file is downloaded
+- feat: show which files this device already downloaded
+- feat: size the whole UI for finger taps on an e-reader
+- feat: sort the converted view, newest conversion first
+
+### Fixes
+
+- fix: refine the touch pass from the on-device round
+- fix: serialize mark writes so concurrent downloads don't lose marks
+- fix: show the applied sort direction on the converted view
+- fix: stop the poll script claiming a conversion was downloaded
+- fix: translate retina page cost as file size, not weight
+- revert: drop the speculative login autofill attributes
+
+### Internal
+
+Refactors:
+
+- refactor: evict the epub cache FIFO, not touch-on-serve
+- refactor: key the settings cookie instead of packing it positionally
+- refactor: move the favorite library into the settings cookie
+- refactor: read the favorite from the settings cookie everywhere
+
+Tests:
+
+- test: close the gaps the branch review found
+- test: cover the converted sortbar; docs: record the sorting
+- test: cover the per-file download mark, and unbreak dotnet format
+- test: cover the security hardening follow-ups
+- test: discriminate the cached state by title, not a bare EPUB match
+- test: fix the smoke test's convert checks
+- test: make the series fixture actually exercise the sequence key
+
+Docs:
+
+- docs: accept and pin the descending series grouping flip
+- docs: correct the plan's expected test counts
+- docs: correct why marks survive cache eviction
+- docs: cut ARCHITECTURE.md back to a map, codify what belongs
+- docs: distinguish raw from converted marks in the spec
+- docs: drop baseline trim from the backlog
+- docs: drop the no-AOT asides
+- docs: fold removing touch-on-serve into the sorting plan
+- docs: make the clobber-hazard test a real end-to-end red
+- docs: match the pruning and cache-path docs to the code
+- docs: narrow the password-store spike to the standalone manifest
+- docs: note the manifest experiment was tried and didn't help
+- docs: plan per-device downloaded-file marks
+- docs: plan sorting for the converted view
+- docs: plan the structured settings cookie refactor
+- docs: point testing at the local stack and uicheck
+- docs: queue a per-device downloaded-file marker
+- docs: queue a spike into credentials not reaching the password store
+- docs: queue newest-first sorting for the converted view
+- docs: record the downloaded-file marks
+- docs: record the single keyed preferences cookie
+- docs: retire the EPUB checkmark in the marks spec
+- docs: rule out standalone display in the password-store spike
+- docs: spec per-device downloaded-file marks
+- docs: spec sorting for the converted view
+- docs: spec the e-reader touch design pass
+- docs: spec the structured settings cookie refactor
+
+Chore:
+
+- chore: bump version to 0.4.0
+
 ## v0.3.0 — 2026-07-24
 
 ### Highlights
