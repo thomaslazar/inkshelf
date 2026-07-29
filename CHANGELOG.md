@@ -3,6 +3,28 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.4.1 — 2026-07-29
+
+### Highlights
+
+- **The logout button sits beside the settings cog again.** v0.4.0's header work
+  moved it across the header to the title; it belongs with the other controls on
+  the right.
+- **The search bar reliably gets its own line.** It already landed there most of
+  the time, but only because the header ran out of room — so a short library name
+  could have squeezed it up beside the breadcrumb, and a long one could have
+  pushed the cog down instead. The breadcrumb row now keeps the same shape
+  whatever your library is called.
+
+### Fixes
+
+- fix: give the search bar its own line by design
+- fix: put the logout button back beside the cog
+
+### Internal
+
+- chore: bump version to 0.4.1
+
 ## v0.4.0 — 2026-07-29
 
 ### Highlights
