@@ -1,12 +1,23 @@
 @model Inkshelf.Pages.LibraryModel
 <nav class="pager">
+    @* Both buttons always render — a disabled <button> when there's nowhere to
+       go. Showing only the available one made the remaining button change
+       position between page 1 and 2, which reads as the layout jumping. *@
     @if (Model.Pager.HasPrev)
     {
         <a class="btn" href="@Model.Links.ListingHref(Model.Sort, Model.Desc, Model.Pager.DisplayPage - 1)">&larr; @L["Prev"]</a>
+    }
+    else
+    {
+        <button type="button" class="btn" disabled>&larr; @L["Prev"]</button>
     }
     <span>@L["Page {0} of {1}", Model.Pager.DisplayPage, Math.Max(1, Model.Pager.TotalPages)]</span>
     @if (Model.Pager.HasNext)
     {
         <a class="btn" href="@Model.Links.ListingHref(Model.Sort, Model.Desc, Model.Pager.DisplayPage + 1)">@L["Next"] &rarr;</a>
+    }
+    else
+    {
+        <button type="button" class="btn" disabled>@L["Next"] &rarr;</button>
     }
 </nav>

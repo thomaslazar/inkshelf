@@ -5,13 +5,12 @@
     <form class="logout-form" method="post" action="/logout">@Html.AntiForgeryToken()<button type="submit" class="btn">@L["Log out"]</button></form>
     <a class="settings-link" href="/settings" title="@L["Settings"]"><img src="~/img/gear-black.png" alt="@L["Settings"]" class="settings-icon" width="24" height="24" /></a>
 </div>
-<ul class="libraries">
+<ul class="taplist">
+@* Same treatment as a library entry — it is the same kind of destination. *@
+<li><a href="/converted">@L["Converted on this device"] &#8594;</a> <small>@L["Converted & cached on this device."]</small></li>
 @foreach (var lib in Model.Libraries)
 {
     <li><a href="/library/@lib.Id">@lib.Name</a> <small>(@lib.MediaType)</small></li>
 }
-@* Same treatment as a library entry — it is the same kind of destination, and
-   below them because it is the secondary one. *@
-<li><a href="/converted">@L["Converted on this device"] &#8594;</a> <small>@L["Converted & cached on this device."]</small></li>
 </ul>
 <p class="app-version"><small>Inkshelf v@(Model.Version)</small></p>

@@ -113,7 +113,17 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         Expect("library-de", await page.InnerTextAsync("body"), "Sortierung:", "Titel", "Herunterladen");
         var libUrl = page.Url;
 
+        // Search results — books + series + author sections, each its own layout
+        // (item rows vs .taplist), and previously the only authed page with no
+        // screenshot at all.
+        await page.FillAsync("input[name=q]", "Dresden");
+        await page.PressAsync("input[name=q]", "Enter");
+        await page.WaitForSelectorAsync("nav.tabs", new() { Timeout = 15000 });
+        await Shot("search-de");
+        Expect("search-de", await page.InnerTextAsync("body"), "Ergebnisse für", "Bücher", "Serien");
+
         // Item detail of the enriched epub — genres/tags/narrators labels.
+        await page.GotoAsync(libUrl);
         await page.FillAsync("input[name=q]", "The Silent Sea");
         await page.PressAsync("input[name=q]", "Enter");
         // Click the row's item link (not the results heading, which echoes the query).

@@ -104,6 +104,9 @@ Shipped; kept as a short record (full detail in git history / the PR).
   German labels wrapping. Regen `↻` left listing rows for the item page — too
   small a target to sit beside Convert when a mistap costs a conversion run. One
   `max-width: 600px` breakpoint for phones; deliberately no device detection.
+  Same treatment across the search results (series/authors now use the shared
+  `.taplist` block links), the settings form, and the pager, whose Prev button
+  now always renders — disabled on page 1 — so it stops moving between pages.
 
 - **Downloaded-file marks** — each download action shows whether *this device*
   already fetched *that file* (`↓`), so working through a batch doesn't mean

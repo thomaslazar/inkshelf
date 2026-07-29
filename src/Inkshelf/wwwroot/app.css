@@ -17,6 +17,10 @@ img { max-width: 100%; height: auto; }
 /* E-ink gives no hover and a slow repaint; an inverted press is the only
    feedback that reliably shows up. */
 .btn:active { color: #fff; background: #000; }
+/* Greyed rather than hidden. A real <button disabled> and not a styled span, so
+   it is inert and announced as disabled without extra markup. */
+.btn:disabled { color: #999; border-color: #ccc; cursor: default; }
+.btn:disabled:active { color: #999; background: #fff; }
 /* No flex `gap` / `object-fit` — the Tolino's browser ignores both. Use a
    fixed square cover slot (so text always starts at the same left offset) with
    a margin for spacing; the image keeps its natural ratio via max-width/height. */
@@ -48,12 +52,14 @@ nav.pager span { margin-right: 1rem; }
 .item .actions { margin-top: .5rem; }
 /* Inline so the form doesn't break the horizontal run of buttons. */
 .item .actions .read-form, .item .actions .convert { display: inline; }
-/* Libraries list: large, full-width, well-separated tap targets so a device tap
-   doesn't land on the wrong library. Block links (no flex gap for the Tolino). */
-.libraries { list-style: none; padding: 0; margin: 1rem 0; }
-.libraries li { border-bottom: 1px solid #ccc; }
-.libraries a { display: block; font-size: 1.3rem; line-height: 1.3; padding: .7rem .25rem; text-decoration: underline; }
-.libraries small { display: block; padding: 0 .25rem .55rem; font-size: .9rem; color: #666; }
+/* Any list of plain destinations: large, full-width, well-separated tap targets
+   so a device tap doesn't land on the neighbouring entry. Block links (no flex
+   gap for the Tolino). Used by the libraries index and the search page's series
+   and author results — the reason it isn't named .libraries. */
+.taplist { list-style: none; padding: 0; margin: 1rem 0; }
+.taplist li { border-bottom: 1px solid #ccc; }
+.taplist a { display: block; font-size: 1.3rem; line-height: 1.3; padding: .7rem .25rem; text-decoration: underline; }
+.taplist small { display: block; padding: 0 .25rem .55rem; font-size: .9rem; color: #666; }
 /* Logo mark beside the page heading. The explicit height is needed because the
    global `img { height:auto }` rule would otherwise blow it up to full width.
    No flex `gap` on the Tolino — the icon is inline with a margin instead. */
@@ -69,18 +75,31 @@ nav.pager span { margin-right: 1rem; }
 .logo img { max-width: 320px; width: 60%; height: auto; }
 .login-form { max-width: 320px; margin: 0 auto; text-align: center; }
 .login-form input { width: 100%; box-sizing: border-box; padding: .3rem; }
-.searchbar { margin-left: auto; }
+.searchbar { margin-left: .6rem; }
 .searchbar input { padding: .5rem; font: inherit; }
-.logout-form { margin: 0 0 0 auto; }
+.logout-form { margin: 0 0 0 .6rem; }
 .tabs { margin: .5rem 0; font-weight: bold; }
-.totop { font-weight: normal; font-size: .8em; text-decoration: none; margin-left: .5rem; }
-.settings-link { margin-left: .4rem; flex: 0 0 auto; text-decoration: none; padding: .4rem; }
+.totop { font-weight: normal; font-size: .8em; text-decoration: none; margin-left: .5rem; display: inline-block; padding: .4rem .6rem; }
+/* The ONLY auto margin in .page-head, so the cog lands hard right on every page.
+   Several autos would split the free space between them instead, floating
+   whatever came earlier (logout, search) into the middle — which is why those
+   two now use fixed margins and pack left. */
+.settings-link { margin-left: auto; flex: 0 0 auto; text-decoration: none; padding: .4rem; }
 .home-link { text-decoration: none; }
 .app-version { margin-top: 1.5rem; color: #666; }
 .settings-icon { display: block; height: 1.6em; width: auto; }
 .settings-note { color: #555; margin: .4rem 0; }
 .settings-form { margin: 1rem 0; }
-.settings-form label { cursor: pointer; }
+.settings-form p { margin: 0; }
+/* Block label with padding: the whole row toggles, not just the 13px box, and
+   the rule makes where one option ends and the next begins unambiguous — the
+   two checkbox rows otherwise read as one block of prose on e-ink. */
+.settings-form label { display: block; cursor: pointer; padding: .7rem .25rem; border-bottom: 1px solid #ccc; }
+/* Sizing a checkbox is honoured unevenly on old engines; if it is ignored this
+   degrades to the browser default, which is what we have today anyway. */
+.settings-form input[type=checkbox] { width: 1.2rem; height: 1.2rem; margin-right: .5rem; vertical-align: -.15rem; }
+.settings-form select { font: inherit; padding: .5rem; margin-top: .3rem; }
+.settings-form button { margin-top: 1rem; }
 .item .actions .read-form { margin: 0; }
 /* .btn now carries the whole look. This rule only stops the browser's default
    button centring from fighting it — everything else it used to set (border,
