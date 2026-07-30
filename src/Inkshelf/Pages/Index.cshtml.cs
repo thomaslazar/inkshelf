@@ -1,4 +1,3 @@
-using System.Reflection;
 using Inkshelf.Abs;
 using Inkshelf.Auth;
 using Microsoft.AspNetCore.Mvc;
@@ -13,14 +12,7 @@ public class IndexModel : PageModel
 
     public List<AbsLibrary> Libraries { get; private set; } = new();
 
-    // Deployed build version, shown on the libraries page so you can tell what's
-    // actually running. InformationalVersion, not AssemblyVersion, because the
-    // build appends "+<branch-or-pr>.<sha>" to it via SourceRevisionId — a release
-    // image shows a bare "0.4.1", anything else says which build it came from.
-    public string Version { get; } =
-        typeof(IndexModel).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-        ?? typeof(IndexModel).Assembly.GetName().Version?.ToString(3) ?? "0";
+    public string Version => AppVersion.Current;
 
     public async Task<IActionResult> OnGetAsync([FromQuery] string? all, CancellationToken ct)
     {

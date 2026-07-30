@@ -268,17 +268,34 @@ public class OidcEndpointTests
     }
 
     [Fact]
-    public async Task Login_page_uses_the_configured_button_label()
+    public async Task Login_page_names_the_configured_provider_in_both_languages()
     {
         using var f = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseSetting("ABS_URL", "http://abs.local");
             b.UseSetting("OIDC_ENABLED", "true");
-            b.UseSetting("OIDC_BUTTON_LABEL", "Log in with Acme ID");
+            b.UseSetting("OIDC_PROVIDER_NAME", "Acme ID");
         });
+        using var c = f.CreateClient();
+
+        var en = await c.GetStringAsync("/login");
+        Assert.Contains("Log in with Acme ID", en);
+        Assert.DoesNotContain("Log in with SSO", en);
+
+        // The provider name is substituted, not pasted over the label, so the
+        // translation survives.
+        var req = new HttpRequestMessage(HttpMethod.Get, "/login");
+        req.Headers.Add("Cookie", "inkshelf_settings=retina=1&gray=0&lang=de&fav=");
+        var de = await (await c.SendAsync(req)).Content.ReadAsStringAsync();
+        Assert.Contains("Mit Acme ID anmelden", de);
+    }
+
+    [Fact]
+    public async Task Login_page_shows_the_build_version()
+    {
+        using var f = Factory(enabled: false);
         var html = await f.CreateClient().GetStringAsync("/login");
-        Assert.Contains("Log in with Acme ID", html);
-        Assert.DoesNotContain("Log in with SSO", html);
+        Assert.Contains($"Inkshelf v{Inkshelf.AppVersion.Current}", html);
     }
 
     [Fact]

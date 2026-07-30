@@ -23,8 +23,12 @@ public class LoginModel : PageModel
     public string? Error { get; set; }
 
     public bool ShowSso => _options.OidcEnabled;
-    // Null → the view falls back to the localized default.
-    public string? SsoLabel => _options.OidcButtonLabel;
+    // Substituted into the localized "Log in with {0}", so naming the provider
+    // does not cost the translation.
+    public string SsoProvider => string.IsNullOrWhiteSpace(_options.OidcProviderName)
+        ? "SSO"
+        : _options.OidcProviderName;
+    public string Version => AppVersion.Current;
 
     public void OnGet(string? error)
     {

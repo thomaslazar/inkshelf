@@ -46,6 +46,9 @@ elements only.
 - **Read** — download the original ebook, or convert CBZ/CBR comics on demand to
   a **device-sized, fixed-layout EPUB** (epubcheck-clean). Conversions are cached
   on disk and the listing shows which items are already converted.
+- **Optional SSO** — if your ABS server uses an OIDC provider, Inkshelf can offer
+  the same login, so nobody needs a second password. No client secret of its own;
+  see [SSO / OIDC login](#sso--oidc-login-optional).
 - **Stateless & private** — your ABS token is held in a Data-Protection-encrypted,
   HttpOnly cookie and refreshed transparently when it expires. No accounts, no
   database.
@@ -102,50 +105,97 @@ Run Inkshelf on a trusted network and expose it only through your proxy.
 
 ### SSO / OIDC login (optional)
 
-If your ABS server has an OIDC provider configured, Inkshelf can offer login
-through it as well, alongside the usual username and password. Set
-`OIDC_ENABLED=true`, then three things on the other two systems:
+If your ABS server is set up with an OIDC provider (Authentik, Keycloak,
+Pocket ID, …), Inkshelf can offer login through that same provider, so users on a
+shared server need no separate ABS password. Password login keeps working
+alongside it, and the feature is off unless you turn it on.
 
-**1. In ABS** → Settings → Authentication → Mobile Redirect URIs, add Inkshelf's
-callback URL:
+Inkshelf reuses ABS's own OIDC client — it needs no client ID and no client secret
+of its own, and never sees your provider password. What it does need is three
+pieces of configuration, on three different systems. **All three are required;
+skipping any one produces one of the errors in the table at the end.**
+
+Throughout, substitute your own hostnames for these two:
+
+| Placeholder | Meaning | Example |
+|---|---|---|
+| `INKSHELF_HOST` | where **you** reach Inkshelf in a browser | `inkshelf.example.com` |
+| `ABS_HOST` | where **you** reach Audiobookshelf in a browser | `abs.example.com` |
+
+#### 1. On Inkshelf — environment variables
+
+```yaml
+environment:
+  ABS_URL: "http://audiobookshelf:80"        # how Inkshelf reaches ABS (may be internal)
+  ABS_PUBLIC_URL: "https://ABS_HOST"         # how a BROWSER reaches ABS
+  OIDC_ENABLED: "true"
+  OIDC_PROVIDER_NAME: "Acme ID"              # optional; button reads "Log in with Acme ID"
+  FORCE_SECURE_COOKIES: "true"               # you are behind a TLS-terminating proxy
+```
+
+`ABS_PUBLIC_URL` matters only for SSO, and only when it differs from `ABS_URL`:
+mid-login the browser is sent to ABS itself, so a container-internal name like
+`http://audiobookshelf` would be unreachable there. **If `ABS_URL` is already the
+public URL, leave `ABS_PUBLIC_URL` unset.**
+
+#### 2. In Audiobookshelf — allow Inkshelf's callback
+
+**Settings → Authentication → Mobile Redirect URIs**, add:
 
 ```
-https://<your-inkshelf-host>/oidc/callback
+https://INKSHELF_HOST/oidc/callback
 ```
 
-**2. In your OIDC provider**, on the client you registered for ABS, add ABS's
-*mobile* redirect URI alongside the web one it already has:
+Keep the existing `audiobookshelf://oauth` entry — the list holds as many as you
+need. Two constraints, both enforced by ABS:
+
+- **No port is allowed in the URL.** ABS validates these entries against a pattern
+  whose host part cannot contain `:`, so `https://inkshelf.example.com/oidc/callback`
+  is accepted while `http://inkshelf.example.com:8080/oidc/callback` is rejected at
+  *any* port, in the admin UI and over the API alike. In practice: SSO requires
+  Inkshelf served through your reverse proxy on 80/443. (`*` bypasses validation
+  entirely and is not worth the exposure.)
+- **The match is exact.** Inkshelf builds this URL from the browser's host plus
+  `https` when `FORCE_SECURE_COOKIES=true` (or the request is already HTTPS). If it
+  does not match, Inkshelf's log names the URL it sent — paste that value in.
+
+#### 3. In your OIDC provider — allow ABS's mobile redirect
+
+On the client you already registered for ABS, add a **second** redirect URI
+alongside the web one:
 
 ```
-https://<your-abs-host>/auth/openid/mobile-redirect
+https://ABS_HOST/auth/openid/mobile-redirect
 ```
 
-This is the same prerequisite the official ABS mobile apps have — the mobile flow
-uses a different path from the web flow's `/auth/openid/callback`, and the
-provider matches redirect URIs exactly. Without it the provider answers
-"redirect_uri … is not registered for this client".
+This is the same prerequisite the official ABS mobile apps have: the flow Inkshelf
+uses returns through `/auth/openid/mobile-redirect`, a different path from the web
+login's `/auth/openid/callback`, and providers match redirect URIs exactly. Nothing
+else about the client changes — no new client, no new secret.
 
-**3. If `ABS_URL` is an internal address** (a compose service name, say), also set
-`ABS_PUBLIC_URL` to the URL a browser uses to reach ABS. ABS builds that
-mobile-redirect URL from the host Inkshelf presents to it, and the browser is sent
-there mid-login — so on the internal name it would be neither resolvable nor
-registered. When `ABS_URL` is already the public URL, leave it unset.
+#### Then
 
-Two more things to know:
+Restart Inkshelf and reload `/login`: a second button appears under **Log in**.
+The version line at the bottom of that page tells you which build is deployed.
 
-- **The URL must not contain a port.** ABS validates redirect URIs against a
-  pattern whose host part has no `:`, so `https://inkshelf.example/oidc/callback`
-  is accepted and `http://inkshelf.example:8080/oidc/callback` is rejected at any
-  port. In practice: serve Inkshelf through your reverse proxy on 80/443.
-- **The match is exact**, and Inkshelf derives the URL from the request host plus
-  `https` when `FORCE_SECURE_COOKIES=true` (or the request already is HTTPS). If
-  SSO fails, the log line for the failed attempt names the URL that was sent —
-  paste that into ABS.
+#### If it does not work
 
-Logging out of Inkshelf clears only Inkshelf's own session; the provider session
-stays alive, so the SSO button will log you back in without a prompt until you log
-out at the provider. Inkshelf never sees your provider password, and needs no
-client secret of its own.
+| What you see | Cause | Fix |
+|---|---|---|
+| `redirect_uri 'https://ABS_HOST/auth/openid/mobile-redirect' is not registered for this client` | Step 3 missing | Add that URI to the ABS client in your provider |
+| `redirect_uri 'http://audiobookshelf/auth/openid/mobile-redirect' …` — an internal name | `ABS_PUBLIC_URL` unset or wrong | Step 1: set it to the browser-facing ABS URL |
+| ABS answers `Invalid redirect_uri` (Inkshelf shows "SSO login failed") | Step 2 missing or mismatched | Compare the URL in Inkshelf's log against the ABS entry, character for character |
+| No SSO button on the login page | `OIDC_ENABLED` not `true`, or the container did not restart | Step 1 |
+| Login loops back to `/login` with no visible error | Flow cookie dropped — usually `FORCE_SECURE_COOKIES=true` while serving plain HTTP | Serve over HTTPS, or unset that variable for local testing |
+
+Inkshelf logs a warning with the specific reason for every failed SSO attempt;
+`docker logs` is the first place to look.
+
+#### Logging out
+
+Logging out of Inkshelf clears Inkshelf's session only. The provider session stays
+alive, so the SSO button logs you straight back in without a prompt until you log
+out at the provider itself.
 
 ### Persistence
 
@@ -189,7 +239,7 @@ All configuration is via environment variables.
 | `TRUSTED_PROXY`           | *(unset)*            | Comma-separated IPs/CIDRs permitted to set forwarded headers. Unset = trust the immediate hop. |
 | `DIAG_ENABLED`            | `true`               | Whether the unauthenticated `/diag` browser-probe endpoint is exposed. Set `false` to disable it. |
 | `OIDC_ENABLED`            | `false`              | Offer login through the OIDC provider ABS is configured with. Requires whitelisting Inkshelf's callback URL in ABS — see [SSO / OIDC login](#sso--oidc-login-optional). |
-| `OIDC_BUTTON_LABEL`       | *(unset)*            | Text of the SSO button, e.g. `Log in with Acme ID`. Unset = the translated "Log in with SSO". |
+| `OIDC_PROVIDER_NAME`      | *(unset)* = `SSO`    | Provider name on the SSO button — `Acme ID` renders "Log in with Acme ID" (and "Mit Acme ID anmelden" in German). |
 | `LOCALES_PATH`            | `<ContentRoot>/locales` | Baseline directory of shipped `<lang>.json` UI translation files. Don't mount over this — use `LOCALES_OVERRIDE_PATH` instead. |
 | `LOCALES_OVERRIDE_PATH`   | *(unset)*            | Optional extra directory of `<lang>.json` files, merged on top of `LOCALES_PATH` (its keys win). Mount custom or extra translations here and restart — the shipped set stays intact; no rebuild. |
 | `MaxArchiveBytes`         | `1073741824` (1 GiB) | Reject ebook archives larger than this before conversion (decompression-bomb guard; spooled to a temp file, so it bounds disk not RAM). Raise for very large comics. |

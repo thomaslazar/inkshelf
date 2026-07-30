@@ -75,6 +75,11 @@ nav.pager span { margin-right: 1rem; }
 .logo img { max-width: 320px; width: 60%; height: auto; }
 .login-form { max-width: 320px; margin: 0 auto; text-align: center; }
 .login-form input { width: 100%; box-sizing: border-box; padding: .3rem; }
+/* Log in and the SSO button are the same kind of action, so they get the same
+   shape: both full width, which also stops the longer SSO label making them look
+   like two different controls. display:block because a <button> still
+   shrink-to-fits with width alone on the target engine. */
+.login-form .btn { display: block; width: 100%; box-sizing: border-box; text-align: center; }
 /* Always its own line, never "it happens to wrap": a full-width flex item can't
    share a line, so the breadcrumb row keeps a fixed shape whatever the library
    name's length. flex-basis AND width because the target engine honours the
@@ -96,6 +101,9 @@ nav.pager span { margin-right: 1rem; }
 .logout-form ~ .settings-link { margin-left: .4rem; }
 .home-link { text-decoration: none; }
 .app-version { margin-top: 1.5rem; color: #666; }
+/* The login page is centred throughout; a left-hugging version line reads as a
+   mistake there. Elsewhere (the libraries page) it stays left with the content. */
+.login-version { text-align: center; }
 .settings-icon { display: block; height: 1.6em; width: auto; }
 .settings-note { color: #555; margin: .4rem 0; }
 .settings-form { margin: 1rem 0; }

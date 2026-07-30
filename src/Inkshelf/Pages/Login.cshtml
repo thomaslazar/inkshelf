@@ -5,11 +5,12 @@
 <form method="post" class="login-form">
     <p><label>@L["Username"]<br /><input name="Username" autocomplete="username" /></label></p>
     <p><label>@L["Password"]<br /><input name="Password" type="password" autocomplete="current-password" /></label></p>
-    <p><button type="submit">@L["Log in"]</button></p>
+    <p><button type="submit" class="btn">@L["Log in"]</button></p>
 </form>
 @if (Model.ShowSso)
 {
     <div class="login-form">
-        <p><a class="btn" href="/oidc/start">@(Model.SsoLabel ?? L["Log in with SSO"])</a></p>
+        <p><a class="btn" href="/oidc/start">@L["Log in with {0}", Model.SsoProvider]</a></p>
     </div>
 }
+<p class="app-version login-version"><small>Inkshelf v@(Model.Version)</small></p>

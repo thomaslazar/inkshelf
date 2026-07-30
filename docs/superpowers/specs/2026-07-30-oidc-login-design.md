@@ -101,7 +101,7 @@ Since both are set on `AbsAuthClient`'s handler, they apply to login/refresh too
 | Key | Default | Meaning |
 |---|---|---|
 | `OIDC_ENABLED` | `false` | Map the endpoints and show the button. |
-| `OIDC_BUTTON_LABEL` | — | Override the button text, e.g. `Log in with Acme ID`. Falls back to the localized `Log in with SSO`. |
+| `OIDC_PROVIDER_NAME` | `SSO` | Provider name substituted into the localized `Log in with {0}`. Deliberately not a whole-label override, which would drop the translation; `LOCALES_OVERRIDE_PATH` already covers rewording. |
 
 Off by default, and when off the endpoints are not mapped at all.
 
@@ -152,7 +152,7 @@ One `<a class="button" href="/oidc/start">`, rendered under the password form
 when enabled. A link, not a form: it is a GET that starts a redirect chain, so
 there is nothing to protect with antiforgery, and it stays zero-JS.
 
-New locale keys in `locales/en.json` + `de.json`: `Log in with SSO`,
+New locale keys (German only — the English keys *are* the strings): `Log in with {0}`,
 `SSO login failed. Please try again.`
 
 Failures (`state` mismatch, expired/absent flow cookie, ABS 4xx/5xx,
