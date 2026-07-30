@@ -32,6 +32,17 @@ var absOptions = new AbsOptions
 // depends on this exact exception type.
 if (string.IsNullOrWhiteSpace(absOptions.AbsUrl))
     throw new InvalidOperationException("ABS_URL is required.");
+// Both URLs are parsed lazily (BaseAddress on first use, AbsPublicBase on the
+// first SSO attempt), so a typo would otherwise surface as a 500 much later. The
+// scheme check is the point: "abs.local:13378" IS a valid absolute URI — scheme
+// "abs.local", path "13378" — so TryCreate alone waves the common typo through.
+static bool IsHttpUrl(string s) =>
+    Uri.TryCreate(s, UriKind.Absolute, out var u)
+    && (u.Scheme == Uri.UriSchemeHttp || u.Scheme == Uri.UriSchemeHttps);
+if (!IsHttpUrl(absOptions.AbsUrl))
+    throw new InvalidOperationException("ABS_URL must be an absolute http(s) URL.");
+if (!string.IsNullOrWhiteSpace(absOptions.AbsPublicUrl) && !IsHttpUrl(absOptions.AbsPublicUrl))
+    throw new InvalidOperationException("ABS_PUBLIC_URL must be an absolute http(s) URL.");
 builder.Services.AddSingleton(absOptions);
 
 var keysPath = absOptions.DataProtectionKeysPath

@@ -1,6 +1,6 @@
 # OIDC / SSO login
 
-**Status:** design, awaiting approval
+**Status:** design approved, implemented (PR #34)
 **Date:** 2026-07-30
 **Roadmap item:** none yet — new
 

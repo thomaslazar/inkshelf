@@ -79,6 +79,10 @@ from the repo root (inside the devcontainer) must stay green, and
   following the redirect destroys; and the handler is pooled process-wide, so a
   `CookieContainer` would pool every user's ABS session in one jar. The OIDC legs
   pass ABS's cookies as headers for exactly that reason.
+- **`EnableSourceControlManagerQueries=false` stays in the csproj.** Without it the
+  SDK appends the full 40-char HEAD sha to `InformationalVersion`, which the
+  libraries and login pages display. The build stamps `SourceRevisionId`
+  deliberately instead, so a bare version means a release build.
 - **SSO uses ABS's OIDC *mobile* flow, never its web callback flow.** The web flow
   validates the callback as same-origin with ABS, so it can never work from a
   sidecar on its own hostname. The mobile flow's token exchange needs the cookies
