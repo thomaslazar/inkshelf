@@ -2,10 +2,17 @@ namespace Inkshelf;
 
 // Typed view of the app's configuration, bound once at startup so config reads
 // live in one place instead of scattered Configuration["…"] lookups. Config keys:
-// ABS_URL (required), CachePath, DataProtectionKeysPath, DIAG_ENABLED, FORCE_SECURE_COOKIES, LOCALES_PATH, LOCALES_OVERRIDE_PATH, TRUSTED_PROXY.
+// ABS_URL (required), ABS_PUBLIC_URL, CachePath, DataProtectionKeysPath, DIAG_ENABLED, FORCE_SECURE_COOKIES, LOCALES_PATH, LOCALES_OVERRIDE_PATH, OIDC_ENABLED, OIDC_PROVIDER_NAME, TRUSTED_PROXY.
 public sealed class AbsOptions
 {
     public string AbsUrl { get; set; } = "";
+    // ABS's browser-facing URL, when it differs from AbsUrl (which may be an
+    // internal address like a compose service name). Only SSO needs it: ABS
+    // derives its own OIDC redirect URL from the host we present, and that URL
+    // must be reachable by the browser and registered at the provider. Null →
+    // AbsUrl, which is right whenever the two are the same.
+    public string? AbsPublicUrl { get; set; }
+    public Uri AbsPublicBase => new(string.IsNullOrWhiteSpace(AbsPublicUrl) ? AbsUrl : AbsPublicUrl);
     public string? CachePath { get; set; }
     public string? DataProtectionKeysPath { get; set; }
     // Baseline directory of <lang>.json UI translation files, scanned at startup.
@@ -23,6 +30,15 @@ public sealed class AbsOptions
     public string? TrustedProxy { get; set; }
     // Whether the unauthenticated /diag probe endpoint is mapped. Default true.
     public bool DiagEnabled { get; set; } = true;
+    // Offer login through the OIDC provider ABS is configured with. Off by
+    // default; when off the /oidc endpoints are not mapped at all. Requires the
+    // operator to whitelist our callback URL in ABS — see README.
+    public bool OidcEnabled { get; set; }
+    // Provider name shown on the SSO button, substituted into the localized
+    // "Log in with {0}". Null → "SSO". Deliberately not a whole-label override:
+    // that would drop the translation. To reword the button itself, translate
+    // "Log in with {0}" via LOCALES_OVERRIDE_PATH.
+    public string? OidcProviderName { get; set; }
     // Soft cap on total EPUB cache bytes; oldest entries are evicted past it. Default 5 GiB.
     public long MaxCacheBytes { get; set; } = 5_368_709_120;
     // Max bytes read from an ebook archive before conversion; larger archives are

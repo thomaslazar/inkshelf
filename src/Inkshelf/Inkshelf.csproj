@@ -5,6 +5,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Version>0.4.1</Version>
+    <!-- Otherwise the SDK queries git and appends the full 40-char HEAD sha to
+         InformationalVersion, which the libraries page shows. The version is
+         stamped deliberately instead: the Docker build passes SourceRevisionId
+         (e.g. "pr-34.a1b2c3d") for non-release images, and nothing for releases,
+         so a bare "0.4.1" means "this is a release build". -->
+    <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
     <!-- Single-user sidecar with sequential CPU-bound conversions: Workstation GC
          (one heap, returns memory to the OS) beats Server GC's per-core heaps.
          Validated on-box: resting footprint −38%. See the memory-footprint spec. -->

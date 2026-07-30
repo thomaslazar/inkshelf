@@ -14,12 +14,15 @@ var builder = WebApplication.CreateBuilder(args);
 var absOptions = new AbsOptions
 {
     AbsUrl = builder.Configuration["ABS_URL"] ?? "",
+    AbsPublicUrl = builder.Configuration["ABS_PUBLIC_URL"],
     CachePath = builder.Configuration["CachePath"],
     DataProtectionKeysPath = builder.Configuration["DataProtectionKeysPath"],
     LocalesPath = builder.Configuration["LOCALES_PATH"],
     LocalesOverridePath = builder.Configuration["LOCALES_OVERRIDE_PATH"],
     DiagEnabled = !string.Equals(builder.Configuration["DIAG_ENABLED"], "false", StringComparison.OrdinalIgnoreCase),
     ForceSecureCookies = bool.TryParse(builder.Configuration["FORCE_SECURE_COOKIES"], out var fsc) && fsc,
+    OidcEnabled = bool.TryParse(builder.Configuration["OIDC_ENABLED"], out var oidc) && oidc,
+    OidcProviderName = builder.Configuration["OIDC_PROVIDER_NAME"],
     TrustedProxy = builder.Configuration["TRUSTED_PROXY"],
     MaxCacheBytes = long.TryParse(builder.Configuration["MaxCacheBytes"], out var mcb) && mcb > 0 ? mcb : 5_368_709_120,
     MaxArchiveBytes = long.TryParse(builder.Configuration["MaxArchiveBytes"], out var mab) && mab > 0 ? mab : 1_073_741_824,
@@ -29,6 +32,17 @@ var absOptions = new AbsOptions
 // depends on this exact exception type.
 if (string.IsNullOrWhiteSpace(absOptions.AbsUrl))
     throw new InvalidOperationException("ABS_URL is required.");
+// Both URLs are parsed lazily (BaseAddress on first use, AbsPublicBase on the
+// first SSO attempt), so a typo would otherwise surface as a 500 much later. The
+// scheme check is the point: "abs.local:13378" IS a valid absolute URI — scheme
+// "abs.local", path "13378" — so TryCreate alone waves the common typo through.
+static bool IsHttpUrl(string s) =>
+    Uri.TryCreate(s, UriKind.Absolute, out var u)
+    && (u.Scheme == Uri.UriSchemeHttp || u.Scheme == Uri.UriSchemeHttps);
+if (!IsHttpUrl(absOptions.AbsUrl))
+    throw new InvalidOperationException("ABS_URL must be an absolute http(s) URL.");
+if (!string.IsNullOrWhiteSpace(absOptions.AbsPublicUrl) && !IsHttpUrl(absOptions.AbsPublicUrl))
+    throw new InvalidOperationException("ABS_PUBLIC_URL must be an absolute http(s) URL.");
 builder.Services.AddSingleton(absOptions);
 
 var keysPath = absOptions.DataProtectionKeysPath
@@ -44,6 +58,7 @@ Directory.CreateDirectory(cachePath);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<TokenStore>();
+builder.Services.AddScoped<OidcFlowStore>();
 builder.Services.AddTransient<AbsAuthHandler>();
 var absUserAgent = $"Inkshelf/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "0"}";
 void ConfigureAbs(HttpClient c)
@@ -53,7 +68,15 @@ void ConfigureAbs(HttpClient c)
     // requests with no User-Agent (HTTP 403) before they reach the server.
     c.DefaultRequestHeaders.UserAgent.ParseAdd(absUserAgent);
 }
-builder.Services.AddHttpClient<AbsAuthClient>(ConfigureAbs);
+builder.Services.AddHttpClient<AbsAuthClient>(ConfigureAbs)
+    // OIDC leg 1 needs the raw 302 — following it loses the Location we want.
+    // And this handler is shared process-wide, so a CookieContainer would pool
+    // every user's ABS session in one jar; cookies are passed as headers.
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false,
+    });
 builder.Services.AddHttpClient<AbsApiClient>(ConfigureAbs).AddHttpMessageHandler<AbsAuthHandler>();
 // Handler-FREE (no AbsAuthHandler) — the worker supplies the bearer; ConfigureAbs
 // gives it the BaseAddress + required User-Agent. See AbsDownloadClient.
@@ -120,6 +143,7 @@ app.MapDownloadEndpoints();
 app.MapConvertEndpoints();
 
 app.MapSessionEndpoints();
+app.MapOidcEndpoints();
 app.MapSettingsEndpoints();
 app.MapReadEndpoints();
 

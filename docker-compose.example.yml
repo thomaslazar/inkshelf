@@ -11,6 +11,13 @@ services:
       # Set true when a TLS-terminating reverse proxy sits in front of Inkshelf
       # (recommended) so session cookies are marked Secure. See README → Deployment.
       # FORCE_SECURE_COOKIES: "true"
+      # Log in through the OIDC provider your ABS server uses, alongside the
+      # password form. Needs setup in ABS *and* in your provider, plus
+      # ABS_PUBLIC_URL when ABS_URL above is an internal name — the three steps
+      # are in README → SSO / OIDC login. Password login is unaffected.
+      # OIDC_ENABLED: "true"
+      # OIDC_PROVIDER_NAME: "Acme ID"     # button reads "Log in with Acme ID"
+      # ABS_PUBLIC_URL: "https://abs.example.com"
       # Add or override UI translations without a rebuild: mount your own
       # <lang>.json files here (merged over the shipped set, your keys win).
       # Mount at this override path — NOT over the built-in /app/locales.

@@ -30,6 +30,8 @@
   "Password": "Passwort",
   "Invalid username or password.": "Ungültiger Benutzername oder Passwort.",
   "Could not reach the server. Please try again.": "Server nicht erreichbar. Bitte erneut versuchen.",
+  "Log in with {0}": "Mit {0} anmelden",
+  "SSO login failed. Please try again.": "SSO-Anmeldung fehlgeschlagen. Bitte erneut versuchen.",
 
   "These settings apply to this device / browser only.": "Diese Einstellungen gelten nur für dieses Gerät / diesen Browser.",
   "Detected screen: {0}": "Erkannter Bildschirm: {0}",

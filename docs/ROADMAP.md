@@ -96,6 +96,25 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Build identification** — the version on the libraries and login pages is now
+  `InformationalVersion`, which the Docker build stamps as `0.4.1+pr-34.a1b2c3d` or
+  `0.4.1+main.a1b2c3d`; a bare `0.4.1` means a release image. Paired with CI
+  pushing a `:pr-<n>` image for PRs labelled `test-image`, so a branch can be tried
+  on a real device and identified once deployed.
+- **SSO / OIDC login** (`OIDC_ENABLED`) — optional second login method through
+  the provider ABS itself uses, so a household on SSO needs no separate ABS
+  password. ABS's web callback flow demands a same-origin callback, so this drives
+  the "mobile" flow ABS offers third-party clients: Inkshelf runs leg 1
+  server-side to capture the session cookies its token exchange requires, keeps
+  the PKCE verifier and those cookies in a 10-minute encrypted cookie, and
+  exchanges the code when the browser returns. No client secret, no new
+  dependency. Setup spans three systems (Inkshelf env, ABS's mobile redirect URIs,
+  and the ABS client's redirect URIs at the provider), so the README carries it as
+  numbered steps with a symptom→fix table. Two constraints found the hard way: the
+  ABS whitelist entry cannot carry a port, so SSO needs Inkshelf behind a proxy on
+  80/443; and `ABS_PUBLIC_URL` is required when `ABS_URL` is internal, because ABS
+  builds its own redirect URL from the host we present.
+
 - **E-reader touch design pass** — every action became a finger-sized bordered
   target (~48px, was ~24px with 5.6px gaps ≈ 0.7mm on an e-ink panel, so all
   three row actions fit under one fingertip). Listing actions moved from a fixed
