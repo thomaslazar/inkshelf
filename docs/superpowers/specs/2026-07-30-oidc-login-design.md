@@ -121,6 +121,17 @@ Settings → Authentication → mobile redirect URIs
 answers `Invalid redirect_uri` we **log the URI we sent** — that log line is the
 operator's fix.
 
+**Inkshelf must be reachable on a port-free URL for SSO to work at all.** ABS
+validates every whitelist entry — in the admin UI *and* in
+`MiscController.updateAuthSettings` — against
+`^\w+://[\w\.-]+(/[\w\./-]*)*$`, whose host charset has no `:`. So
+`https://inkshelf.example/oidc/callback` is accepted and
+`http://inkshelf.example:5099/oidc/callback` is not, at any port. Behind a
+reverse proxy on 443 this is invisible; a bare `dotnet run` on 5099 cannot be
+whitelisted at all. The only escape is setting the list to `*`, which disables
+redirect validation server-wide — fine for a short test window, not for a
+deployment. This is a README note, not something Inkshelf can work around.
+
 ### E. Login page
 
 One `<a class="button" href="/oidc/start">`, rendered under the password form
@@ -194,6 +205,7 @@ and adding one is out of proportion to a 100-line feature.
 | Risk | Mitigation |
 |---|---|
 | Derived redirect URI does not match the ABS whitelist entry | Log the exact URI on ABS's `Invalid redirect_uri`; document the ABS step in the README |
+| Deployment exposes Inkshelf on a non-standard port, so no whitelist entry is possible | Documented as a prerequisite: SSO needs a port-free URL (proxy on 80/443) |
 | Wrong scheme behind a proxy that omits `X-Forwarded-Proto` | Scheme follows `FORCE_SECURE_COOKIES`, which such a deployment already sets |
 | A shared `CookieContainer` pools ABS sessions across users | `UseCookies = false`, header-only cookies, plus the interleaved-flows test |
 | Leg 1 follows the redirect and loses `Location` | `AllowAutoRedirect = false`, covered by the happy-path test |
