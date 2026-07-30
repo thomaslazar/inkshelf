@@ -169,6 +169,11 @@ Set a **container memory limit** (start with 1.5 GiB) so conversions can't press
 | `:X.Y.Z`      | A specific tagged release — pin this for reproducible deploys |
 | `:main`       | Bleeding-edge build from `main` (moves on every merge)      |
 | `:main-<sha>` | A specific `main` build, pinnable                           |
+| `:pr-<n>`     | A pull request's build, for trying a branch on a device (only when the PR is labelled `test-image`) |
+
+The version on the libraries page identifies the build: a release image shows a
+bare `0.4.1`, while any other image appends where it came from —
+`0.4.1+main.a1b2c3d` or `0.4.1+pr-34.a1b2c3d`.
 
 ## Configuration
 
