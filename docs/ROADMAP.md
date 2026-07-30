@@ -97,8 +97,8 @@ Settings to add to the per-device settings system:
 Shipped; kept as a short record (full detail in git history / the PR).
 
 - **Build identification** — the version on the libraries and login pages is now
-  `InformationalVersion`, which the Docker build stamps as `0.4.1+pr-34.a1b2c3d` or
-  `0.4.1+main.a1b2c3d`; a bare `0.4.1` means a release image. Paired with CI
+  `InformationalVersion`, which the Docker build stamps as `X.Y.Z+pr-34.a1b2c3d` or
+  `X.Y.Z+main.a1b2c3d`; a version with no `+` suffix means a release image. Paired with CI
   pushing a `:pr-<n>` image for PRs labelled `test-image`, so a branch can be tried
   on a real device and identified once deployed.
 - **SSO / OIDC login** (`OIDC_ENABLED`) — optional second login method through
