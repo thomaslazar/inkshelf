@@ -131,6 +131,7 @@ app.MapDownloadEndpoints();
 app.MapConvertEndpoints();
 
 app.MapSessionEndpoints();
+app.MapOidcEndpoints();
 app.MapSettingsEndpoints();
 app.MapReadEndpoints();
 
