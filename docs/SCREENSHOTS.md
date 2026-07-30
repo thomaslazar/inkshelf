@@ -8,7 +8,7 @@ Inkshelf running on a real e-ink reader. Click any image to enlarge.
   <a href="img/login.jpg"><img src="img/login.jpg" alt="Login screen" width="260"></a>
 </p>
 
-<p align="center"><sub>Sign in with your Audiobookshelf credentials.</sub></p>
+<p align="center"><sub>Sign in with your Audiobookshelf credentials — or, when the server is set up for it, through the same OIDC provider (here: Pocket ID).</sub></p>
 
 ### Libraries
 
@@ -48,7 +48,7 @@ Inkshelf running on a real e-ink reader. Click any image to enlarge.
   <a href="img/converted-view.jpg"><img src="img/converted-view.jpg" alt="List of comics already converted and cached on this device" width="260"></a>
 </p>
 
-<p align="center"><sub>Everything already converted and cached for this device, across all libraries.</sub></p>
+<p align="center"><sub>Everything already converted and cached for this device, across all libraries — with its own sort links, and a <code>↓</code> on the files this device has already downloaded.</sub></p>
 
 ### Reading a converted comic
 
@@ -57,3 +57,11 @@ Inkshelf running on a real e-ink reader. Click any image to enlarge.
 </p>
 
 <p align="center"><sub>A CBZ converted to a fixed-layout EPUB, read in the device's native reader.</sub></p>
+
+### Settings
+
+<p align="center">
+  <a href="img/settings.jpg"><img src="img/settings.jpg" alt="Per-device settings: detected screen size, retina and grayscale toggles, language" width="260"></a>
+</p>
+
+<p align="center"><sub>Per-device settings, held in a cookie rather than an account: the screen size Inkshelf detected (used to size converted pages), the retina and grayscale toggles, and the UI language.</sub></p>
