@@ -3,6 +3,62 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.5.0 — 2026-07-30
+
+### Highlights
+
+- **Log in with SSO.** If your Audiobookshelf server is set up with an OIDC
+  provider (Authentik, Keycloak, Pocket ID, …), Inkshelf can now offer that same
+  login next to the password form — so people on a shared server no longer need a
+  separate ABS password. Off unless you set `OIDC_ENABLED=true`, and password login
+  is unchanged. Inkshelf reuses ABS's own OIDC client: no client ID, no client
+  secret, and it never sees your provider password.
+- **Setup spans three systems**, so the README walks it as numbered steps with a
+  symptom → cause → fix table: environment variables on Inkshelf, Inkshelf's
+  callback URL in ABS, and ABS's mobile redirect URI at your provider. Note that
+  the URL registered in ABS cannot contain a port, so SSO requires Inkshelf served
+  through a reverse proxy on 80/443.
+
+New configuration: `OIDC_ENABLED`, `OIDC_PROVIDER_NAME`, `ABS_PUBLIC_URL` (needed
+for SSO only when `ABS_URL` is an internal address). Nothing existing changed, so
+upgrading without touching your configuration keeps today's behaviour.
+
+### Features
+
+- feat: add the oidc config flags
+- feat: add the oidc login endpoints
+- feat: drive the abs oidc mobile flow from the auth client
+- feat: match the login buttons and show the build on /login
+- feat: offer sso on the login page
+- feat: stamp non-release builds with branch and sha in the version
+- feat: store the oidc flow in an encrypted cookie
+
+### Fixes
+
+- fix: fail fast on a malformed ABS_URL or ABS_PUBLIC_URL
+- fix: present abs's public host when starting the oidc flow
+
+### Internal
+
+**CI**
+
+- ci: push a pr image when the pr is labelled test-image
+
+**Tests**
+
+- test: assert the sso button in the browser pass
+
+**Docs**
+
+- docs: add OIDC login design spec
+- docs: add the oidc login implementation plan
+- docs: document sso login
+- docs: stop naming a specific version in the build-stamp examples
+
+**Chore**
+
+- chore: bump version to 0.5.0
+
 ## v0.4.1 — 2026-07-29
 
 ### Highlights
