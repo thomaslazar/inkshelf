@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>0.4.1</Version>
+    <Version>0.5.0</Version>
     <!-- Otherwise the SDK queries git and appends the full 40-char HEAD sha to
          InformationalVersion, which the libraries page shows. The version is
          stamped deliberately instead: the Docker build passes SourceRevisionId
