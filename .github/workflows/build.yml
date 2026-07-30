@@ -3,6 +3,9 @@ name: Build and Test
 on:
   pull_request:
     branches: [main]
+    # `labeled` so adding `test-image` to an open PR builds an image right away
+    # instead of waiting for the next push.
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
   release:
@@ -27,7 +30,13 @@ jobs:
 
   image:
     needs: test
-    if: github.event_name != 'pull_request'
+    # PRs build an image only when labelled `test-image` — the opt-in loop for
+    # trying a branch on a real device. Fork PRs get a read-only token and could
+    # not push, so they never qualify.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       contains(github.event.pull_request.labels.*.name, 'test-image'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -45,6 +54,7 @@ jobs:
         with:
           images: ghcr.io/thomaslazar/inkshelf
           tags: |
+            type=ref,event=pr
             type=raw,value=main,enable={{is_default_branch}}
             type=sha,prefix=main-,enable={{is_default_branch}}
             type=semver,pattern={{version}}
