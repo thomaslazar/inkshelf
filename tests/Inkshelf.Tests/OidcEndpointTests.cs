@@ -220,6 +220,45 @@ public class OidcEndpointTests
     }
 
     [Fact]
+    public async Task Login_page_hides_the_sso_button_when_disabled()
+    {
+        using var f = Factory(enabled: false);
+        var html = await f.CreateClient().GetStringAsync("/login");
+        Assert.DoesNotContain("/oidc/start", html);
+    }
+
+    [Fact]
+    public async Task Login_page_offers_sso_with_the_default_label_when_enabled()
+    {
+        using var f = Factory();
+        var html = await f.CreateClient().GetStringAsync("/login");
+        Assert.Contains("/oidc/start", html);
+        Assert.Contains("Log in with SSO", html);
+    }
+
+    [Fact]
+    public async Task Login_page_uses_the_configured_button_label()
+    {
+        using var f = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        {
+            b.UseSetting("ABS_URL", "http://abs.local");
+            b.UseSetting("OIDC_ENABLED", "true");
+            b.UseSetting("OIDC_BUTTON_LABEL", "Log in with Acme ID");
+        });
+        var html = await f.CreateClient().GetStringAsync("/login");
+        Assert.Contains("Log in with Acme ID", html);
+        Assert.DoesNotContain("Log in with SSO", html);
+    }
+
+    [Fact]
+    public async Task Login_page_reports_a_failed_sso_attempt()
+    {
+        using var f = Factory();
+        var html = await f.CreateClient().GetStringAsync("/login?error=sso");
+        Assert.Contains("SSO login failed", html);
+    }
+
+    [Fact]
     public async Task Each_flow_gets_a_fresh_state_and_verifier()
     {
         var abs = new AbsStub();

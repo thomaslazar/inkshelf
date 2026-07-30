@@ -9,13 +9,27 @@ public class LoginModel : PageModel
 {
     private readonly AbsAuthClient _auth;
     private readonly TokenStore _store;
-    public LoginModel(AbsAuthClient auth, TokenStore store) { _auth = auth; _store = store; }
+    private readonly AbsOptions _options;
+
+    public LoginModel(AbsAuthClient auth, TokenStore store, AbsOptions options)
+    {
+        _auth = auth;
+        _store = store;
+        _options = options;
+    }
 
     [BindProperty] public string Username { get; set; } = "";
     [BindProperty] public string Password { get; set; } = "";
     public string? Error { get; set; }
 
-    public void OnGet() { }
+    public bool ShowSso => _options.OidcEnabled;
+    // Null → the view falls back to the localized default.
+    public string? SsoLabel => _options.OidcButtonLabel;
+
+    public void OnGet(string? error)
+    {
+        if (error == "sso") Error = "SSO login failed. Please try again.";
+    }
 
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
     {
