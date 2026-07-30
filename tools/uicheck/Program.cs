@@ -59,8 +59,10 @@ async Task Check(string label, string? settingsCookie, string path,
 // after its own unescaping, so no %-escaping is needed here.
 const string De = "retina=1&gray=0&lang=de&fav=";
 
+// run.sh sets OIDC_ENABLED=true, so the SSO button must be on both login pages.
+// The seeded ABS has no provider configured, so it is never clicked here.
 await Check("login-de", De, "/login",
-    mustContain: ["Anmelden", "Passwort", "Benutzername"],
+    mustContain: ["Anmelden", "Passwort", "Benutzername", "Mit SSO anmelden"],
     mustNotContain: ["Log in", "Password", "Username"]);
 
 await Check("settings-de", De, "/settings",
@@ -68,7 +70,7 @@ await Check("settings-de", De, "/settings",
     mustNotContain: ["Save", "Language"]);
 
 await Check("login-en", null, "/login",
-    mustContain: ["Log in", "Password", "Username"],
+    mustContain: ["Log in", "Password", "Username", "Log in with SSO"],
     mustNotContain: []);
 
 await Check("settings-en", null, "/settings",
