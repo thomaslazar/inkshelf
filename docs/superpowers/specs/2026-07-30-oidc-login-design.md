@@ -121,6 +121,20 @@ Settings → Authentication → mobile redirect URIs
 answers `Invalid redirect_uri` we **log the URI we sent** — that log line is the
 operator's fix.
 
+**ABS derives its own redirect URL from the host Inkshelf presents on leg 1**
+(`OidcAuthStrategy.getAuthorizationUrl` reads `req.get('host')` and
+`x-forwarded-proto`), and that URL — `/auth/openid/mobile-redirect` — is both
+where the provider returns the user and what the provider matches against its
+registered redirect URIs. Since leg 1 is a server-side call to `ABS_URL`, which
+may be an internal address, leg 1 sets `Host` (and `x-forwarded-proto: https`)
+from **`ABS_PUBLIC_URL`**, defaulting to `ABS_URL`. The connection still goes to
+`ABS_URL`. Two consequences for the operator, both README material: set
+`ABS_PUBLIC_URL` when the two differ, and **register
+`https://<abs-host>/auth/openid/mobile-redirect` with the provider** — the mobile
+flow's path differs from the web flow's `/auth/openid/callback`, so the client
+registration ABS already has is not sufficient. This is the same prerequisite
+ABS's own mobile apps carry.
+
 **Inkshelf must be reachable on a port-free URL for SSO to work at all.** ABS
 validates every whitelist entry — in the admin UI *and* in
 `MiscController.updateAuthSettings` — against
@@ -206,6 +220,7 @@ and adding one is out of proportion to a 100-line feature.
 |---|---|
 | Derived redirect URI does not match the ABS whitelist entry | Log the exact URI on ABS's `Invalid redirect_uri`; document the ABS step in the README |
 | Deployment exposes Inkshelf on a non-standard port, so no whitelist entry is possible | Documented as a prerequisite: SSO needs a port-free URL (proxy on 80/443) |
+| ABS builds an unreachable redirect URL from an internal `ABS_URL` | Leg 1 presents `ABS_PUBLIC_URL` as `Host`; covered by a test asserting the header |
 | Wrong scheme behind a proxy that omits `X-Forwarded-Proto` | Scheme follows `FORCE_SECURE_COOKIES`, which such a deployment already sets |
 | A shared `CookieContainer` pools ABS sessions across users | `UseCookies = false`, header-only cookies, plus the interleaved-flows test |
 | Leg 1 follows the redirect and loses `Location` | `AllowAutoRedirect = false`, covered by the happy-path test |

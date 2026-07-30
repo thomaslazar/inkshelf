@@ -14,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 var absOptions = new AbsOptions
 {
     AbsUrl = builder.Configuration["ABS_URL"] ?? "",
+    AbsPublicUrl = builder.Configuration["ABS_PUBLIC_URL"],
     CachePath = builder.Configuration["CachePath"],
     DataProtectionKeysPath = builder.Configuration["DataProtectionKeysPath"],
     LocalesPath = builder.Configuration["LOCALES_PATH"],

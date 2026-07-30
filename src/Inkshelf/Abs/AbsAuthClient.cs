@@ -38,13 +38,30 @@ public class AbsAuthClient
     // the Set-Cookie values it hands back — the token exchange in
     // CompleteOidcAsync is refused without them. Requires the client's handler to
     // have AllowAutoRedirect off, or the Location we return here is gone.
+    //
+    // absPublicBase is ABS's browser-facing URL. ABS derives its own
+    // /auth/openid/mobile-redirect URL from this request's Host and
+    // x-forwarded-proto, and that URL is both where the provider sends the user
+    // back and what the provider matches against its registered redirect URIs. On
+    // the internal address (a compose service name, say) it would be neither
+    // reachable nor registered, so present the public one — the connection itself
+    // still goes to BaseAddress.
     public async Task<(string AuthorizeUrl, string Cookies)> StartOidcAsync(
-        string redirectUri, string challenge, string state, CancellationToken ct = default)
+        Uri absPublicBase, string redirectUri, string challenge, string state,
+        CancellationToken ct = default)
     {
         var url = $"/auth/openid?response_type=code&redirect_uri={Uri.EscapeDataString(redirectUri)}"
             + $"&code_challenge={Uri.EscapeDataString(challenge)}&code_challenge_method=S256"
             + $"&state={Uri.EscapeDataString(state)}";
-        using var res = await _http.GetAsync(url, ct);
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.Host = absPublicBase.IsDefaultPort
+            ? absPublicBase.Host
+            : $"{absPublicBase.Host}:{absPublicBase.Port}";
+        // ABS reads this header directly (no trust-proxy setting involved) and
+        // compares it to the literal "https".
+        if (absPublicBase.Scheme == Uri.UriSchemeHttps)
+            req.Headers.Add("x-forwarded-proto", "https");
+        using var res = await _http.SendAsync(req, ct);
 
         var location = res.Headers.Location?.ToString();
         if (res.StatusCode is not (>= HttpStatusCode.MultipleChoices and < HttpStatusCode.BadRequest)

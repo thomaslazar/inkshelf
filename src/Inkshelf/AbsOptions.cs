@@ -2,10 +2,17 @@ namespace Inkshelf;
 
 // Typed view of the app's configuration, bound once at startup so config reads
 // live in one place instead of scattered Configuration["…"] lookups. Config keys:
-// ABS_URL (required), CachePath, DataProtectionKeysPath, DIAG_ENABLED, FORCE_SECURE_COOKIES, LOCALES_PATH, LOCALES_OVERRIDE_PATH, OIDC_BUTTON_LABEL, OIDC_ENABLED, TRUSTED_PROXY.
+// ABS_URL (required), ABS_PUBLIC_URL, CachePath, DataProtectionKeysPath, DIAG_ENABLED, FORCE_SECURE_COOKIES, LOCALES_PATH, LOCALES_OVERRIDE_PATH, OIDC_BUTTON_LABEL, OIDC_ENABLED, TRUSTED_PROXY.
 public sealed class AbsOptions
 {
     public string AbsUrl { get; set; } = "";
+    // ABS's browser-facing URL, when it differs from AbsUrl (which may be an
+    // internal address like a compose service name). Only SSO needs it: ABS
+    // derives its own OIDC redirect URL from the host we present, and that URL
+    // must be reachable by the browser and registered at the provider. Null →
+    // AbsUrl, which is right whenever the two are the same.
+    public string? AbsPublicUrl { get; set; }
+    public Uri AbsPublicBase => new(string.IsNullOrWhiteSpace(AbsPublicUrl) ? AbsUrl : AbsPublicUrl);
     public string? CachePath { get; set; }
     public string? DataProtectionKeysPath { get; set; }
     // Baseline directory of <lang>.json UI translation files, scanned at startup.

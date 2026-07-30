@@ -104,14 +104,34 @@ Run Inkshelf on a trusted network and expose it only through your proxy.
 
 If your ABS server has an OIDC provider configured, Inkshelf can offer login
 through it as well, alongside the usual username and password. Set
-`OIDC_ENABLED=true`, then add Inkshelf's callback URL to ABS → **Settings →
-Authentication → Mobile Redirect URIs**:
+`OIDC_ENABLED=true`, then three things on the other two systems:
+
+**1. In ABS** → Settings → Authentication → Mobile Redirect URIs, add Inkshelf's
+callback URL:
 
 ```
 https://<your-inkshelf-host>/oidc/callback
 ```
 
-Two things to know:
+**2. In your OIDC provider**, on the client you registered for ABS, add ABS's
+*mobile* redirect URI alongside the web one it already has:
+
+```
+https://<your-abs-host>/auth/openid/mobile-redirect
+```
+
+This is the same prerequisite the official ABS mobile apps have — the mobile flow
+uses a different path from the web flow's `/auth/openid/callback`, and the
+provider matches redirect URIs exactly. Without it the provider answers
+"redirect_uri … is not registered for this client".
+
+**3. If `ABS_URL` is an internal address** (a compose service name, say), also set
+`ABS_PUBLIC_URL` to the URL a browser uses to reach ABS. ABS builds that
+mobile-redirect URL from the host Inkshelf presents to it, and the browser is sent
+there mid-login — so on the internal name it would be neither resolvable nor
+registered. When `ABS_URL` is already the public URL, leave it unset.
+
+Two more things to know:
 
 - **The URL must not contain a port.** ABS validates redirect URIs against a
   pattern whose host part has no `:`, so `https://inkshelf.example/oidc/callback`
@@ -157,6 +177,7 @@ All configuration is via environment variables.
 | Variable                  | Default              | Description |
 |---------------------------|----------------------|-------------|
 | `ABS_URL`                 | — (**required**)     | Base URL of your Audiobookshelf server. |
+| `ABS_PUBLIC_URL`          | *(unset)* = `ABS_URL` | ABS's browser-facing URL, when `ABS_URL` is an internal address. Only SSO needs it — see [SSO / OIDC login](#sso--oidc-login-optional). |
 | `DataProtectionKeysPath`  | `<ContentRoot>/.keys`  | Where session-cookie encryption keys are persisted. Mount a volume to keep users logged in across restarts. |
 | `CachePath`               | `<ContentRoot>/.cache/epub` | Where converted EPUBs (and each device's downloaded-file marks, under `marks/`) are cached. Mount a volume to keep conversions and marks across restarts. |
 | `FORCE_SECURE_COOKIES`    | `false`              | Mark cookies `Secure` regardless of the request scheme. Set `true` when behind a TLS-terminating reverse proxy. |

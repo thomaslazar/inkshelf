@@ -28,8 +28,8 @@ public static class OidcEndpoints
             var state = RandomToken(16);
             try
             {
-                var (authorizeUrl, cookies) =
-                    await auth.StartOidcAsync(redirectUri, Challenge(verifier), state, ct);
+                var (authorizeUrl, cookies) = await auth.StartOidcAsync(
+                    options.AbsPublicBase, redirectUri, Challenge(verifier), state, ct);
                 flows.Save(new OidcFlow(state, verifier, cookies));
                 return Results.Redirect(authorizeUrl);
             }

@@ -54,8 +54,8 @@ public class AbsAuthClientTests
             "connect.sid=s%3Aabc; Path=/; HttpOnly",
             "auth_method=openid-mobile; Path=/; HttpOnly"));
 
-        var (url, cookies) = await Client(h)
-            .StartOidcAsync("https://ink.example/oidc/callback", "chal", "st8");
+        var (url, cookies) = await Client(h).StartOidcAsync(
+            new Uri("https://abs.example"), "https://ink.example/oidc/callback", "chal", "st8");
 
         Assert.Equal("https://idp.example/authorize?x=1", url);
         // name=value only — we are building a request Cookie header, not storing cookies
@@ -71,6 +71,34 @@ public class AbsAuthClientTests
     }
 
     [Fact]
+    public async Task StartOidcAsync_presents_the_public_abs_host_so_abs_builds_a_reachable_redirect()
+    {
+        // ABS composes its own /auth/openid/mobile-redirect URL from this
+        // request's Host and x-forwarded-proto. Left alone it would use the
+        // internal ABS_URL host — unreachable from the browser and unregistered
+        // at the provider.
+        var h = new StubHandler(_ => Redirect("https://idp.example/authorize"));
+
+        await Client(h).StartOidcAsync(
+            new Uri("https://abs.example"), "https://ink.example/oidc/callback", "chal", "st8");
+
+        Assert.Equal("abs.example", h.Last!.Headers.Host);
+        Assert.Equal("https", h.Last!.Headers.GetValues("x-forwarded-proto").Single());
+    }
+
+    [Fact]
+    public async Task StartOidcAsync_keeps_a_public_port_and_reports_http_as_http()
+    {
+        var h = new StubHandler(_ => Redirect("https://idp.example/authorize"));
+
+        await Client(h).StartOidcAsync(
+            new Uri("http://abs.example:13378"), "http://ink.example/oidc/callback", "chal", "st8");
+
+        Assert.Equal("abs.example:13378", h.Last!.Headers.Host);
+        Assert.False(h.Last!.Headers.Contains("x-forwarded-proto"));
+    }
+
+    [Fact]
     public async Task StartOidcAsync_throws_with_body_on_400()
     {
         var h = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
@@ -79,7 +107,7 @@ public class AbsAuthClientTests
         });
 
         var ex = await Assert.ThrowsAsync<AbsOidcException>(() =>
-            Client(h).StartOidcAsync("https://ink.example/oidc/callback", "chal", "st8"));
+            Client(h).StartOidcAsync(new Uri("https://abs.example"), "https://ink.example/oidc/callback", "chal", "st8"));
         Assert.Equal(400, ex.Status);
         Assert.Contains("Invalid redirect_uri", ex.Body);
     }
@@ -89,7 +117,7 @@ public class AbsAuthClientTests
     {
         var h = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.Found));
         await Assert.ThrowsAsync<AbsOidcException>(() =>
-            Client(h).StartOidcAsync("https://ink.example/oidc/callback", "chal", "st8"));
+            Client(h).StartOidcAsync(new Uri("https://abs.example"), "https://ink.example/oidc/callback", "chal", "st8"));
     }
 
     [Fact]

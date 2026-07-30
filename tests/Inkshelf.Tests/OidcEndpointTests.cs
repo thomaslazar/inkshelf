@@ -18,6 +18,7 @@ public class OidcEndpointTests
         public readonly List<string> RedirectUris = [];
         public readonly List<string> ExchangeCookies = [];
         public readonly List<string> Verifiers = [];
+        public readonly List<string?> Leg1Hosts = [];
         public HttpStatusCode Leg1Status = HttpStatusCode.Found;
         public HttpStatusCode Leg3Status = HttpStatusCode.OK;
         private int _sid;
@@ -36,6 +37,7 @@ public class OidcEndpointTests
                         Content = new StringContent("Invalid redirect_uri")
                     });
 
+                Leg1Hosts.Add(req.Headers.Host);
                 States.Add(q["state"]!);
                 Challenges.Add(q["code_challenge"]!);
                 RedirectUris.Add(q["redirect_uri"]!);
@@ -217,6 +219,35 @@ public class OidcEndpointTests
         Assert.Equal(2, abs.ExchangeCookies.Count);
         Assert.Contains("connect.sid=s%3A1", abs.ExchangeCookies[0]);
         Assert.Contains("connect.sid=s%3A2", abs.ExchangeCookies[1]);
+    }
+
+    [Fact]
+    public async Task Start_presents_abs_public_url_when_it_differs_from_the_internal_one()
+    {
+        // Otherwise ABS builds its mobile-redirect URL from the internal host and
+        // the provider rejects it as unregistered.
+        var abs = new AbsStub();
+        using var f = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        {
+            b.UseSetting("ABS_URL", "http://audiobookshelf");
+            b.UseSetting("ABS_PUBLIC_URL", "https://abs.example");
+            b.UseSetting("OIDC_ENABLED", "true");
+            b.ConfigureServices(s => s.AddHttpClient<AbsAuthClient>()
+                .ConfigurePrimaryHttpMessageHandler(() => abs));
+        });
+
+        await NoRedirects(f).GetAsync("/oidc/start");
+
+        Assert.Equal("abs.example", abs.Leg1Hosts.Single());
+    }
+
+    [Fact]
+    public async Task Start_falls_back_to_abs_url_as_the_public_host()
+    {
+        var abs = new AbsStub();
+        using var f = Factory(abs); // ABS_URL only, no ABS_PUBLIC_URL
+        await NoRedirects(f).GetAsync("/oidc/start");
+        Assert.Equal("abs.local", abs.Leg1Hosts.Single());
     }
 
     [Fact]
