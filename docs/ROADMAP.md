@@ -96,6 +96,16 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **SSO / OIDC login** (`OIDC_ENABLED`) — optional second login method through
+  the provider ABS itself uses, so a household on SSO needs no separate ABS
+  password. ABS's web callback flow demands a same-origin callback, so this drives
+  the "mobile" flow ABS offers third-party clients: Inkshelf runs leg 1
+  server-side to capture the session cookies its token exchange requires, keeps
+  the PKCE verifier and those cookies in a 10-minute encrypted cookie, and
+  exchanges the code when the browser returns. No client secret, no new
+  dependency. Requires the callback URL whitelisted in ABS — which cannot carry a
+  port, so SSO needs Inkshelf behind a proxy on 80/443.
+
 - **E-reader touch design pass** — every action became a finger-sized bordered
   target (~48px, was ~24px with 5.6px gaps ≈ 0.7mm on an e-ink panel, so all
   three row actions fit under one fingertip). Listing actions moved from a fixed

@@ -28,7 +28,7 @@ src/Inkshelf/
   Program.cs            Bootstrap only: config → DI → middleware → endpoint maps.
   AbsOptions.cs         Typed view of all config, read once at startup.
   Abs/                  ABS API access.
-    AbsAuthClient.cs      Login + refresh. Handler-FREE typed client.
+    AbsAuthClient.cs      Login + refresh + the two OIDC legs. Handler-FREE typed client.
     AbsApiClient.cs       The data methods. Typed client WITH AbsAuthHandler.
     AbsAuthHandler.cs     DelegatingHandler: injects Bearer, refresh-on-401-retry.
     AbsDownloadClient.cs  Handler-free authenticated download, for the worker.
@@ -36,6 +36,7 @@ src/Inkshelf/
     AbsFilter.cs          Encodes ABS facet filters (authors.<b64>, series.<b64>).
     AbsExceptions.cs      Auth / Unauthorized / LoginFailed.
   Auth/                 TokenStore (encrypted session cookie), Tokens,
+                        OidcFlowStore (short-lived encrypted OIDC flow cookie),
                         DeviceSettings (per-device prefs + favorite, one cookie).
   Convert/              CBZ/CBR → fixed-layout EPUB.
     ConvertService.cs     Orchestrates the /convert kick (detail → validate → cache → enqueue).
@@ -50,7 +51,7 @@ src/Inkshelf/
     ScreenTarget.cs       Parses the "scr" probe + settings into a RenderTarget.
     RenderTarget.cs       Resolved per-device render knobs (cap, dpr, grayscale).
   Endpoints/            Minimal-API groups, one static MapXxxEndpoints() each:
-                        Cover, Download, Convert, Read, Session, Settings, Diag.
+                        Cover, Download, Convert, Read, Session, Settings, Diag, Oidc.
   Localization/         File-backed JSON catalog keyed by the English source string.
   Pages/                Razor Pages (+ models); Shared/ partials.
     Support/            Non-page helpers: LibraryLinks, ItemRowModel, Pager,
@@ -73,6 +74,15 @@ from the repo root (inside the devcontainer) must stay green, and
   does not refresh. Never attach `AbsAuthHandler` to either handler-free client,
   never put login/refresh on `AbsApiClient`, and never use the download client
   from a request path.
+- **`AbsAuthClient`'s handler must keep `AllowAutoRedirect = false` and
+  `UseCookies = false`.** OIDC leg 1 reads the `Location` off ABS's 302, which
+  following the redirect destroys; and the handler is pooled process-wide, so a
+  `CookieContainer` would pool every user's ABS session in one jar. The OIDC legs
+  pass ABS's cookies as headers for exactly that reason.
+- **SSO uses ABS's OIDC *mobile* flow, never its web callback flow.** The web flow
+  validates the callback as same-origin with ABS, so it can never work from a
+  sidecar on its own hostname. The mobile flow's token exchange needs the cookies
+  from its first leg, which is why Inkshelf performs that leg server-side.
 - **`AbsAuthHandler` resolves scoped services inside `SendAsync`**, from
   `HttpContext.RequestServices`. It must not constructor-inject `TokenStore` or
   `AbsAuthClient` — `IHttpClientFactory` pools the handler for longer than a

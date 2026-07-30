@@ -100,6 +100,33 @@ won't mark cookies `Secure`. In production, set:
 
 Run Inkshelf on a trusted network and expose it only through your proxy.
 
+### SSO / OIDC login (optional)
+
+If your ABS server has an OIDC provider configured, Inkshelf can offer login
+through it as well, alongside the usual username and password. Set
+`OIDC_ENABLED=true`, then add Inkshelf's callback URL to ABS → **Settings →
+Authentication → Mobile Redirect URIs**:
+
+```
+https://<your-inkshelf-host>/oidc/callback
+```
+
+Two things to know:
+
+- **The URL must not contain a port.** ABS validates redirect URIs against a
+  pattern whose host part has no `:`, so `https://inkshelf.example/oidc/callback`
+  is accepted and `http://inkshelf.example:8080/oidc/callback` is rejected at any
+  port. In practice: serve Inkshelf through your reverse proxy on 80/443.
+- **The match is exact**, and Inkshelf derives the URL from the request host plus
+  `https` when `FORCE_SECURE_COOKIES=true` (or the request already is HTTPS). If
+  SSO fails, the log line for the failed attempt names the URL that was sent —
+  paste that into ABS.
+
+Logging out of Inkshelf clears only Inkshelf's own session; the provider session
+stays alive, so the SSO button will log you back in without a prompt until you log
+out at the provider. Inkshelf never sees your provider password, and needs no
+client secret of its own.
+
 ### Persistence
 
 Mount a volume for each of these so state survives restarts:
@@ -135,6 +162,8 @@ All configuration is via environment variables.
 | `FORCE_SECURE_COOKIES`    | `false`              | Mark cookies `Secure` regardless of the request scheme. Set `true` when behind a TLS-terminating reverse proxy. |
 | `TRUSTED_PROXY`           | *(unset)*            | Comma-separated IPs/CIDRs permitted to set forwarded headers. Unset = trust the immediate hop. |
 | `DIAG_ENABLED`            | `true`               | Whether the unauthenticated `/diag` browser-probe endpoint is exposed. Set `false` to disable it. |
+| `OIDC_ENABLED`            | `false`              | Offer login through the OIDC provider ABS is configured with. Requires whitelisting Inkshelf's callback URL in ABS — see [SSO / OIDC login](#sso--oidc-login-optional). |
+| `OIDC_BUTTON_LABEL`       | *(unset)*            | Text of the SSO button, e.g. `Log in with Acme ID`. Unset = the translated "Log in with SSO". |
 | `LOCALES_PATH`            | `<ContentRoot>/locales` | Baseline directory of shipped `<lang>.json` UI translation files. Don't mount over this — use `LOCALES_OVERRIDE_PATH` instead. |
 | `LOCALES_OVERRIDE_PATH`   | *(unset)*            | Optional extra directory of `<lang>.json` files, merged on top of `LOCALES_PATH` (its keys win). Mount custom or extra translations here and restart — the shipped set stays intact; no rebuild. |
 | `MaxArchiveBytes`         | `1073741824` (1 GiB) | Reject ebook archives larger than this before conversion (decompression-bomb guard; spooled to a temp file, so it bounds disk not RAM). Raise for very large comics. |
