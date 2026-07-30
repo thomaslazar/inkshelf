@@ -20,6 +20,8 @@ var absOptions = new AbsOptions
     LocalesOverridePath = builder.Configuration["LOCALES_OVERRIDE_PATH"],
     DiagEnabled = !string.Equals(builder.Configuration["DIAG_ENABLED"], "false", StringComparison.OrdinalIgnoreCase),
     ForceSecureCookies = bool.TryParse(builder.Configuration["FORCE_SECURE_COOKIES"], out var fsc) && fsc,
+    OidcEnabled = bool.TryParse(builder.Configuration["OIDC_ENABLED"], out var oidc) && oidc,
+    OidcButtonLabel = builder.Configuration["OIDC_BUTTON_LABEL"],
     TrustedProxy = builder.Configuration["TRUSTED_PROXY"],
     MaxCacheBytes = long.TryParse(builder.Configuration["MaxCacheBytes"], out var mcb) && mcb > 0 ? mcb : 5_368_709_120,
     MaxArchiveBytes = long.TryParse(builder.Configuration["MaxArchiveBytes"], out var mab) && mab > 0 ? mab : 1_073_741_824,
@@ -44,6 +46,7 @@ Directory.CreateDirectory(cachePath);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<TokenStore>();
+builder.Services.AddScoped<OidcFlowStore>();
 builder.Services.AddTransient<AbsAuthHandler>();
 var absUserAgent = $"Inkshelf/{typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "0"}";
 void ConfigureAbs(HttpClient c)
@@ -53,7 +56,15 @@ void ConfigureAbs(HttpClient c)
     // requests with no User-Agent (HTTP 403) before they reach the server.
     c.DefaultRequestHeaders.UserAgent.ParseAdd(absUserAgent);
 }
-builder.Services.AddHttpClient<AbsAuthClient>(ConfigureAbs);
+builder.Services.AddHttpClient<AbsAuthClient>(ConfigureAbs)
+    // OIDC leg 1 needs the raw 302 — following it loses the Location we want.
+    // And this handler is shared process-wide, so a CookieContainer would pool
+    // every user's ABS session in one jar; cookies are passed as headers.
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false,
+    });
 builder.Services.AddHttpClient<AbsApiClient>(ConfigureAbs).AddHttpMessageHandler<AbsAuthHandler>();
 // Handler-FREE (no AbsAuthHandler) — the worker supplies the bearer; ConfigureAbs
 // gives it the BaseAddress + required User-Agent. See AbsDownloadClient.
