@@ -24,7 +24,7 @@ public static class ScreenTarget
     // the dpr multiply (a raw cssW × dpr must not exceed the cap). Returns
     // (0, 0, 1, grayscale) when absent/unparseable → no downscaling.
     public static RenderTarget FromCookie(string? scr, bool retina = false, bool grayscale = false,
-        SpreadMode spread = SpreadMode.Fit)
+        SpreadMode spread = SpreadMode.Fit, int scale = 100)
     {
         if (!string.IsNullOrEmpty(scr))
         {
@@ -39,14 +39,14 @@ public static class ScreenTarget
                     dpr = Math.Min(dpr, MaxDpr);
                     var w = Math.Min((int)Math.Round(cw * dpr), MaxDimension);
                     var h = Math.Min((int)Math.Round(ch * dpr), MaxDimension);
-                    return new RenderTarget(w, h, dpr, grayscale) { Spread = spread };
+                    return new RenderTarget(w, h, dpr, grayscale) { Spread = spread, Scale = scale };
                 }
-                return new RenderTarget(Math.Min(cw, MaxDimension), Math.Min(ch, MaxDimension), 1, grayscale) { Spread = spread };
+                return new RenderTarget(Math.Min(cw, MaxDimension), Math.Min(ch, MaxDimension), 1, grayscale) { Spread = spread, Scale = scale };
             }
             // Legacy 2-part physical cookie, transient until the script rewrites it.
             if (p.Length == 2 && int.TryParse(p[0], out var w2) && int.TryParse(p[1], out var h2) && w2 > 0 && h2 > 0)
-                return new RenderTarget(Math.Min(w2, MaxDimension), Math.Min(h2, MaxDimension), 1, grayscale) { Spread = spread };
+                return new RenderTarget(Math.Min(w2, MaxDimension), Math.Min(h2, MaxDimension), 1, grayscale) { Spread = spread, Scale = scale };
         }
-        return new RenderTarget(0, 0, 1, grayscale) { Spread = spread };
+        return new RenderTarget(0, 0, 1, grayscale) { Spread = spread, Scale = scale };
     }
 }

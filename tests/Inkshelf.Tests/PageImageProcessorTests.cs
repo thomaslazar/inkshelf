@@ -108,31 +108,40 @@ public class PageImageProcessorTests
         Assert.Equal(400, r.Height);
     }
 
-    [Fact]
-    public async Task ProcessAsync_fit_pads_a_wide_spread_to_the_cap_box()
+    [Theory]
+    [InlineData(SpreadMode.Fit)]
+    [InlineData(SpreadMode.Rotate)]
+    public async Task ProcessAsync_padToBox_letterboxes_to_exactly_the_box(SpreadMode mode)
     {
-        // The bug this guards: a wide page kept its wide viewport, which the reader
-        // letterboxed AND clipped on the right. Fit must hand back a page shaped
-        // exactly like the cap box.
+        // The invariant a real e-reader depends on: whatever comes in, the page that
+        // comes out is exactly the box, so every page in a book is the same size.
         var r = (await PageImageProcessor.ProcessAsync(Img(400, 300, new JpegEncoder()), ".jpg",
-            200, 400, grayscale: false, SpreadMode.Fit))[0];
+            200, 400, grayscale: false, mode, padToBox: true))[0];
         Assert.Equal(200, r.Width);
         Assert.Equal(400, r.Height);
     }
 
     [Fact]
-    public async Task ProcessAsync_fit_leaves_portrait_pages_alone()
+    public async Task ProcessAsync_padToBox_letterboxes_both_split_halves()
     {
-        var bytes = Img(80, 120, new JpegEncoder());
+        var r = await PageImageProcessor.ProcessAsync(Img(400, 300, new JpegEncoder()), ".jpg",
+            200, 400, grayscale: false, SpreadMode.Split, padToBox: true);
+        Assert.Equal(2, r.Length);
+        Assert.All(r, i => Assert.Equal((200, 400), (i.Width, i.Height)));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_padToBox_leaves_an_exact_fit_on_the_passthrough_path()
+    {
+        var bytes = Img(200, 400, new JpegEncoder());
         var r = (await PageImageProcessor.ProcessAsync(bytes, ".jpg", 200, 400,
-            grayscale: false, SpreadMode.Fit))[0];
+            grayscale: false, SpreadMode.Fit, padToBox: true))[0];
         Assert.Same(bytes, r.Bytes);
     }
 
     [Fact]
-    public async Task ProcessAsync_fit_without_a_cap_cannot_pad()
+    public async Task ProcessAsync_without_padToBox_does_not_letterbox()
     {
-        // No screen probe yet → no canvas to pad to; the spread passes through.
         var bytes = Img(400, 300, new JpegEncoder());
         var r = (await PageImageProcessor.ProcessAsync(bytes, ".jpg", 0, 0,
             grayscale: false, SpreadMode.Fit))[0];

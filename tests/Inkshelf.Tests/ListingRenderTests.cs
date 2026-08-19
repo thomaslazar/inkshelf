@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.RegularExpressions;
 using Inkshelf;
 using Inkshelf.Abs;
+using Inkshelf.Auth;
 using Inkshelf.Convert;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -142,7 +143,7 @@ public class ListingRenderTests
         const string did = "abc123def4560000";
         // Cached EPUB so the convert action is in its Cached state.
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H), "epub");
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread), "epub");
         factory.Services.GetRequiredService<DownloadMarks>()
             .Add(did, DownloadMarks.RawKey(ItemId, null));
 
@@ -167,7 +168,7 @@ public class ListingRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H), "epub");
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread), "epub");
 
         var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
 
@@ -187,7 +188,7 @@ public class ListingRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H), "epub");
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread), "epub");
 
         const string did = "abc123def4560000";
         var settings = $"retina=0&gray=0&lang=&fav=&did={did}";
@@ -211,7 +212,7 @@ public class ListingRenderTests
 
         var queue = factory.Services.GetRequiredService<ConvertQueue>();
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        var path = cache.PathFor(ItemId, Size, Mtime, W, H);
+        var path = cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread);
         queue.Enqueue(new ConvertJob(ItemId, "tok", path, new EbookMeta("T", "A", null, null, ItemId), new RenderTarget(W, H, 1.0, false)));
 
         var response = await client.SendAsync(LibraryRequest(factory));
@@ -237,7 +238,7 @@ public class ListingRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        var path = cache.PathFor(ItemId, Size, Mtime, W, H);
+        var path = cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread);
         File.WriteAllText(path, "epub");
 
         var response = await client.SendAsync(LibraryRequest(factory));
@@ -266,7 +267,7 @@ public class ListingRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        var path = cache.PathFor(ItemId, Size, Mtime, W, H, grayscale: true);
+        var path = cache.PathFor(ItemId, Size, Mtime, W, H, grayscale: true, spread: DeviceSettings.Default.Spread);
         File.WriteAllText(path, "epub");
 
         // retina=0, grayscale=1 → target matches the pre-seeded "-g" file.
@@ -318,7 +319,7 @@ public class ListingRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H), "epub");
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread), "epub");
 
         var req = LibraryRequest(factory);
         req.RequestUri = new Uri($"/library/{LibId}?q=comic", UriKind.Relative);

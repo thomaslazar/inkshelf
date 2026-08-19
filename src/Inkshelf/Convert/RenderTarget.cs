@@ -23,4 +23,10 @@ public enum SpreadMode { Fit, Split, Rotate }
 public readonly record struct RenderTarget(int MaxW, int MaxH, double Dpr, bool Grayscale)
 {
     public SpreadMode Spread { get; init; }
+
+    // Page scale in PERCENT (100 = no shrink). Shrinks the declared CSS viewport, not
+    // the image, so pages keep their pixels and stay sharp — the page simply lays out
+    // in a slightly smaller box. This is the manual fix for a reader that cuts a strip
+    // off the page: see EpubWriter. Init property so positional construction still works.
+    public int Scale { get; init; } = 100;
 }

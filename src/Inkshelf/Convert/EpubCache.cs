@@ -5,17 +5,43 @@ public class EpubCache
     private readonly string _dir;
     public EpubCache(string dir) { _dir = dir; Directory.CreateDirectory(_dir); }
 
-    // The downscale target (maxW×maxH) AND grayscale are part of the key: two
-    // devices with different screen resolutions, or colour vs grayscale, must not be
-    // served each other's variant.
-    public string PathFor(string itemId, long size, long mtimeMs, int maxW, int maxH, bool grayscale = false) =>
-        Path.Combine(_dir, $"{itemId}-{size}-{mtimeMs}-{maxW}x{maxH}{(grayscale ? "-g" : "")}.epub");
+    // EVERY knob that changes the bytes we write is part of the key: the downscale
+    // target (maxW×maxH), grayscale, the spread mode, and the page scale. Two devices
+    // with different screens — or the same device before and after the user changes a
+    // setting — must never be served each other's variant.
+    //
+    // The spread letter is emitted ALWAYS, including for the default, so that files
+    // cached by an older build (which had no spread handling at all) can never be
+    // mistaken for a current one. Scale is emitted only when it is not 100.
+    public string PathFor(string itemId, long size, long mtimeMs, int maxW, int maxH,
+        bool grayscale = false, SpreadMode spread = SpreadMode.Fit, int scale = 100) =>
+        Path.Combine(_dir, $"{itemId}-{size}-{mtimeMs}-{maxW}x{maxH}{(grayscale ? "-g" : "")}"
+            + $"-{Letter(spread)}{(scale == 100 ? "" : $"-s{scale}")}.epub");
 
-    public bool TryGet(string itemId, long size, long mtimeMs, int maxW, int maxH, bool grayscale, out string path)
+    // `out path` sits before the optional knobs so the existing call sites keep working.
+    public bool TryGet(string itemId, long size, long mtimeMs, int maxW, int maxH, bool grayscale,
+        out string path, SpreadMode spread = SpreadMode.Fit, int scale = 100)
     {
-        path = PathFor(itemId, size, mtimeMs, maxW, maxH, grayscale);
+        path = PathFor(itemId, size, mtimeMs, maxW, maxH, grayscale, spread, scale);
         return File.Exists(path);
     }
+
+    // One letter per spread mode. 'h' = halve, because 's' would be ambiguous with the
+    // "-s95" scale suffix parsed alongside it.
+    private static char Letter(SpreadMode m) => m switch
+    {
+        SpreadMode.Split => 'h',
+        SpreadMode.Rotate => 'r',
+        _ => 'f',
+    };
+
+    private static SpreadMode? ModeOf(char c) => c switch
+    {
+        'h' => SpreadMode.Split,
+        'r' => SpreadMode.Rotate,
+        'f' => SpreadMode.Fit,
+        _ => null,
+    };
 
     public void RemoveForItem(string itemId)
     {
@@ -61,7 +87,7 @@ public class EpubCache
     // "when was this converted" wants ConvertedAtUtc.
     public sealed record CachedVariant(
         string ItemId, long Size, long MtimeMs, int MaxW, int MaxH, bool Grayscale, string Path,
-        DateTime ConvertedAtUtc);
+        DateTime ConvertedAtUtc, SpreadMode Spread = SpreadMode.Fit, int Scale = 100);
 
     // Enumerate cached EPUBs, parsing each filename back into its parts. Parsed
     // RIGHT-TO-LEFT (dims, then mtime, then size) so an item id containing '-'
@@ -78,6 +104,18 @@ public class EpubCache
     {
         var path = file.FullName;
         var name = System.IO.Path.GetFileNameWithoutExtension(path); // drops ".epub"
+
+        // Parsed in the reverse of PathFor's order: scale, spread, grayscale, dims.
+        var scale = 100;
+        var si = name.LastIndexOf("-s", StringComparison.Ordinal);
+        if (si > 0 && int.TryParse(name[(si + 2)..], out var parsedScale))
+        { scale = parsedScale; name = name[..si]; }
+
+        // The spread letter is mandatory — a name without one was written by a build
+        // that predates spread handling, and its pages are laid out differently.
+        if (name.Length < 2 || name[^2] != '-' || ModeOf(name[^1]) is not { } spread) return null;
+        name = name[..^2];
+
         var grayscale = name.EndsWith("-g", StringComparison.Ordinal);
         if (grayscale) name = name[..^2];
 
@@ -100,6 +138,7 @@ public class EpubCache
 
         var itemId = name[..d3];
         if (itemId.Length == 0) return null;
-        return new CachedVariant(itemId, size, mtimeMs, maxW, maxH, grayscale, path, file.LastWriteTimeUtc);
+        return new CachedVariant(itemId, size, mtimeMs, maxW, maxH, grayscale, path,
+            file.LastWriteTimeUtc, spread, scale);
     }
 }

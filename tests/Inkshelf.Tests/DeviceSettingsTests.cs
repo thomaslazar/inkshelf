@@ -93,8 +93,8 @@ public class DeviceSettingsTests
     [Fact]
     public void Serialize_emits_keyed_pairs()
     {
-        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=split", new DeviceSettings(true, false, "de").Serialize());
-        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=split", new DeviceSettings(true, true, "").Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=split&scale=100", new DeviceSettings(true, false, "de").Serialize());
+        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=split&scale=100", new DeviceSettings(true, true, "").Serialize());
     }
 
     [Fact]
@@ -191,7 +191,7 @@ public class DeviceSettingsTests
     public void Serialize_includes_fav()
     {
         var s = new DeviceSettings(true, false, "de") { Fav = "lib_abc" };
-        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=split", s.Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=split&scale=100", s.Serialize());
     }
 
     [Fact]
@@ -240,7 +240,7 @@ public class DeviceSettingsTests
     public void Fav_is_sanitized_on_the_way_into_the_cookie(string raw, string expected)
     {
         var s = new DeviceSettings(true, false, "") { Fav = raw };
-        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=split", s.Serialize());
+        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=split&scale=100", s.Serialize());
     }
 
     [Fact]
@@ -315,5 +315,18 @@ public class DeviceSettingsTests
         Assert.Equal(SpreadMode.Rotate, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=rotate")).Spread);
         Assert.Equal(SpreadMode.Fit, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=fit")).Spread);
         Assert.Equal(SpreadMode.Split, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=nonsense")).Spread);
+    }
+
+    [Fact]
+    public void Scale_round_trips_and_defaults_to_100()
+    {
+        // A cookie written before this setting existed has no scale key: it must land on
+        // 100, not on 0, or every page would be laid out at zero size.
+        Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=")).Scale);
+        Assert.Equal(90, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=90")).Scale);
+        // A hand-edited cookie must not mint an absurd page size.
+        Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=5")).Scale);
+        Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=400")).Scale);
+        Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=abc")).Scale);
     }
 }

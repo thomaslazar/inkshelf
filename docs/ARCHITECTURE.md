@@ -156,15 +156,20 @@ from the repo root (inside the devcontainer) must stay green, and
   screen probe); `inkshelf_settings` is server-written user *choice*. Anywhere a
   conversion target is computed, read **both** and combine them via
   `ScreenTarget.FromCookie` into a `RenderTarget` — otherwise a real conversion
-  and the badge that describes it disagree. Grayscale and the size cap are part
-  of the cache key; the spread mode deliberately is **not** — nobody flips it per
-  book, so a stale variant is worth less than a fourth key dimension. Re-convert
-  to pick up a change.
-- **Every emitted page must be portrait-shaped.** A wide fixed-layout viewport is
-  what the e-reader mishandles: it letterboxes vertically *and* clips ~10% off the
-  right edge. So all three `SpreadMode`s hand back a portrait page — Fit pads the
-  spread onto the cap box rather than leaving it wide. Padding needs a cap, so
-  without the `scr` probe Fit cannot help.
+  and the badge that describes it disagree. **Every knob that changes the bytes is
+  part of the cache key** — size cap, grayscale, spread mode, page scale — or the
+  user flips a setting and is handed the old file, which reads as "the setting is
+  broken".
+- **One page size per book, and it is load-bearing.** The e-reader lays every page
+  of a book out in a single box and CLIPS anything bigger, so a book with mixed
+  page sizes loses the right edge of its odd-sized pages. `EpubConverter`'s page
+  box fixes one size from the first page and letterboxes every page onto it.
+- **The reader cuts a strip off the page and we cannot measure it.** Its usable box
+  is smaller than the screen the `scr` probe reports, it never scales a page to
+  fit, and nothing in the EPUB reaches a fixed-layout path — a commercially
+  produced fixed-layout comic renders just as clipped. Hence `Scale`: a per-device
+  percentage the user dials down until nothing is cut. Do not try to derive it;
+  it is not derivable from the browser.
 - **One preferences cookie, so every write is read-modify-write.** The favorite
   library is a field in `DeviceSettings`, not a second cookie; constructing a
   fresh instance on save silently drops the other fields.

@@ -12,6 +12,9 @@ namespace Inkshelf.Convert;
 // Split returns TWO images (left half, then right half), so the result is always
 // a list.
 //
+// padToBox letterboxes the result onto exactly maxWidth × maxHeight, which is how
+// every page in a book ends up the same size — see EpubConverter's page box.
+//
 // EVERY mode emits a portrait-shaped page — Fit pads the spread onto the full
 // cap box rather than leaving a wide page behind. That is the whole point, not
 // tidiness: a wide fixed-layout viewport is what the e-reader mishandles (it
@@ -23,7 +26,7 @@ public static class PageImageProcessor
 
     public static async Task<ProcessedImage[]> ProcessAsync(byte[] bytes, string extension,
         int maxWidth, int maxHeight, bool grayscale, SpreadMode spread = SpreadMode.Fit,
-        CancellationToken ct = default)
+        bool padToBox = false, CancellationToken ct = default)
     {
         var info = Image.Identify(bytes);
         // ponytail: any landscape page counts as a spread. Tighten to
@@ -39,23 +42,24 @@ public static class PageImageProcessor
             return
             [
                 await FinishAsync(img.Clone(x => x.Crop(new Rectangle(0, 0, half, img.Height))),
-                    maxWidth, maxHeight, grayscale, pad: false, ct),
+                    maxWidth, maxHeight, grayscale, padToBox, ct),
                 await FinishAsync(img.Clone(x => x.Crop(new Rectangle(half, 0, img.Width - half, img.Height))),
-                    maxWidth, maxHeight, grayscale, pad: false, ct),
+                    maxWidth, maxHeight, grayscale, padToBox, ct),
             ];
         }
 
         var rotate = wide && spread == SpreadMode.Rotate;
-        // Fit pads to the cap box, so it needs one — without a cap (no screen probe
-        // yet) there is no canvas to pad to and the spread stays wide.
-        var pad = wide && spread == SpreadMode.Fit && maxWidth > 0 && maxHeight > 0;
         var (w, h) = rotate ? (info.Height, info.Width) : (info.Width, info.Height);
-        var oversized = maxWidth > 0 && maxHeight > 0 && (w > maxWidth || h > maxHeight);
-        if (oversized || rotate || pad || extension == ".webp" || grayscale)
+        var box = maxWidth > 0 && maxHeight > 0;
+        var oversized = box && (w > maxWidth || h > maxHeight);
+        // An image already exactly the box needs no padding — the common case for an
+        // ordinary page, and it keeps the pass-through path below alive.
+        var needsPad = padToBox && box && (w != maxWidth || h != maxHeight);
+        if (oversized || rotate || needsPad || extension == ".webp" || grayscale)
         {
             var img = Image.Load(bytes);
             if (rotate) img.Mutate(x => x.Rotate(RotateMode.Rotate90));
-            return [await FinishAsync(img, maxWidth, maxHeight, grayscale, pad, ct)];
+            return [await FinishAsync(img, maxWidth, maxHeight, grayscale, padToBox, ct)];
         }
         return [new ProcessedImage(bytes, extension, w, h)];
     }

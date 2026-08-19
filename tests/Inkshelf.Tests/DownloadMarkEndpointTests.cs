@@ -1,6 +1,7 @@
 using System.Net;
 using Inkshelf;
 using Inkshelf.Abs;
+using Inkshelf.Auth;
 using Inkshelf.Convert;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -178,7 +179,7 @@ public class DownloadMarkEndpointTests
         // — and KickAsync sees ConvertStatus.Done, serving + marking immediately
         // instead of only enqueuing a background job.
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ComicId, CSize, CMtime, 0, 0), "epub");
+        File.WriteAllText(cache.PathFor(ComicId, CSize, CMtime, 0, 0, spread: DeviceSettings.Default.Spread), "epub");
 
         var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
         var protector = dp.CreateProtector("inkshelf.session.v1");

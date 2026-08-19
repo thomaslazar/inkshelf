@@ -20,11 +20,13 @@ public static class EpubWriter
     // bytes have already been streamed into the zip and released.
     private sealed record PageMeta(string Name);
 
-    // maxWidth/maxHeight are applied upstream (PageImageProcessor). dpr converts
-    // image pixels to the CSS viewport (viewport = px / dpr) so the reader lays
-    // each page out full-screen while the image stays physical. Caller passes dpr ≥ 1.
+    // maxWidth/maxHeight are applied upstream (PageImageProcessor). pxPerCss converts
+    // image pixels to the CSS viewport (viewport = px / pxPerCss) so the reader lays
+    // each page out full-screen while the image stays physical. The caller folds the
+    // device pixel ratio AND the user's page scale into it (EpubConverter), so a 95%
+    // scale arrives here as a slightly larger divisor. Caller passes pxPerCss ≥ 1.
     public static async Task WriteAsync(string outPath, EbookMeta meta,
-        IAsyncEnumerable<Page> pages, double dpr, CancellationToken ct, Cover? cover = null)
+        IAsyncEnumerable<Page> pages, double pxPerCss, CancellationToken ct, Cover? cover = null)
     {
         var tmp = outPath + ".tmp";
         var metas = new List<PageMeta>();
@@ -52,8 +54,8 @@ public static class EpubWriter
                 // Write the image + its xhtml, then keep only the light metadata so
                 // the page's bytes become collectable — one page live at a time.
                 using (var s = zip.CreateEntry($"OEBPS/img/{p.Name}").Open()) s.Write(p.Bytes);
-                var vw = Math.Max(1, (int)Math.Round(p.Width / dpr));
-                var vh = Math.Max(1, (int)Math.Round(p.Height / dpr));
+                var vw = Math.Max(1, (int)Math.Round(p.Width / pxPerCss));
+                var vh = Math.Max(1, (int)Math.Round(p.Height / pxPerCss));
                 i++;
                 Write($"OEBPS/page-{i:D4}.xhtml", PageXhtml(p.Name, vw, vh, i));
                 metas.Add(new PageMeta(p.Name));
@@ -75,10 +77,19 @@ public static class EpubWriter
         _ => "image/jpeg",
     };
 
-    // Fixed-layout page: the viewport is the page's CSS size and the image fills
-    // it full-bleed (no reader margins).
+    // Fixed-layout page: the viewport is the page's CSS size and the image fills it
+    // full-bleed (no reader margins).
+    //
+    // Every page in a book declares the SAME size — EpubConverter's page box
+    // guarantees it — because a real e-reader lays every page out in one box and clips
+    // anything bigger, costing the odd-sized pages their right edge. Verified on device.
+    //
+    // The box is a fixed-px absolutely-positioned div with overflow:hidden, and the
+    // image is width:100% with NO height. Do NOT put height:100% back on the img: the
+    // body has auto height, so on an old engine that either resolves to nothing or
+    // stretches the page. This markup is what a commercial fixed-layout comic uses.
     private static string PageXhtml(string img, int w, int h, int page) =>
-        $"<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\"/><title>Page {page}</title><meta name=\"viewport\" content=\"width={w}, height={h}\"/><style>html,body{{margin:0;padding:0}}img{{width:100%;height:100%}}</style></head><body><img src=\"img/{img}\" alt=\"\"/></body></html>";
+        $"<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\"/><title>Page {page}</title><meta name=\"viewport\" content=\"width={w}, height={h}\"/><style>html,body{{margin:0;padding:0}}div.page{{position:absolute;top:0;left:0;width:{w}px;height:{h}px;overflow:hidden}}img{{position:absolute;top:0;left:0;width:100%;margin:0}}</style></head><body><div class=\"page\"><img src=\"img/{img}\" alt=\"\"/></div></body></html>";
 
     private static string Nav(int n)
     {

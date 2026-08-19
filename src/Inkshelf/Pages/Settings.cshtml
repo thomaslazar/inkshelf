@@ -44,6 +44,17 @@
         </label>
     </p>
     <p>
+        <label>@L["Page scale"]<br />
+            <select name="scale">
+                @foreach (var pct in Inkshelf.Auth.DeviceSettings.Scales)
+                {
+                    <option value="@pct" selected="@(pct == Model.Settings.Scale)">@pct%</option>
+                }
+            </select>
+        </label><br />
+        <span class="settings-note">@L["Lower this if your reader cuts off the edge of a page."]</span>
+    </p>
+    <p>
         <label>@L["Language"]<br />
             <select name="lang">
                 @foreach (var (code, name) in Model.AvailableLanguages)

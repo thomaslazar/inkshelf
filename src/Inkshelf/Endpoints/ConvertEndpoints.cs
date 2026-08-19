@@ -11,7 +11,7 @@ public static class ConvertEndpoints
             string? status, string? file, string? @return, HttpContext httpContext, ConvertService convert, DownloadMarks marks, CancellationToken ct) =>
         {
             var ds = DeviceSettings.Read(httpContext.Request);
-            var t = ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"], ds.Retina, ds.Grayscale, ds.Spread);
+            var t = ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"], ds.Retina, ds.Grayscale, ds.Spread, ds.Scale);
 
             if (status is "1")
             {

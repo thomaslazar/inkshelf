@@ -18,7 +18,7 @@ public class EpubCacheTests
     public void PathFor_uses_id_size_mtime_and_cap()
     {
         var c = new EpubCache(TempDirPath());
-        Assert.EndsWith("i1-100-200-1730x2246.epub", c.PathFor("i1", 100, 200, 1730, 2246));
+        Assert.EndsWith("i1-100-200-1730x2246-f.epub", c.PathFor("i1", 100, 200, 1730, 2246));
     }
 
     [Fact]
@@ -41,8 +41,8 @@ public class EpubCacheTests
     public void PathFor_grayscale_uses_g_marker()
     {
         var c = new EpubCache(TempDirPath());
-        Assert.EndsWith("i1-100-200-800x1000-g.epub", c.PathFor("i1", 100, 200, 800, 1000, grayscale: true));
-        Assert.EndsWith("i1-100-200-800x1000.epub", c.PathFor("i1", 100, 200, 800, 1000, grayscale: false));
+        Assert.EndsWith("i1-100-200-800x1000-g-f.epub", c.PathFor("i1", 100, 200, 800, 1000, grayscale: true));
+        Assert.EndsWith("i1-100-200-800x1000-f.epub", c.PathFor("i1", 100, 200, 800, 1000, grayscale: false));
     }
 
     [Fact]
@@ -121,7 +121,7 @@ public class EpubCacheTests
         var dir = TempDirPath();
         var c = new EpubCache(dir);
         File.WriteAllText(Path.Combine(dir, "garbage.epub"), "e");
-        File.WriteAllText(Path.Combine(dir, "i1-100-200-1730x2246.epub"), "e"); // valid
+        File.WriteAllText(Path.Combine(dir, "i1-100-200-1730x2246-f.epub"), "e"); // valid
         Assert.Single(c.ListVariants());
     }
 
@@ -163,5 +163,36 @@ public class EpubCacheTests
 
         Assert.True(File.Exists(Path.Combine(marks, "abc123def4560000")));
         Assert.DoesNotContain(cache.ListVariants(), v => v.ItemId == "marks");
+    }
+
+    [Fact]
+    public void PathFor_encodes_spread_mode_and_scale()
+    {
+        var c = new EpubCache(TempDirPath());
+        // The spread letter is always present, so a file written by a build with no
+        // spread handling can never be mistaken for a current one.
+        Assert.EndsWith("i1-1-2-800x1000-f.epub", c.PathFor("i1", 1, 2, 800, 1000));
+        Assert.EndsWith("i1-1-2-800x1000-h.epub", c.PathFor("i1", 1, 2, 800, 1000, spread: SpreadMode.Split));
+        Assert.EndsWith("i1-1-2-800x1000-r.epub", c.PathFor("i1", 1, 2, 800, 1000, spread: SpreadMode.Rotate));
+        // Scale only when it is not 100, so nothing already cached is invalidated by it.
+        Assert.EndsWith("i1-1-2-800x1000-h-s95.epub", c.PathFor("i1", 1, 2, 800, 1000, spread: SpreadMode.Split, scale: 95));
+        Assert.EndsWith("i1-1-2-800x1000-g-r-s90.epub",
+            c.PathFor("i1", 1, 2, 800, 1000, grayscale: true, spread: SpreadMode.Rotate, scale: 90));
+    }
+
+    [Fact]
+    public void ListVariants_round_trips_spread_and_scale()
+    {
+        var dir = TempDirPath();
+        var c = new EpubCache(dir);
+        File.WriteAllText(c.PathFor("i1", 1, 2, 800, 1000, grayscale: true, spread: SpreadMode.Rotate, scale: 90), "e");
+        File.WriteAllText(c.PathFor("i2", 3, 4, 800, 1000, spread: SpreadMode.Split), "e");
+        // A pre-spread filename has no letter and must be ignored, not misread.
+        File.WriteAllText(Path.Combine(dir, "i3-5-6-800x1000.epub"), "e");
+
+        var v = c.ListVariants().OrderBy(x => x.ItemId).ToList();
+        Assert.Equal(2, v.Count);
+        Assert.Equal((SpreadMode.Rotate, 90, true), (v[0].Spread, v[0].Scale, v[0].Grayscale));
+        Assert.Equal((SpreadMode.Split, 100, false), (v[1].Spread, v[1].Scale, v[1].Grayscale));
     }
 }
