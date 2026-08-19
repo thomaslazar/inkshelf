@@ -1,5 +1,6 @@
 using Inkshelf;
 using Inkshelf.Auth;
+using Inkshelf.Convert;
 using Microsoft.AspNetCore.Http;
 
 namespace Inkshelf.Tests;
@@ -92,8 +93,8 @@ public class DeviceSettingsTests
     [Fact]
     public void Serialize_emits_keyed_pairs()
     {
-        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=", new DeviceSettings(true, false, "de").Serialize());
-        Assert.Equal("retina=1&gray=1&lang=&fav=&did=", new DeviceSettings(true, true, "").Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=split", new DeviceSettings(true, false, "de").Serialize());
+        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=split", new DeviceSettings(true, true, "").Serialize());
     }
 
     [Fact]
@@ -190,7 +191,7 @@ public class DeviceSettingsTests
     public void Serialize_includes_fav()
     {
         var s = new DeviceSettings(true, false, "de") { Fav = "lib_abc" };
-        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=", s.Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=split", s.Serialize());
     }
 
     [Fact]
@@ -239,7 +240,7 @@ public class DeviceSettingsTests
     public void Fav_is_sanitized_on_the_way_into_the_cookie(string raw, string expected)
     {
         var s = new DeviceSettings(true, false, "") { Fav = raw };
-        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=", s.Serialize());
+        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=split", s.Serialize());
     }
 
     [Fact]
@@ -303,5 +304,16 @@ public class DeviceSettingsTests
     private sealed class ServiceCollectionStub(AbsOptions options) : IServiceProvider
     {
         public object? GetService(Type serviceType) => serviceType == typeof(AbsOptions) ? options : null;
+    }
+
+    [Fact]
+    public void Spread_round_trips_and_defaults_to_split()
+    {
+        // A cookie written before this setting existed has no spread key: it must
+        // land on the documented default, not on the enum's zero value.
+        Assert.Equal(SpreadMode.Split, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=")).Spread);
+        Assert.Equal(SpreadMode.Rotate, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=rotate")).Spread);
+        Assert.Equal(SpreadMode.Fit, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=fit")).Spread);
+        Assert.Equal(SpreadMode.Split, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=nonsense")).Spread);
     }
 }

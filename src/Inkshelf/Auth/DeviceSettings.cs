@@ -1,3 +1,4 @@
+using Inkshelf.Convert;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
@@ -24,6 +25,11 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // covers it and `with { Fav = ... }` still works.
     public string Fav { get; init; } = "";
 
+    // How two-page spreads (landscape page images) are rendered. An init property
+    // for the same reason as Fav below. Defaults to Split: letterboxing a spread
+    // wastes half the screen, and most readers would rather have two pages.
+    public SpreadMode Spread { get; init; } = SpreadMode.Split;
+
     // An opaque per-device handle, minted by Set (below) and used to key this
     // device's downloaded-file marks. An init property for the same reason as Fav:
     // the existing three-argument construction sites keep compiling.
@@ -40,7 +46,8 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // different things for fav (see Read).
     public string Serialize() =>
         $"retina={(Retina ? 1 : 0)}&gray={(Grayscale ? 1 : 0)}"
-        + $"&lang={SanitizeLang(Lang)}&fav={SanitizeId(Fav)}&did={SanitizeId(Did)}";
+        + $"&lang={SanitizeLang(Lang)}&fav={SanitizeId(Fav)}&did={SanitizeId(Did)}"
+        + $"&spread={Spread.ToString().ToLowerInvariant()}";
 
     public static DeviceSettings Read(HttpRequest req)
     {
@@ -62,6 +69,10 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
             // resurrect a favorite the user just cleared.
             Fav = q.TryGetValue("fav", out var fav) ? SanitizeId(fav.ToString()) : LegacyFav(req),
             Did = q.TryGetValue("did", out var did) ? SanitizeId(did.ToString()) : "",
+            // Absent (a cookie written before this setting existed) or unparseable
+            // → the documented default (Split), not the enum's zero value.
+            Spread = q.TryGetValue("spread", out var sp) && Enum.TryParse<SpreadMode>(sp.ToString(), true, out var sm)
+                ? sm : Default.Spread,
         };
     }
 

@@ -1,4 +1,5 @@
 @page
+@using Inkshelf.Convert
 @model Inkshelf.Pages.SettingsModel
 <div class="page-head">
     <h1 class="page-title">
@@ -25,6 +26,21 @@
         <label>
             <input type="checkbox" name="grayscale" value="on" @(Model.Settings.Grayscale ? "checked" : "") />
             @L["Grayscale pages (smaller files on e-ink)"]
+        </label>
+    </p>
+    <p>
+        @L["Two-page spreads (a wide image holding two pages)"]<br />
+        <label>
+            <input type="radio" name="spread" value="split" @(Model.Settings.Spread == SpreadMode.Split ? "checked" : "") />
+            @L["Split into two pages (left half first)"]
+        </label><br />
+        <label>
+            <input type="radio" name="spread" value="rotate" @(Model.Settings.Spread == SpreadMode.Rotate ? "checked" : "") />
+            @L["Rotate 90° (read sideways; keeps right-to-left order)"]
+        </label><br />
+        <label>
+            <input type="radio" name="spread" value="fit" @(Model.Settings.Spread == SpreadMode.Fit ? "checked" : "") />
+            @L["Whole spread on one page (complete, but small)"]
         </label>
     </p>
     <p>

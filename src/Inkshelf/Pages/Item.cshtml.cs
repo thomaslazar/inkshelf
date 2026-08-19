@@ -52,7 +52,7 @@ public class ItemModel : PageModel
         HasCover = !string.IsNullOrEmpty(detail.Media.CoverPath);
 
         var ds = Auth.DeviceSettings.Read(Request);
-        var target = ScreenTarget.FromCookie(Request.Cookies["scr"], ds.Retina, ds.Grayscale);
+        var target = ScreenTarget.FromCookie(Request.Cookies["scr"], ds.Retina, ds.Grayscale, ds.Spread);
         var marks = ds.Did.Length == 0 ? new HashSet<string>() : _marks.Read(ds.Did);
 
         try { Read = (await _api.GetFinishedItemIdsAsync(ct)).Contains(Id); }

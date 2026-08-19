@@ -16,7 +16,7 @@ public class EpubConverter
         var dpr = target.Dpr <= 0 ? 1 : target.Dpr;
         var processedCover = await ProcessCoverAsync(cover, target, ct);
         await EpubWriter.WriteAsync(outPath, meta,
-            ProcessPagesAsync(archive, target.MaxW, target.MaxH, target.Grayscale, ct), dpr, ct, processedCover);
+            ProcessPagesAsync(archive, target, ct), dpr, ct, processedCover);
     }
 
     // Process the raw ABS cover through the same pipeline as pages (cap, grayscale,
@@ -28,7 +28,11 @@ public class EpubConverter
         if (cover is not { } c) return null;
         try
         {
-            var img = await PageImageProcessor.ProcessAsync(c.Bytes, c.Ext, target.MaxW, target.MaxH, target.Grayscale, ct);
+            // SpreadMode.Fit: a cover is one image by definition — never split or
+            // rotate it. A rare landscape cover gets white bars, which beats a
+            // library grid stretching it.
+            var img = (await PageImageProcessor.ProcessAsync(c.Bytes, c.Ext, target.MaxW, target.MaxH,
+                target.Grayscale, SpreadMode.Fit, ct))[0];
             return new EpubWriter.Cover(img.Bytes, img.Extension);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -39,17 +43,22 @@ public class EpubConverter
 
     // Lazily decode → downscale → transcode each page and yield it, so the writer
     // pulls one page at a time and only one page's bytes are ever live.
+    // One archive entry can yield TWO pages (a split spread), so the page index
+    // advances per emitted image, not per archive entry.
     private static async IAsyncEnumerable<EpubWriter.Page> ProcessPagesAsync(
-        Stream archive, int maxWidth, int maxHeight, bool grayscale, [EnumeratorCancellation] CancellationToken ct)
+        Stream archive, RenderTarget target, [EnumeratorCancellation] CancellationToken ct)
     {
         var idx = 0;
         await foreach (var raw in ComicArchiveReader.ReadAsync(archive, ct))
         {
             ct.ThrowIfCancellationRequested();
             var ext = Path.GetExtension(raw.Key).ToLowerInvariant();
-            var img = await PageImageProcessor.ProcessAsync(raw.Bytes, ext, maxWidth, maxHeight, grayscale, ct);
-            idx++;
-            yield return new EpubWriter.Page($"page-{idx:D4}{img.Extension}", img.Bytes, img.Width, img.Height);
+            foreach (var img in await PageImageProcessor.ProcessAsync(raw.Bytes, ext,
+                target.MaxW, target.MaxH, target.Grayscale, target.Spread, ct))
+            {
+                idx++;
+                yield return new EpubWriter.Page($"page-{idx:D4}{img.Extension}", img.Bytes, img.Width, img.Height);
+            }
         }
     }
 }

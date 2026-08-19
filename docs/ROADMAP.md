@@ -96,6 +96,12 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Two-page spread handling** — a landscape page image (two pages scanned as one)
+  used to keep its wide fixed-layout viewport, which the reader letterboxed
+  vertically and clipped on the right. A per-device setting now picks Split (two
+  portrait pages, left half first — the default), Rotate 90°, or Fit (whole spread
+  letterboxed onto the screen box by us). Reading direction is not modelled;
+  right-to-left books use Rotate.
 - **Build identification** — the version on the libraries and login pages is now
   `InformationalVersion`, which the Docker build stamps as `X.Y.Z+pr-34.a1b2c3d` or
   `X.Y.Z+main.a1b2c3d`; a version with no `+` suffix means a release image. Paired with CI

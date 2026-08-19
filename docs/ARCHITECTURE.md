@@ -157,7 +157,14 @@ from the repo root (inside the devcontainer) must stay green, and
   conversion target is computed, read **both** and combine them via
   `ScreenTarget.FromCookie` into a `RenderTarget` — otherwise a real conversion
   and the badge that describes it disagree. Grayscale and the size cap are part
-  of the cache key.
+  of the cache key; the spread mode deliberately is **not** — nobody flips it per
+  book, so a stale variant is worth less than a fourth key dimension. Re-convert
+  to pick up a change.
+- **Every emitted page must be portrait-shaped.** A wide fixed-layout viewport is
+  what the e-reader mishandles: it letterboxes vertically *and* clips ~10% off the
+  right edge. So all three `SpreadMode`s hand back a portrait page — Fit pads the
+  spread onto the cap box rather than leaving it wide. Padding needs a cap, so
+  without the `scr` probe Fit cannot help.
 - **One preferences cookie, so every write is read-modify-write.** The favorite
   library is a field in `DeviceSettings`, not a second cookie; constructing a
   fresh instance on save silently drops the other fields.

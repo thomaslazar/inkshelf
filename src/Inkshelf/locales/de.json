@@ -37,6 +37,10 @@
   "Detected screen: {0}": "Erkannter Bildschirm: {0}",
   "Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)": "Retina-Seiten (volle Auflösung; schärfer, aber größere Dateien – kann Reader mit wenig Speicher belasten)",
   "Grayscale pages (smaller files on e-ink)": "Graustufen-Seiten (kleinere Dateien auf E-Ink)",
+  "Two-page spreads (a wide image holding two pages)": "Doppelseiten (ein breites Bild mit zwei Seiten)",
+  "Split into two pages (left half first)": "In zwei Seiten teilen (linke Hälfte zuerst)",
+  "Rotate 90° (read sideways; keeps right-to-left order)": "Um 90° drehen (seitlich lesen; behält die Reihenfolge von rechts nach links)",
+  "Whole spread on one page (complete, but small)": "Ganze Doppelseite auf einer Seite (komplett, aber klein)",
   "Save": "Speichern",
   "Language": "Sprache",
 
