@@ -14,7 +14,12 @@ Settings to add to the per-device settings system:
 
 - **Resolution override.** Let the user hand-set the conversion resolution per
   device, for when the browser-reported screen size isn't ideal. Pairs with the
-  retina toggle.
+  retina toggle. It must take precedence over the *absence* of the `scr` probe,
+  not just over a bad value: `ScreenTarget.FromCookie` currently returns
+  `(0, 0, 1)` the moment the cookie is missing and never looks further, so the
+  override has to be consulted first. That also makes it the fix for the one gap
+  in spread handling — `SpreadMode.Fit` needs a cap to pad onto, so without a
+  resolution from either source a wide spread stays wide.
 - **EPUB2 reflowable fallback.** Fixed-layout (EPUB3) is flagged by some older
   e-ink eReaders ("Das Öffnen dieses Buches kann zu Fehlern führen") and can crash
   them, as their Adobe engines are EPUB2-only. Offer a reflowable EPUB2 mode —
