@@ -75,10 +75,52 @@ public class PageImageProcessorTests
     public async Task ProcessAsync_splits_a_wide_spread_into_two_pages()
     {
         var r = await PageImageProcessor.ProcessAsync(Img(400, 300, new JpegEncoder()), ".jpg",
-            0, 0, grayscale: false, SpreadMode.Split);
+            0, 0, grayscale: false, SpreadMode.SplitLeftFirst);
         Assert.Equal(2, r.Length);
         Assert.All(r, i => Assert.Equal(200, i.Width));
         Assert.All(r, i => Assert.Equal(300, i.Height));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_split_right_first_reverses_the_halves()
+    {
+        // A manga spread: the right half is the earlier page. Nothing in a CBZ says
+        // which it is, hence the setting.
+        using var img = new Image<Rgba32>(400, 300, new Rgba32(255, 0, 0));
+        for (var x = 200; x < 400; x++)
+            for (var y = 0; y < 300; y++) img[x, y] = new Rgba32(0, 0, 255);
+        using var ms = new MemoryStream(); img.Save(ms, new JpegEncoder());
+
+        var r = await PageImageProcessor.ProcessAsync(ms.ToArray(), ".jpg", 0, 0,
+            grayscale: false, SpreadMode.SplitRightFirst);
+        Assert.Equal(2, r.Length);
+        using var first = Image.Load<Rgba32>(r[0].Bytes);
+        using var second = Image.Load<Rgba32>(r[1].Bytes);
+        Assert.True(first[100, 150].B > 200 && first[100, 150].R < 60, $"first was {first[100, 150]}");
+        Assert.True(second[100, 150].R > 200 && second[100, 150].B < 60, $"second was {second[100, 150]}");
+    }
+
+    [Fact]
+    public async Task ProcessAsync_rotate_direction_decides_which_edge_leads()
+    {
+        // Left edge red, right edge blue. Rotating clockwise puts the LEFT edge at the
+        // top; anticlockwise puts the RIGHT edge at the top.
+        using var img = new Image<Rgba32>(400, 300, new Rgba32(255, 0, 0));
+        for (var x = 200; x < 400; x++)
+            for (var y = 0; y < 300; y++) img[x, y] = new Rgba32(0, 0, 255);
+        using var ms = new MemoryStream(); img.Save(ms, new JpegEncoder());
+
+        var cw = (await PageImageProcessor.ProcessAsync(ms.ToArray(), ".jpg", 0, 0,
+            grayscale: false, SpreadMode.RotateRight))[0];
+        var ccw = (await PageImageProcessor.ProcessAsync(ms.ToArray(), ".jpg", 0, 0,
+            grayscale: false, SpreadMode.RotateLeft))[0];
+        Assert.Equal((300, 400), (cw.Width, cw.Height));    // portrait either way
+        Assert.Equal((300, 400), (ccw.Width, ccw.Height));
+
+        using var a = Image.Load<Rgba32>(cw.Bytes);
+        using var b = Image.Load<Rgba32>(ccw.Bytes);
+        Assert.True(a[150, 100].R > 200, $"clockwise top was {a[150, 100]}");
+        Assert.True(b[150, 100].B > 200, $"anticlockwise top was {b[150, 100]}");
     }
 
     [Fact]
@@ -91,7 +133,7 @@ public class PageImageProcessorTests
         using var ms = new MemoryStream(); img.Save(ms, new JpegEncoder());
 
         var r = await PageImageProcessor.ProcessAsync(ms.ToArray(), ".jpg", 0, 0,
-            grayscale: false, SpreadMode.Split);
+            grayscale: false, SpreadMode.SplitLeftFirst);
         Assert.Equal(2, r.Length);
         using var left = Image.Load<Rgba32>(r[0].Bytes);
         using var right = Image.Load<Rgba32>(r[1].Bytes);
@@ -103,14 +145,14 @@ public class PageImageProcessorTests
     public async Task ProcessAsync_rotate_makes_a_wide_spread_portrait()
     {
         var r = (await PageImageProcessor.ProcessAsync(Img(400, 300, new JpegEncoder()), ".jpg",
-            0, 0, grayscale: false, SpreadMode.Rotate))[0];
+            0, 0, grayscale: false, SpreadMode.RotateRight))[0];
         Assert.Equal(300, r.Width);
         Assert.Equal(400, r.Height);
     }
 
     [Theory]
     [InlineData(SpreadMode.Fit)]
-    [InlineData(SpreadMode.Rotate)]
+    [InlineData(SpreadMode.RotateRight)]
     public async Task ProcessAsync_padToBox_letterboxes_to_exactly_the_box(SpreadMode mode)
     {
         // The invariant a real e-reader depends on: whatever comes in, the page that
@@ -125,7 +167,7 @@ public class PageImageProcessorTests
     public async Task ProcessAsync_padToBox_letterboxes_both_split_halves()
     {
         var r = await PageImageProcessor.ProcessAsync(Img(400, 300, new JpegEncoder()), ".jpg",
-            200, 400, grayscale: false, SpreadMode.Split, padToBox: true);
+            200, 400, grayscale: false, SpreadMode.SplitLeftFirst, padToBox: true);
         Assert.Equal(2, r.Length);
         Assert.All(r, i => Assert.Equal((200, 400), (i.Width, i.Height)));
     }

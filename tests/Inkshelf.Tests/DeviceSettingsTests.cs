@@ -93,8 +93,8 @@ public class DeviceSettingsTests
     [Fact]
     public void Serialize_emits_keyed_pairs()
     {
-        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=split&scale=100", new DeviceSettings(true, false, "de").Serialize());
-        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=split&scale=100", new DeviceSettings(true, true, "").Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=splitleftfirst&scale=100", new DeviceSettings(true, false, "de").Serialize());
+        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=splitleftfirst&scale=100", new DeviceSettings(true, true, "").Serialize());
     }
 
     [Fact]
@@ -191,7 +191,7 @@ public class DeviceSettingsTests
     public void Serialize_includes_fav()
     {
         var s = new DeviceSettings(true, false, "de") { Fav = "lib_abc" };
-        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=split&scale=100", s.Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=splitleftfirst&scale=100", s.Serialize());
     }
 
     [Fact]
@@ -240,7 +240,7 @@ public class DeviceSettingsTests
     public void Fav_is_sanitized_on_the_way_into_the_cookie(string raw, string expected)
     {
         var s = new DeviceSettings(true, false, "") { Fav = raw };
-        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=split&scale=100", s.Serialize());
+        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=splitleftfirst&scale=100", s.Serialize());
     }
 
     [Fact]
@@ -311,10 +311,15 @@ public class DeviceSettingsTests
     {
         // A cookie written before this setting existed has no spread key: it must
         // land on the documented default, not on the enum's zero value.
-        Assert.Equal(SpreadMode.Split, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=")).Spread);
-        Assert.Equal(SpreadMode.Rotate, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=rotate")).Spread);
+        Assert.Equal(SpreadMode.SplitLeftFirst, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=")).Spread);
+        Assert.Equal(SpreadMode.RotateRight, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=rotateright")).Spread);
+        Assert.Equal(SpreadMode.RotateLeft, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=rotateleft")).Spread);
+        Assert.Equal(SpreadMode.SplitRightFirst, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=splitrightfirst")).Spread);
+        // A value an earlier build wrote is no longer a mode: fall back to the default
+        // rather than guessing which of the two new directions was meant.
+        Assert.Equal(SpreadMode.SplitLeftFirst, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=split")).Spread);
         Assert.Equal(SpreadMode.Fit, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=fit")).Spread);
-        Assert.Equal(SpreadMode.Split, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=nonsense")).Spread);
+        Assert.Equal(SpreadMode.SplitLeftFirst, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&spread=nonsense")).Spread);
     }
 
     [Fact]

@@ -26,19 +26,26 @@ public class EpubCache
         return File.Exists(path);
     }
 
-    // One letter per spread mode. 'h' = halve, because 's' would be ambiguous with the
-    // "-s95" scale suffix parsed alongside it.
+    // One letter per spread mode. Deliberately NOT reusing the letters an earlier
+    // build wrote ('h' for split, 'r' for rotate): those files were laid out
+    // differently, so they must fall out as unrecognised rather than be misread as a
+    // mode that now means something else. 's' is avoided too — it would be ambiguous
+    // with the "-s95" scale suffix parsed alongside this letter.
     private static char Letter(SpreadMode m) => m switch
     {
-        SpreadMode.Split => 'h',
-        SpreadMode.Rotate => 'r',
+        SpreadMode.SplitLeftFirst => 'l',
+        SpreadMode.SplitRightFirst => 'm',
+        SpreadMode.RotateLeft => 'a',   // anticlockwise
+        SpreadMode.RotateRight => 'c',  // clockwise
         _ => 'f',
     };
 
     private static SpreadMode? ModeOf(char c) => c switch
     {
-        'h' => SpreadMode.Split,
-        'r' => SpreadMode.Rotate,
+        'l' => SpreadMode.SplitLeftFirst,
+        'm' => SpreadMode.SplitRightFirst,
+        'a' => SpreadMode.RotateLeft,
+        'c' => SpreadMode.RotateRight,
         'f' => SpreadMode.Fit,
         _ => null,
     };

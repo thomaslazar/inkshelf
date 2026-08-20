@@ -170,8 +170,10 @@ public class EpubConverterTests
 
     [Theory]
     [InlineData(SpreadMode.Fit)]
-    [InlineData(SpreadMode.Split)]
-    [InlineData(SpreadMode.Rotate)]
+    [InlineData(SpreadMode.SplitLeftFirst)]
+    [InlineData(SpreadMode.SplitRightFirst)]
+    [InlineData(SpreadMode.RotateLeft)]
+    [InlineData(SpreadMode.RotateRight)]
     public async Task Every_page_in_a_book_declares_the_same_viewport(SpreadMode mode)
     {
         // Verified on device: the reader lays every page of a book out in ONE box and

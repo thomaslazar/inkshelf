@@ -103,10 +103,10 @@ Shipped; kept as a short record (full detail in git history / the PR).
 
 - **Two-page spread handling** — a landscape page image (two pages scanned as one)
   used to keep its wide fixed-layout viewport, which the reader letterboxed
-  vertically and clipped on the right. A per-device setting now picks Split (two
-  portrait pages, left half first — the default), Rotate 90°, or Fit (whole spread
-  letterboxed onto the page box). Reading direction is not modelled;
-  right-to-left books use Rotate.
+  vertically and clipped on the right. A per-device setting now picks how: split in
+  two with either half leading (left-first is the default; right-first is manga
+  order), rotate 90° either way, or fit the whole spread on one page. A CBZ carries
+  nothing that says which half comes first, so that stays the reader's choice.
 - **One page size per book, and a page-scale knob** — every page is letterboxed
   onto a single box, because the reader lays a whole book out in one box and clips
   the pages that do not fit it. It also cuts a strip off every page, from an inset

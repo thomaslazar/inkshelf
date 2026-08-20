@@ -29,7 +29,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // How two-page spreads (landscape page images) are rendered. An init property
     // for the same reason as Fav below. Defaults to Split: letterboxing a spread
     // wastes half the screen, and most readers would rather have two pages.
-    public SpreadMode Spread { get; init; } = SpreadMode.Split;
+    public SpreadMode Spread { get; init; } = SpreadMode.SplitLeftFirst;
 
     // Page scale in PERCENT (100 = pages fill the screen). The manual fix for a reader
     // that cuts a strip off the page: at 95% the page lays out 5% smaller and the cut

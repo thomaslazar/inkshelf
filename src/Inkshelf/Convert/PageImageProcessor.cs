@@ -8,9 +8,8 @@ namespace Inkshelf.Convert;
 // In-bounds non-WebP images pass through untouched. Returns the final bytes,
 // extension, and pixel size (the viewport is derived from the size downstream).
 //
-// A landscape image is treated as a two-page spread and handled per SpreadMode.
-// Split returns TWO images (left half, then right half), so the result is always
-// a list.
+// A landscape image is treated as a two-page spread and handled per SpreadMode. A
+// split returns TWO images, in reading order, so the result is always a list.
 //
 // padToBox letterboxes the result onto exactly maxWidth × maxHeight, which is how
 // every page in a book ends up the same size — see EpubConverter's page box.
@@ -33,22 +32,23 @@ public static class PageImageProcessor
         // w > h * 1.2 if a single-page landscape illustration gets split.
         var wide = info.Width > info.Height;
 
-        if (wide && spread == SpreadMode.Split)
+        if (wide && spread is SpreadMode.SplitLeftFirst or SpreadMode.SplitRightFirst)
         {
             using var img = Image.Load(bytes);
             var half = img.Width / 2;
             // Clone-and-crop off ONE decode, and crop before the downscale so each
             // half is resized from full resolution rather than from a shrunk spread.
+            var left = img.Clone(x => x.Crop(new Rectangle(0, 0, half, img.Height)));
+            var right = img.Clone(x => x.Crop(new Rectangle(half, 0, img.Width - half, img.Height)));
+            var (first, second) = spread == SpreadMode.SplitRightFirst ? (right, left) : (left, right);
             return
             [
-                await FinishAsync(img.Clone(x => x.Crop(new Rectangle(0, 0, half, img.Height))),
-                    maxWidth, maxHeight, grayscale, padToBox, ct),
-                await FinishAsync(img.Clone(x => x.Crop(new Rectangle(half, 0, img.Width - half, img.Height))),
-                    maxWidth, maxHeight, grayscale, padToBox, ct),
+                await FinishAsync(first, maxWidth, maxHeight, grayscale, padToBox, ct),
+                await FinishAsync(second, maxWidth, maxHeight, grayscale, padToBox, ct),
             ];
         }
 
-        var rotate = wide && spread == SpreadMode.Rotate;
+        var rotate = wide && spread is SpreadMode.RotateLeft or SpreadMode.RotateRight;
         var (w, h) = rotate ? (info.Height, info.Width) : (info.Width, info.Height);
         var box = maxWidth > 0 && maxHeight > 0;
         var oversized = box && (w > maxWidth || h > maxHeight);
@@ -58,7 +58,8 @@ public static class PageImageProcessor
         if (oversized || rotate || needsPad || extension == ".webp" || grayscale)
         {
             var img = Image.Load(bytes);
-            if (rotate) img.Mutate(x => x.Rotate(RotateMode.Rotate90));
+            if (rotate) img.Mutate(x => x.Rotate(
+                spread == SpreadMode.RotateLeft ? RotateMode.Rotate270 : RotateMode.Rotate90));
             return [await FinishAsync(img, maxWidth, maxHeight, grayscale, padToBox, ct)];
         }
         return [new ProcessedImage(bytes, extension, w, h)];

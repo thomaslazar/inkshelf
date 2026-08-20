@@ -1,18 +1,19 @@
 namespace Inkshelf.Convert;
 
-// What to do with a landscape page image — a two-page spread scanned as one
-// image. Reading direction is NOT considered anywhere: Split always emits the
-// left half first, which is right for western comics and wrong for manga, whose
-// readers want Rotate instead.
+// What to do with a landscape page image — a two-page spread scanned as one image.
 //
-//   Fit    — whole spread on one page, letterboxed by us onto a screen-shaped
-//            canvas. Complete but small.
-//   Split  — cut into two portrait pages.
-//   Rotate — turned 90° so the spread fills the screen sideways.
+//   Fit              — whole spread on one page, letterboxed. Complete but small.
+//   SplitLeftFirst   — cut in two; left half is the earlier page (western comics).
+//   SplitRightFirst  — cut in two; right half is the earlier page (manga).
+//   RotateLeft       — turned 90° anticlockwise, so it fills the screen sideways.
+//   RotateRight      — turned 90° clockwise.
 //
-// Fit is 0 so a RenderTarget built without an explicit mode gets the
-// least-surprising behaviour.
-public enum SpreadMode { Fit, Split, Rotate }
+// Split has both directions because a CBZ is just images 1..N and carries nothing
+// that says which half comes first; rotate has both because which way the reader
+// wants to tilt the device is theirs to choose, not ours to guess.
+//
+// Fit is 0 so a RenderTarget built without an explicit mode behaves sanely.
+public enum SpreadMode { Fit, SplitLeftFirst, SplitRightFirst, RotateLeft, RotateRight }
 
 // The resolved per-device render knobs for one conversion: the page-image pixel
 // cap (MaxW/MaxH, 0 = no cap), the pixel ratio used to derive each page's CSS

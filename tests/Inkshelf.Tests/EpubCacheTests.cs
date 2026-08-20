@@ -172,12 +172,14 @@ public class EpubCacheTests
         // The spread letter is always present, so a file written by a build with no
         // spread handling can never be mistaken for a current one.
         Assert.EndsWith("i1-1-2-800x1000-f.epub", c.PathFor("i1", 1, 2, 800, 1000));
-        Assert.EndsWith("i1-1-2-800x1000-h.epub", c.PathFor("i1", 1, 2, 800, 1000, spread: SpreadMode.Split));
-        Assert.EndsWith("i1-1-2-800x1000-r.epub", c.PathFor("i1", 1, 2, 800, 1000, spread: SpreadMode.Rotate));
+        Assert.EndsWith("i1-1-2-800x1000-l.epub", c.PathFor("i1", 1, 2, 800, 1000, spread: SpreadMode.SplitLeftFirst));
+        Assert.EndsWith("i1-1-2-800x1000-m.epub", c.PathFor("i1", 1, 2, 800, 1000, spread: SpreadMode.SplitRightFirst));
+        Assert.EndsWith("i1-1-2-800x1000-a.epub", c.PathFor("i1", 1, 2, 800, 1000, spread: SpreadMode.RotateLeft));
+        Assert.EndsWith("i1-1-2-800x1000-c.epub", c.PathFor("i1", 1, 2, 800, 1000, spread: SpreadMode.RotateRight));
         // Scale only when it is not 100, so nothing already cached is invalidated by it.
-        Assert.EndsWith("i1-1-2-800x1000-h-s95.epub", c.PathFor("i1", 1, 2, 800, 1000, spread: SpreadMode.Split, scale: 95));
-        Assert.EndsWith("i1-1-2-800x1000-g-r-s90.epub",
-            c.PathFor("i1", 1, 2, 800, 1000, grayscale: true, spread: SpreadMode.Rotate, scale: 90));
+        Assert.EndsWith("i1-1-2-800x1000-l-s95.epub", c.PathFor("i1", 1, 2, 800, 1000, spread: SpreadMode.SplitLeftFirst, scale: 95));
+        Assert.EndsWith("i1-1-2-800x1000-g-c-s90.epub",
+            c.PathFor("i1", 1, 2, 800, 1000, grayscale: true, spread: SpreadMode.RotateRight, scale: 90));
     }
 
     [Fact]
@@ -185,14 +187,17 @@ public class EpubCacheTests
     {
         var dir = TempDirPath();
         var c = new EpubCache(dir);
-        File.WriteAllText(c.PathFor("i1", 1, 2, 800, 1000, grayscale: true, spread: SpreadMode.Rotate, scale: 90), "e");
-        File.WriteAllText(c.PathFor("i2", 3, 4, 800, 1000, spread: SpreadMode.Split), "e");
-        // A pre-spread filename has no letter and must be ignored, not misread.
+        File.WriteAllText(c.PathFor("i1", 1, 2, 800, 1000, grayscale: true, spread: SpreadMode.RotateRight, scale: 90), "e");
+        File.WriteAllText(c.PathFor("i2", 3, 4, 800, 1000, spread: SpreadMode.SplitLeftFirst), "e");
+        // A filename with no letter, or with a letter an EARLIER build wrote for a
+        // different layout, must be ignored rather than misread.
         File.WriteAllText(Path.Combine(dir, "i3-5-6-800x1000.epub"), "e");
+        File.WriteAllText(Path.Combine(dir, "i4-5-6-800x1000-h.epub"), "e");
+        File.WriteAllText(Path.Combine(dir, "i5-5-6-800x1000-r.epub"), "e");
 
         var v = c.ListVariants().OrderBy(x => x.ItemId).ToList();
         Assert.Equal(2, v.Count);
-        Assert.Equal((SpreadMode.Rotate, 90, true), (v[0].Spread, v[0].Scale, v[0].Grayscale));
-        Assert.Equal((SpreadMode.Split, 100, false), (v[1].Spread, v[1].Scale, v[1].Grayscale));
+        Assert.Equal((SpreadMode.RotateRight, 90, true), (v[0].Spread, v[0].Scale, v[0].Grayscale));
+        Assert.Equal((SpreadMode.SplitLeftFirst, 100, false), (v[1].Spread, v[1].Scale, v[1].Grayscale));
     }
 }
