@@ -1,3 +1,4 @@
+using Inkshelf.Convert;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
@@ -24,6 +25,20 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // covers it and `with { Fav = ... }` still works.
     public string Fav { get; init; } = "";
 
+    // How two-page spreads (landscape page images) are rendered. An init property
+    // for the same reason as Fav below. Defaults to Split: letterboxing a spread
+    // wastes half the screen, and most readers would rather have two pages.
+    public SpreadMode Spread { get; init; } = SpreadMode.SplitLeftFirst;
+
+    // Page scale in PERCENT (100 = pages fill the screen). The manual fix for a reader
+    // that cuts a strip off the page: at 95% the page lays out 5% smaller and the cut
+    // falls outside it. Device-specific and unknowable from here, hence a knob.
+    public int Scale { get; init; } = 100;
+
+    // Page scales offered in the UI. Coarse on purpose — this is a one-time
+    // calibration per device, not something anyone wants to fine-tune.
+    public static readonly int[] Scales = [100, 95, 90, 85, 80];
+
     // An opaque per-device handle, minted by Set (below) and used to key this
     // device's downloaded-file marks. An init property for the same reason as Fav:
     // the existing three-argument construction sites keep compiling.
@@ -40,7 +55,8 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // different things for fav (see Read).
     public string Serialize() =>
         $"retina={(Retina ? 1 : 0)}&gray={(Grayscale ? 1 : 0)}"
-        + $"&lang={SanitizeLang(Lang)}&fav={SanitizeId(Fav)}&did={SanitizeId(Did)}";
+        + $"&lang={SanitizeLang(Lang)}&fav={SanitizeId(Fav)}&did={SanitizeId(Did)}"
+        + $"&spread={Spread.ToString().ToLowerInvariant()}&scale={Scale}";
 
     public static DeviceSettings Read(HttpRequest req)
     {
@@ -62,6 +78,12 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
             // resurrect a favorite the user just cleared.
             Fav = q.TryGetValue("fav", out var fav) ? SanitizeId(fav.ToString()) : LegacyFav(req),
             Did = q.TryGetValue("did", out var did) ? SanitizeId(did.ToString()) : "",
+            // Absent (a cookie written before these settings existed) or unparseable →
+            // the documented default, NOT the enum's zero value / a zero scale.
+            Spread = q.TryGetValue("spread", out var sp) && Enum.TryParse<SpreadMode>(sp.ToString(), true, out var sm)
+                ? sm : Default.Spread,
+            Scale = q.TryGetValue("scale", out var sc) && int.TryParse(sc.ToString(), out var pc)
+                ? SanitizeScale(pc) : Default.Scale,
         };
     }
 
@@ -78,6 +100,10 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
         v is { Length: >= 2 } && v[0] is '0' or '1' && v[1] is '0' or '1'
             ? new DeviceSettings(v[0] == '1', v[1] == '1', SanitizeLang(v.Length > 2 ? v[2..] : ""))
             : Default;
+
+    // A hand-edited cookie must not mint an absurd page size, so clamp to the offered
+    // range rather than trusting the value.
+    public static int SanitizeScale(int pct) => pct is >= 50 and <= 100 ? pct : Default.Scale;
 
     // Accept a short lowercase code (letters + dash), else "" (→ resolve from header).
     private static string SanitizeLang(string s)

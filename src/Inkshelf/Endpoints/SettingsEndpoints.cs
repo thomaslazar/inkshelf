@@ -1,4 +1,5 @@
 using Inkshelf.Auth;
+using Inkshelf.Convert;
 using Microsoft.AspNetCore.Antiforgery;
 
 namespace Inkshelf.Endpoints;
@@ -23,6 +24,10 @@ public static class SettingsEndpoints
                 Retina = form.ContainsKey("retina"),
                 Grayscale = form.ContainsKey("grayscale"),
                 Lang = form["lang"].ToString(),
+                Spread = Enum.TryParse<SpreadMode>(form["spread"].ToString(), true, out var sp)
+                    ? sp : DeviceSettings.Default.Spread,
+                Scale = int.TryParse(form["scale"].ToString(), out var pc)
+                    ? DeviceSettings.SanitizeScale(pc) : DeviceSettings.Default.Scale,
             };
             DeviceSettings.Set(ctx.Response, settings);
             return Results.Redirect("/settings"); // PRG: back to the page, showing saved state

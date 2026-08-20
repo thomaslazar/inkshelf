@@ -139,4 +139,84 @@ public class EpubConverterTests
         Assert.Contains("<meta name=\"cover\" content=\"img1\"/>", opf);
         File.Delete(outPath);
     }
+
+    // A book whose pages are NOT all the same size: two portrait pages and a landscape
+    // spread, which is the shape that shipped the bug.
+    private static MemoryStream MixedCbz()
+    {
+        var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            void add(string name, byte[] bytes) { using var s = zip.CreateEntry(name).Open(); s.Write(bytes); }
+            add("p-01.jpg", Img(600, 900, new JpegEncoder()));
+            add("p-02.jpg", Img(1200, 900, new JpegEncoder()));   // spread
+            add("p-03.jpg", Img(500, 900, new JpegEncoder()));    // a narrower page
+        }
+        ms.Position = 0; return ms;
+    }
+
+    private static List<(int W, int H)> Viewports(string epubPath)
+    {
+        using var epub = ZipFile.OpenRead(epubPath);
+        var vps = new List<(int, int)>();
+        foreach (var e in epub.Entries.Where(e => e.FullName.StartsWith("OEBPS/page-")).OrderBy(e => e.FullName))
+        {
+            using var r = new StreamReader(e.Open());
+            var m = System.Text.RegularExpressions.Regex.Match(r.ReadToEnd(), @"width=(\d+), height=(\d+)");
+            vps.Add((int.Parse(m.Groups[1].Value), int.Parse(m.Groups[2].Value)));
+        }
+        return vps;
+    }
+
+    [Theory]
+    [InlineData(SpreadMode.Fit)]
+    [InlineData(SpreadMode.SplitLeftFirst)]
+    [InlineData(SpreadMode.SplitRightFirst)]
+    [InlineData(SpreadMode.RotateLeft)]
+    [InlineData(SpreadMode.RotateRight)]
+    public async Task Every_page_in_a_book_declares_the_same_viewport(SpreadMode mode)
+    {
+        // Verified on device: the reader lays every page of a book out in ONE box and
+        // clips anything bigger, so a book with mixed page sizes loses the right edge of
+        // its odd-sized pages. Mixed sizes in, one uniform size out.
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        var target = new RenderTarget(300, 450, 1, false) { Spread = mode };
+        await new EpubConverter().ConvertAsync(MixedCbz(), new EbookMeta("T", "A", null, null), outPath, target, default);
+
+        var vps = Viewports(outPath);
+        Assert.True(vps.Count >= 3, $"expected at least 3 pages, got {vps.Count}");
+        Assert.Single(vps.Distinct());
+        File.Delete(outPath);
+    }
+
+    [Fact]
+    public async Task Scale_shrinks_the_declared_viewport_but_not_the_image()
+    {
+        // The manual fix for a reader that cuts a strip off the page. The IMAGE must keep
+        // its pixels — only the CSS box shrinks — or the knob would cost sharpness.
+        var full = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        var small = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        var target = new RenderTarget(600, 900, 1, false) { Spread = SpreadMode.Fit };
+        await new EpubConverter().ConvertAsync(MixedCbz(), new EbookMeta("T", "A", null, null), full, target, default);
+        await new EpubConverter().ConvertAsync(MixedCbz(), new EbookMeta("T", "A", null, null), small,
+            target with { Scale = 90 }, default);
+
+        Assert.Equal((600, 900), Viewports(full)[0]);
+        Assert.Equal((540, 810), Viewports(small)[0]);   // 90% of the CSS box
+
+        using (var a = ZipFile.OpenRead(full))
+        using (var b = ZipFile.OpenRead(small))
+        {
+            var ia = Image.Identify(a.Entries.First(e => e.FullName.StartsWith("OEBPS/img/")).Open());
+            var ib = Image.Identify(b.Entries.First(e => e.FullName.StartsWith("OEBPS/img/")).Open());
+            Assert.Equal((ia.Width, ia.Height), (ib.Width, ib.Height));   // same pixels
+        }
+        // The CSS box must agree with the declared viewport or the image overflows it.
+        using (var b = ZipFile.OpenRead(small))
+        {
+            using var r = new StreamReader(b.Entries.First(e => e.FullName.EndsWith("page-0001.xhtml")).Open());
+            Assert.Contains("width:540px;height:810px", await r.ReadToEndAsync());
+        }
+        File.Delete(full); File.Delete(small);
+    }
 }

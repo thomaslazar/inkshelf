@@ -4,6 +4,7 @@ using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.PixelFormats;
 
+
 namespace Inkshelf.Tests;
 
 public class PageImageProcessorTests
@@ -23,7 +24,7 @@ public class PageImageProcessorTests
     [Fact]
     public async Task ProcessAsync_transcodes_webp_to_jpeg_keeping_size()
     {
-        var r = await PageImageProcessor.ProcessAsync(Img(80, 120, new WebpEncoder()), ".webp", 0, 0, grayscale: false, default);
+        var r = (await PageImageProcessor.ProcessAsync(Img(80, 120, new WebpEncoder()), ".webp", 0, 0, grayscale: false))[0];
         Assert.Equal(".jpg", r.Extension);
         Assert.Equal(80, r.Width);
         Assert.Equal(120, r.Height);
@@ -32,7 +33,7 @@ public class PageImageProcessorTests
     [Fact]
     public async Task ProcessAsync_downscales_oversized_keeping_aspect()
     {
-        var r = await PageImageProcessor.ProcessAsync(Img(400, 600, new JpegEncoder()), ".jpg", 200, 200, grayscale: false, default);
+        var r = (await PageImageProcessor.ProcessAsync(Img(400, 600, new JpegEncoder()), ".jpg", 200, 200, grayscale: false))[0];
         Assert.True(r.Width <= 200 && r.Height <= 200, $"got {r.Width}×{r.Height}");
         Assert.Equal(".jpg", r.Extension);
     }
@@ -41,7 +42,7 @@ public class PageImageProcessorTests
     public async Task ProcessAsync_passes_in_bounds_image_through_untouched()
     {
         var bytes = Img(80, 120, new JpegEncoder());
-        var r = await PageImageProcessor.ProcessAsync(bytes, ".jpg", 0, 0, grayscale: false, default);
+        var r = (await PageImageProcessor.ProcessAsync(bytes, ".jpg", 0, 0, grayscale: false))[0];
         Assert.Same(bytes, r.Bytes);      // no re-encode
         Assert.Equal(".jpg", r.Extension);
         Assert.Equal(80, r.Width);
@@ -52,7 +53,7 @@ public class PageImageProcessorTests
     public async Task ProcessAsync_grayscale_desaturates_in_bounds_image()
     {
         var red = Solid(80, 120, 255, 0, 0, new JpegEncoder());
-        var r = await PageImageProcessor.ProcessAsync(red, ".jpg", 0, 0, grayscale: true, default);
+        var r = (await PageImageProcessor.ProcessAsync(red, ".jpg", 0, 0, grayscale: true))[0];
         Assert.NotSame(red, r.Bytes); // re-encoded, not passed through
         Assert.Equal(".jpg", r.Extension);
 
@@ -66,7 +67,126 @@ public class PageImageProcessorTests
     public async Task ProcessAsync_non_grayscale_still_passes_in_bounds_through()
     {
         var bytes = Solid(80, 120, 255, 0, 0, new JpegEncoder());
-        var r = await PageImageProcessor.ProcessAsync(bytes, ".jpg", 0, 0, grayscale: false, default);
+        var r = (await PageImageProcessor.ProcessAsync(bytes, ".jpg", 0, 0, grayscale: false))[0];
+        Assert.Same(bytes, r.Bytes);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_splits_a_wide_spread_into_two_pages()
+    {
+        var r = await PageImageProcessor.ProcessAsync(Img(400, 300, new JpegEncoder()), ".jpg",
+            0, 0, grayscale: false, SpreadMode.SplitLeftFirst);
+        Assert.Equal(2, r.Length);
+        Assert.All(r, i => Assert.Equal(200, i.Width));
+        Assert.All(r, i => Assert.Equal(300, i.Height));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_split_right_first_reverses_the_halves()
+    {
+        // A manga spread: the right half is the earlier page. Nothing in a CBZ says
+        // which it is, hence the setting.
+        using var img = new Image<Rgba32>(400, 300, new Rgba32(255, 0, 0));
+        for (var x = 200; x < 400; x++)
+            for (var y = 0; y < 300; y++) img[x, y] = new Rgba32(0, 0, 255);
+        using var ms = new MemoryStream(); img.Save(ms, new JpegEncoder());
+
+        var r = await PageImageProcessor.ProcessAsync(ms.ToArray(), ".jpg", 0, 0,
+            grayscale: false, SpreadMode.SplitRightFirst);
+        Assert.Equal(2, r.Length);
+        using var first = Image.Load<Rgba32>(r[0].Bytes);
+        using var second = Image.Load<Rgba32>(r[1].Bytes);
+        Assert.True(first[100, 150].B > 200 && first[100, 150].R < 60, $"first was {first[100, 150]}");
+        Assert.True(second[100, 150].R > 200 && second[100, 150].B < 60, $"second was {second[100, 150]}");
+    }
+
+    [Fact]
+    public async Task ProcessAsync_rotate_direction_decides_which_edge_leads()
+    {
+        // Left edge red, right edge blue. Rotating clockwise puts the LEFT edge at the
+        // top; anticlockwise puts the RIGHT edge at the top.
+        using var img = new Image<Rgba32>(400, 300, new Rgba32(255, 0, 0));
+        for (var x = 200; x < 400; x++)
+            for (var y = 0; y < 300; y++) img[x, y] = new Rgba32(0, 0, 255);
+        using var ms = new MemoryStream(); img.Save(ms, new JpegEncoder());
+
+        var cw = (await PageImageProcessor.ProcessAsync(ms.ToArray(), ".jpg", 0, 0,
+            grayscale: false, SpreadMode.RotateRight))[0];
+        var ccw = (await PageImageProcessor.ProcessAsync(ms.ToArray(), ".jpg", 0, 0,
+            grayscale: false, SpreadMode.RotateLeft))[0];
+        Assert.Equal((300, 400), (cw.Width, cw.Height));    // portrait either way
+        Assert.Equal((300, 400), (ccw.Width, ccw.Height));
+
+        using var a = Image.Load<Rgba32>(cw.Bytes);
+        using var b = Image.Load<Rgba32>(ccw.Bytes);
+        Assert.True(a[150, 100].R > 200, $"clockwise top was {a[150, 100]}");
+        Assert.True(b[150, 100].B > 200, $"anticlockwise top was {b[150, 100]}");
+    }
+
+    [Fact]
+    public async Task ProcessAsync_split_takes_the_left_half_first()
+    {
+        // Left half red, right half blue — the first emitted page must be the red one.
+        using var img = new Image<Rgba32>(400, 300, new Rgba32(255, 0, 0));
+        for (var x = 200; x < 400; x++)
+            for (var y = 0; y < 300; y++) img[x, y] = new Rgba32(0, 0, 255);
+        using var ms = new MemoryStream(); img.Save(ms, new JpegEncoder());
+
+        var r = await PageImageProcessor.ProcessAsync(ms.ToArray(), ".jpg", 0, 0,
+            grayscale: false, SpreadMode.SplitLeftFirst);
+        Assert.Equal(2, r.Length);
+        using var left = Image.Load<Rgba32>(r[0].Bytes);
+        using var right = Image.Load<Rgba32>(r[1].Bytes);
+        Assert.True(left[100, 150].R > 200 && left[100, 150].B < 60, $"left was {left[100, 150]}");
+        Assert.True(right[100, 150].B > 200 && right[100, 150].R < 60, $"right was {right[100, 150]}");
+    }
+
+    [Fact]
+    public async Task ProcessAsync_rotate_makes_a_wide_spread_portrait()
+    {
+        var r = (await PageImageProcessor.ProcessAsync(Img(400, 300, new JpegEncoder()), ".jpg",
+            0, 0, grayscale: false, SpreadMode.RotateRight))[0];
+        Assert.Equal(300, r.Width);
+        Assert.Equal(400, r.Height);
+    }
+
+    [Theory]
+    [InlineData(SpreadMode.Fit)]
+    [InlineData(SpreadMode.RotateRight)]
+    public async Task ProcessAsync_padToBox_letterboxes_to_exactly_the_box(SpreadMode mode)
+    {
+        // The invariant a real e-reader depends on: whatever comes in, the page that
+        // comes out is exactly the box, so every page in a book is the same size.
+        var r = (await PageImageProcessor.ProcessAsync(Img(400, 300, new JpegEncoder()), ".jpg",
+            200, 400, grayscale: false, mode, padToBox: true))[0];
+        Assert.Equal(200, r.Width);
+        Assert.Equal(400, r.Height);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_padToBox_letterboxes_both_split_halves()
+    {
+        var r = await PageImageProcessor.ProcessAsync(Img(400, 300, new JpegEncoder()), ".jpg",
+            200, 400, grayscale: false, SpreadMode.SplitLeftFirst, padToBox: true);
+        Assert.Equal(2, r.Length);
+        Assert.All(r, i => Assert.Equal((200, 400), (i.Width, i.Height)));
+    }
+
+    [Fact]
+    public async Task ProcessAsync_padToBox_leaves_an_exact_fit_on_the_passthrough_path()
+    {
+        var bytes = Img(200, 400, new JpegEncoder());
+        var r = (await PageImageProcessor.ProcessAsync(bytes, ".jpg", 200, 400,
+            grayscale: false, SpreadMode.Fit, padToBox: true))[0];
+        Assert.Same(bytes, r.Bytes);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_without_padToBox_does_not_letterbox()
+    {
+        var bytes = Img(400, 300, new JpegEncoder());
+        var r = (await PageImageProcessor.ProcessAsync(bytes, ".jpg", 0, 0,
+            grayscale: false, SpreadMode.Fit))[0];
         Assert.Same(bytes, r.Bytes);
     }
 }

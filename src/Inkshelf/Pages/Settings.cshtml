@@ -1,4 +1,5 @@
 @page
+@using Inkshelf.Convert
 @model Inkshelf.Pages.SettingsModel
 <div class="page-head">
     <h1 class="page-title">
@@ -28,6 +29,40 @@
         </label>
     </p>
     <p>
+        <span class="setting-title">@L["Two-page spreads (a wide image holding two pages)"]</span>
+        <label>
+            <input type="radio" name="spread" value="splitleftfirst" @(Model.Settings.Spread == SpreadMode.SplitLeftFirst ? "checked" : "") />
+            @L["Split into two pages (left half first)"]
+        </label>
+        <label>
+            <input type="radio" name="spread" value="splitrightfirst" @(Model.Settings.Spread == SpreadMode.SplitRightFirst ? "checked" : "") />
+            @L["Split into two pages (right half first)"]
+        </label>
+        <label>
+            <input type="radio" name="spread" value="rotateright" @(Model.Settings.Spread == SpreadMode.RotateRight ? "checked" : "") />
+            @L["Rotate 90° to the right"]
+        </label>
+        <label>
+            <input type="radio" name="spread" value="rotateleft" @(Model.Settings.Spread == SpreadMode.RotateLeft ? "checked" : "") />
+            @L["Rotate 90° to the left"]
+        </label>
+        <label>
+            <input type="radio" name="spread" value="fit" @(Model.Settings.Spread == SpreadMode.Fit ? "checked" : "") />
+            @L["Whole spread on one page (complete, but small)"]
+        </label>
+    </p>
+    <p>
+        <label>@L["Page scale"]<br />
+            <select name="scale">
+                @foreach (var pct in Inkshelf.Auth.DeviceSettings.Scales)
+                {
+                    <option value="@pct" selected="@(pct == Model.Settings.Scale)">@pct%</option>
+                }
+            </select>
+        </label>
+        <span class="settings-note">@L["Lower this if your reader cuts off the edge of a page."]</span>
+    </p>
+    <p>
         <label>@L["Language"]<br />
             <select name="lang">
                 @foreach (var (code, name) in Model.AvailableLanguages)
@@ -37,5 +72,5 @@
             </select>
         </label>
     </p>
-    <p><button type="submit" class="btn">@L["Save"]</button></p>
+    <p class="settings-actions"><button type="submit" class="btn">@L["Save"]</button></p>
 </form>

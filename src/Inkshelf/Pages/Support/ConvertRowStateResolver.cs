@@ -24,7 +24,7 @@ public static class ConvertRowStateResolver
         string? fmt, RenderTarget target, EpubCache cache, ConvertQueue queue)
     {
         if (fmt != "cbz" && fmt != "cbr") return ConvertRowState.NotConvertible;
-        var path = cache.PathFor(itemId, size, mtimeMs, target.MaxW, target.MaxH, target.Grayscale);
+        var path = cache.PathFor(itemId, size, mtimeMs, target.MaxW, target.MaxH, target.Grayscale, target.Spread, target.Scale);
         return queue.Status(path) switch
         {
             ConvertStatus.Done => ConvertRowState.Cached,

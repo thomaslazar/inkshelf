@@ -107,11 +107,15 @@ nav.pager span { margin-right: 1rem; }
 .settings-icon { display: block; height: 1.6em; width: auto; }
 .settings-note { color: #555; margin: .4rem 0; }
 .settings-form { margin: 1rem 0; }
-.settings-form p { margin: 0; }
-/* Block label with padding: the whole row toggles, not just the 13px box, and
-   the rule makes where one option ends and the next begins unambiguous — the
-   two checkbox rows otherwise read as one block of prose on e-ink. */
-.settings-form label { display: block; cursor: pointer; padding: .7rem .25rem; border-bottom: 1px solid #ccc; }
+/* The rule separates one SETTING from the next — it is deliberately on the block,
+   not on each label. A setting's radio options and its explanation belong to it and
+   must stay visually attached; a line between them reads as a new setting. */
+.settings-form p { margin: 0; padding: .7rem .25rem; border-bottom: 1px solid #ccc; }
+.settings-form p.settings-actions { border-bottom: none; }
+/* Block label so the whole row toggles, not just the 13px box. */
+.settings-form label { display: block; cursor: pointer; padding: .35rem 0; }
+.settings-form .setting-title { display: block; margin-bottom: .1rem; }
+.settings-form .settings-note { margin: .35rem 0 0; }
 /* Sizing a checkbox is honoured unevenly on old engines; if it is ignored this
    degrades to the browser default, which is what we have today anyway. */
 .settings-form input[type=checkbox] { width: 1.2rem; height: 1.2rem; margin-right: .5rem; vertical-align: -.15rem; }

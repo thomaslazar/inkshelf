@@ -63,7 +63,7 @@ public class ConvertedModel : PageModel
     public async Task<IActionResult> OnGetAsync(CancellationToken ct = default)
     {
         var settings = DeviceSettings.Read(Request);
-        var target = ScreenTarget.FromCookie(Request.Cookies["scr"], settings.Retina, settings.Grayscale);
+        var target = ScreenTarget.FromCookie(Request.Cookies["scr"], settings.Retina, settings.Grayscale, settings.Spread, settings.Scale);
         var markSet = settings.Did.Length == 0 ? new HashSet<string>() : _marks.Read(settings.Did);
 
         // Cache entries for THIS device. Only the SET of item ids matters for the
@@ -74,7 +74,8 @@ public class ConvertedModel : PageModel
         var convertedAt = new Dictionary<string, DateTime>();
         foreach (var v in _cache.ListVariants())
         {
-            if (v.MaxW != target.MaxW || v.MaxH != target.MaxH || v.Grayscale != target.Grayscale) continue;
+            if (v.MaxW != target.MaxW || v.MaxH != target.MaxH || v.Grayscale != target.Grayscale
+                || v.Spread != target.Spread || v.Scale != target.Scale) continue;
             if (!convertedAt.TryGetValue(v.ItemId, out var seen) || v.ConvertedAtUtc > seen)
                 convertedAt[v.ItemId] = v.ConvertedAtUtc;
         }

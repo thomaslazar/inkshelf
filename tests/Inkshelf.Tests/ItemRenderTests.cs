@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.RegularExpressions;
 using Inkshelf;
 using Inkshelf.Abs;
+using Inkshelf.Auth;
 using Inkshelf.Convert;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -86,7 +87,7 @@ public class ItemRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, PSize, PMtime, W, H), "epub"); // primary cbz already converted
+        File.WriteAllText(cache.PathFor(ItemId, PSize, PMtime, W, H, spread: DeviceSettings.Default.Spread), "epub"); // primary cbz already converted
 
         var html = await (await client.SendAsync(Request(factory, $"/item/{ItemId}"))).Content.ReadAsStringAsync();
 
@@ -117,8 +118,8 @@ public class ItemRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, PSize, PMtime, W, H), "epub"); // primary (ino "1")
-        File.WriteAllText(cache.PathFor(ItemId, SSize, SMtime, W, H), "epub"); // non-primary (ino "3")
+        File.WriteAllText(cache.PathFor(ItemId, PSize, PMtime, W, H, spread: DeviceSettings.Default.Spread), "epub"); // primary (ino "1")
+        File.WriteAllText(cache.PathFor(ItemId, SSize, SMtime, W, H, spread: DeviceSettings.Default.Spread), "epub"); // non-primary (ino "3")
 
         const string did = "abc123def4560000";
         factory.Services.GetRequiredService<DownloadMarks>()

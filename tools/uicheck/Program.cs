@@ -66,15 +66,19 @@ await Check("login-de", De, "/login",
     mustNotContain: ["Log in", "Password", "Username"]);
 
 await Check("settings-de", De, "/settings",
-    mustContain: ["Einstellungen", "Sprache", "Speichern", "Bibliotheken", "Deutsch"],
-    mustNotContain: ["Save", "Language"]);
+    mustContain: ["Einstellungen", "Sprache", "Speichern", "Bibliotheken", "Deutsch",
+                  "Doppelseiten", "linke Hälfte zuerst", "rechte Hälfte zuerst",
+                  "Um 90° nach rechts drehen", "Um 90° nach links drehen", "Seitenskalierung"],
+    mustNotContain: ["Save", "Language", "Split into two pages", "Page scale"]);
 
 await Check("login-en", null, "/login",
     mustContain: ["Log in", "Password", "Username", "Log in with SSO"],
     mustNotContain: []);
 
 await Check("settings-en", null, "/settings",
-    mustContain: ["Settings", "Language", "Save", "Libraries", "English"],
+    mustContain: ["Settings", "Language", "Save", "Libraries", "English",
+                  "Two-page spreads", "left half first", "right half first",
+                  "Rotate 90° to the right", "Rotate 90° to the left", "Page scale"],
     mustNotContain: []);
 
 // --- Authenticated pages (opt-in; run.sh brings up + seeds the local ABS) ---
