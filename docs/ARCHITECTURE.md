@@ -167,8 +167,12 @@ from the repo root (inside the devcontainer) must stay green, and
   the CSS size and CSS × dpr, and both are explicit.
 - **A disabled input is not submitted.** The settings form disables fields it does
   not want used, so the POST handler treats an absent field as "keep what is
-  stored" for those — otherwise saving would silently zero the override numbers, or
-  turn retina off, since absent normally means off for a checkbox.
+  stored" for those — otherwise saving would silently zero the override numbers.
+  Retina is trickier: absent is ambiguous between "disabled" and "unchecked", so
+  a hidden `retinalive` marker (disabled by the same script line) disambiguates —
+  present means the box was live and its value is trusted, absent means keep what
+  is stored. Not a script dependency: with JS off both boxes stay enabled and are
+  submitted together, so the marker's presence still tells the truth.
 - **One page size per book, and it is load-bearing.** The e-reader lays every page
   of a book out in a single box and CLIPS anything bigger, so a book with mixed
   page sizes loses the right edge of its odd-sized pages. `EpubConverter`'s page

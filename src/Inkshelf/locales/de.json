@@ -42,6 +42,7 @@
   "Width": "Breite",
   "Height": "Höhe",
   "Pixel ratio": "Pixelverhältnis",
+  "Width/height are the screen's physical pixels; a higher ratio lays pages out smaller.": "Breite/Höhe sind die physischen Pixel des Bildschirms; ein höheres Verhältnis lässt Seiten kleiner erscheinen.",
   "Lower this if your reader cuts off the edge of a page.": "Verringern, wenn der Reader den Rand einer Seite abschneidet.",
   "Two-page spreads (a wide image holding two pages)": "Doppelseiten (ein breites Bild mit zwei Seiten)",
   "Split into two pages (left half first)": "In zwei Seiten teilen (linke Hälfte zuerst)",

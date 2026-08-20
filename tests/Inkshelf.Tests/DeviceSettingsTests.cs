@@ -388,6 +388,7 @@ public class DeviceSettingsTests
     [InlineData("-5", "1000", "1")]       // negative width
     [InlineData("99999", "1000", "1")]    // past MaxDimension
     [InlineData("800", "1000", "0")]      // zero ratio
+    [InlineData("800", "1000", "0.5")]    // below 1 — would enlarge the viewport
     [InlineData("800", "1000", "99")]     // past MaxDpr
     [InlineData("800", "1000", "abc")]    // unparseable ratio
     public void Screen_override_rejects_values_out_of_range(string w, string h, string dpr)

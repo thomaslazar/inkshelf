@@ -21,6 +21,7 @@
             <input type="checkbox" name="retina" id="retina" value="on" @(Model.Settings.Retina ? "checked" : "") />
             @L["Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)"]
         </label>
+        <input type="hidden" name="retinalive" id="retinalive" value="1" />
     </p>
     <p>
         <label>
@@ -68,14 +69,15 @@
             @L["Override detected screen"]
         </label>
         <label>@L["Width"]
-            <input type="number" name="ovrw" id="ovrw" min="1" max="4096" value="@(Model.PrefillW > 0 ? Model.PrefillW.ToString() : "")" />
+            <input type="number" name="ovrw" id="ovrw" min="1" max="@ScreenTarget.MaxDimension" value="@(Model.PrefillW > 0 ? Model.PrefillW.ToString() : "")" />
         </label>
         <label>@L["Height"]
-            <input type="number" name="ovrh" id="ovrh" min="1" max="4096" value="@(Model.PrefillH > 0 ? Model.PrefillH.ToString() : "")" />
+            <input type="number" name="ovrh" id="ovrh" min="1" max="@ScreenTarget.MaxDimension" value="@(Model.PrefillH > 0 ? Model.PrefillH.ToString() : "")" />
         </label>
         <label>@L["Pixel ratio"]
             <input type="text" name="ovrd" id="ovrd" value="@Model.PrefillDpr" />
         </label>
+        <span class="settings-note">@L["Width/height are the screen's physical pixels; a higher ratio lays pages out smaller."]</span>
     </p>
     <p>
         <label>@L["Language"]<br />
@@ -104,6 +106,8 @@
         /* Retina only chooses CSS vs CSS x dpr; an explicit override states both. */
         var r = document.getElementById("retina");
         if (r) { r.disabled = cb.checked; }
+        var rl = document.getElementById("retinalive");
+        if (rl) { rl.disabled = cb.checked; }
     }
     cb.onclick = sync;
     sync();

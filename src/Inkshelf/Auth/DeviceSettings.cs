@@ -76,8 +76,8 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
         $"retina={(Retina ? 1 : 0)}&gray={(Grayscale ? 1 : 0)}"
         + $"&lang={SanitizeLang(Lang)}&fav={SanitizeId(Fav)}&did={SanitizeId(Did)}"
         + $"&spread={Spread.ToString().ToLowerInvariant()}&scale={Scale}"
-        + $"&ovr={(OverrideScreen ? 1 : 0)}&ovrw={OverrideW}&ovrh={OverrideH}"
-        + $"&ovrd={OverrideDpr.ToString(CultureInfo.InvariantCulture)}";
+        + $"&ovr={(OverrideScreen ? 1 : 0)}&ovrw={SanitizeDim(OverrideW)}&ovrh={SanitizeDim(OverrideH)}"
+        + $"&ovrd={SanitizeDpr(OverrideDpr).ToString(CultureInfo.InvariantCulture)}";
 
     public static DeviceSettings Read(HttpRequest req)
     {
@@ -141,7 +141,11 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // `using Inkshelf.Convert;` makes the bare type name work.
     public static int SanitizeDim(int px) => px > 0 && px <= ScreenTarget.MaxDimension ? px : 0;
 
-    public static double SanitizeDpr(double dpr) => dpr > 0 && dpr <= ScreenTarget.MaxDpr ? dpr : 0;
+    // Lower bound is 1, not 0: EpubWriter.WriteAsync documents "pxPerCss >= 1", and
+    // dpr is the only input that can violate it. A dpr below 1 would enlarge the
+    // declared viewport past the physical screen — pages clipped to a corner, the
+    // exact disease this override cures.
+    public static double SanitizeDpr(double dpr) => dpr >= 1 && dpr <= ScreenTarget.MaxDpr ? dpr : 0;
 
     // Accepts both "1.875" and "1,875": the UI is translated and a comma is what a
     // German-locale user will type. 0 on anything unparseable.

@@ -23,14 +23,6 @@ public class EpubCache
             + $"-{Letter(spread)}{(scale == 100 ? "" : $"-s{scale}")}"
             + (dpr == 1 ? "" : $"-d{dpr.ToString(CultureInfo.InvariantCulture)}") + ".epub");
 
-    // `out path` sits before the optional knobs so the existing call sites keep working.
-    public bool TryGet(string itemId, long size, long mtimeMs, int maxW, int maxH, bool grayscale,
-        out string path, SpreadMode spread = SpreadMode.Fit, int scale = 100, double dpr = 1)
-    {
-        path = PathFor(itemId, size, mtimeMs, maxW, maxH, grayscale, spread, scale, dpr);
-        return File.Exists(path);
-    }
-
     // One letter per spread mode. Deliberately NOT reusing the letters an earlier
     // build wrote ('h' for split, 'r' for rotate): those files were laid out
     // differently, so they must fall out as unrecognised rather than be misread as a

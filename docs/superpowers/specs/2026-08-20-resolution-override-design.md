@@ -62,10 +62,12 @@ With an override there is always a page box, which also closes the one gap left
 in spread handling: `SpreadMode.Fit` needs a box to letterbox a spread onto, and
 without a probe it had none.
 
-Invalid input (zero, negative, unparseable, or past `MaxDimension` (4096) /
-`MaxDpr` (4)) is dropped to 0 on the way out of the cookie, which makes the
-override inactive and falls back to the probe — the same posture as a malformed
-`scr` cookie. Deliberately dropped rather than clamped: 4096 is far beyond any
+Invalid input (zero, negative, unparseable, or outside `[1, MaxDpr]` (4) for the
+ratio / past `MaxDimension` (4096) for a dimension) is dropped to 0 on the way
+out of the cookie, which makes the override inactive and falls back to the
+probe — the same posture as a malformed `scr` cookie. The ratio's lower bound is
+1, not 0: `EpubWriter` requires `pxPerCss >= 1`, and a ratio below 1 would
+enlarge the declared viewport past the physical screen. Deliberately dropped rather than clamped: 4096 is far beyond any
 e-reader, so a bigger number is a typo, and converting at a size the user never
 asked for is worse than ignoring it. `ScreenTarget` clamps again anyway, because
 the value crosses a trust boundary and clamping twice is cheaper than trusting

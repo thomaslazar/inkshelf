@@ -23,11 +23,12 @@ public static class SettingsEndpoints
             var overriding = form.ContainsKey("ovr");
             var settings = stored with
             {
-                // A DISABLED input is not submitted, and the page disables retina
-                // while the override is on. So "absent" only means "off" here when
-                // the override is off — otherwise saving the override would quietly
-                // switch retina off.
-                Retina = overriding ? stored.Retina : form.ContainsKey("retina"),
+                // The retina box is disabled while an override is on, and a disabled
+                // input is not submitted — indistinguishable from unchecked. The
+                // hidden companion is disabled by the same script line, so its
+                // PRESENCE means the box was live and its value can be trusted;
+                // absence means it was disabled and the stored value stands.
+                Retina = form.ContainsKey("retinalive") ? form.ContainsKey("retina") : stored.Retina,
                 Grayscale = form.ContainsKey("grayscale"),
                 Lang = form["lang"].ToString(),
                 Spread = Enum.TryParse<SpreadMode>(form["spread"].ToString(), true, out var sp)

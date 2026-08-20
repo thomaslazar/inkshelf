@@ -1,5 +1,12 @@
+using System.Net;
 using System.Text.RegularExpressions;
+using Inkshelf.Abs;
+using Inkshelf.Convert;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
 
 namespace Inkshelf.Tests;
 
@@ -300,6 +307,65 @@ public class EndpointTests
     }
 
     [Fact]
+    public async Task An_explicit_uncheck_with_the_marker_present_turns_retina_off()
+    {
+        // The JS-off case, made distinguishable: with JS off both boxes stay
+        // enabled and are submitted, so "retinalive present, retina absent" must
+        // read as a deliberate uncheck, not as "the box was disabled".
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["retina"] = "on",
+            ["retinalive"] = "1",
+            ["lang"] = "en",
+        }));
+
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["retinalive"] = "1",
+            ["lang"] = "en",
+            // retina deliberately absent — an explicit uncheck.
+        }));
+
+        var setCookie = string.Join(" ", saved.Headers.GetValues("Set-Cookie"));
+        Assert.Contains("retina%3D0", setCookie);
+    }
+
+    [Fact]
+    public async Task Absent_marker_preserves_retina_the_JSon_disabled_case()
+    {
+        // The JS-on case: the box is disabled while the override is live, so both
+        // it and its hidden companion are absent from the submit — the stored
+        // value must survive, not be read as an uncheck.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["retina"] = "on",
+            ["retinalive"] = "1",
+            ["lang"] = "en",
+        }));
+
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            // both retina and retinalive absent — the disabled-by-script case.
+        }));
+
+        var setCookie = string.Join(" ", saved.Headers.GetValues("Set-Cookie"));
+        Assert.Contains("retina%3D1", setCookie); // preserved, not switched off
+    }
+
+    [Fact]
     public async Task Saving_with_the_override_off_keeps_the_numbers()
     {
         // The three fields are disabled while the override is off, so they submit
@@ -364,5 +430,77 @@ public class EndpointTests
 
         Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/login", response.Headers.Location?.OriginalString);
+    }
+
+    private sealed class TempDir : IDisposable
+    {
+        public string Path { get; } = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(), "convert-endpoint-" + Guid.NewGuid().ToString("N"));
+        public TempDir() => Directory.CreateDirectory(Path);
+        public void Dispose() { try { Directory.Delete(Path, true); } catch (IOException) { } }
+    }
+
+    private static WebApplicationFactory<Program> CreateConvertFactory(StubHandler stub, string cachePath, string keysPath) =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        {
+            b.UseSetting("ABS_URL", "http://abs.local");
+            b.UseSetting("CachePath", cachePath);
+            b.UseSetting("DataProtectionKeysPath", keysPath);
+            b.ConfigureTestServices(services =>
+            {
+                services.Configure<HttpClientFactoryOptions>(nameof(AbsApiClient), o =>
+                    o.HttpMessageHandlerBuilderActions.Add(hb => hb.PrimaryHandler = stub));
+                var worker = services.FirstOrDefault(s => s.ImplementationType == typeof(ConvertWorker));
+                if (worker is not null) services.Remove(worker);
+            });
+        });
+
+    [Fact]
+    public async Task Convert_download_serves_the_cached_file_for_an_override_geometry_with_no_scr_cookie()
+    {
+        // FromCookie consults an override FIRST, before the (here, absent) "scr"
+        // probe is even looked at — so the cache path must be keyed on the override
+        // geometry, not on a (0,0) fallback target. Seeding the cache at the
+        // override's numbers and asserting a hit (rather than a re-convert attempt,
+        // which would need a real archive download) proves the download endpoint
+        // and the row-state endpoints agree on which file is current.
+        const string itemId = "item1";
+        const long size = 100, mtime = 200;
+        const int overrideW = 800, overrideH = 1000;
+        const double overrideDpr = 2;
+
+        var detailJson = $$"""
+            {"media":{"metadata":{"title":"T","authorName":"A"},
+             "ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"x.cbz","size":{{size}},"mtimeMs":{{mtime}} } } } }
+            """;
+        var stub = new StubHandler(req =>
+        {
+            var path = req.RequestUri!.AbsolutePath;
+            return path == $"/api/items/{itemId}" ? StubHandler.Json(detailJson) : new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateConvertFactory(stub, cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        var cachedPath = cache.PathFor(itemId, size, mtime, overrideW, overrideH,
+            spread: Inkshelf.Auth.DeviceSettings.Default.Spread, dpr: overrideDpr);
+        File.WriteAllText(cachedPath, "cached-epub-bytes");
+
+        var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
+        var protector = dp.CreateProtector("inkshelf.session.v1");
+        var req = new HttpRequestMessage(HttpMethod.Get, $"/convert/{itemId}");
+        // NO "scr" cookie — the override must win the target on its own.
+        req.Headers.Add("Cookie",
+            $"inkshelf_session={Uri.EscapeDataString(protector.Protect("access\nrefresh"))}; "
+            + $"inkshelf_settings=ovr=1&ovrw={overrideW}&ovrh={overrideH}&ovrd={overrideDpr}");
+
+        var response = await client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/epub+zip", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("cached-epub-bytes", await response.Content.ReadAsStringAsync());
     }
 }

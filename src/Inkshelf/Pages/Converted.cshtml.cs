@@ -63,7 +63,7 @@ public class ConvertedModel : PageModel
     public async Task<IActionResult> OnGetAsync(CancellationToken ct = default)
     {
         var settings = DeviceSettings.Read(Request);
-        var target = ScreenTarget.FromCookie(Request.Cookies["scr"], settings.Retina, settings.Grayscale, settings.Spread, settings.Scale, settings.ActiveOverride);
+        var target = settings.ToRenderTarget(Request.Cookies["scr"]);
         var markSet = settings.Did.Length == 0 ? new HashSet<string>() : _marks.Read(settings.Did);
 
         // Cache entries for THIS device. Only the SET of item ids matters for the

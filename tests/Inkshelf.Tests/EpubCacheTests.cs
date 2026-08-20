@@ -66,9 +66,9 @@ public class EpubCacheTests
         File.WriteAllText(c.PathFor("i1", 2, 2, 800, 1000), "b");
         File.WriteAllText(c.PathFor("i2", 1, 1, 0, 0), "c");
         c.RemoveForItem("i1");
-        Assert.False(c.TryGet("i1", 1, 1, 0, 0, false, out _));
-        Assert.False(c.TryGet("i1", 2, 2, 800, 1000, false, out _));
-        Assert.True(c.TryGet("i2", 1, 1, 0, 0, false, out _));
+        Assert.False(File.Exists(c.PathFor("i1", 1, 1, 0, 0)));
+        Assert.False(File.Exists(c.PathFor("i1", 2, 2, 800, 1000)));
+        Assert.True(File.Exists(c.PathFor("i2", 1, 1, 0, 0)));
     }
 
     [Fact]
