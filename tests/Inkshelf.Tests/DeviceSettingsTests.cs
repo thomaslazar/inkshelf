@@ -93,8 +93,8 @@ public class DeviceSettingsTests
     [Fact]
     public void Serialize_emits_keyed_pairs()
     {
-        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=splitleftfirst&scale=100", new DeviceSettings(true, false, "de").Serialize());
-        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=splitleftfirst&scale=100", new DeviceSettings(true, true, "").Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=splitleftfirst&scale=100&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, false, "de").Serialize());
+        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=splitleftfirst&scale=100&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, true, "").Serialize());
     }
 
     [Fact]
@@ -191,7 +191,7 @@ public class DeviceSettingsTests
     public void Serialize_includes_fav()
     {
         var s = new DeviceSettings(true, false, "de") { Fav = "lib_abc" };
-        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=splitleftfirst&scale=100", s.Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=splitleftfirst&scale=100&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
     }
 
     [Fact]
@@ -240,7 +240,7 @@ public class DeviceSettingsTests
     public void Fav_is_sanitized_on_the_way_into_the_cookie(string raw, string expected)
     {
         var s = new DeviceSettings(true, false, "") { Fav = raw };
-        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=splitleftfirst&scale=100", s.Serialize());
+        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=splitleftfirst&scale=100&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
     }
 
     [Fact]
@@ -333,5 +333,79 @@ public class DeviceSettingsTests
         Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=5")).Scale);
         Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=400")).Scale);
         Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=abc")).Scale);
+    }
+
+    [Fact]
+    public void Screen_override_round_trips_through_the_cookie()
+    {
+        var s = new DeviceSettings(true, false, "de")
+        {
+            OverrideScreen = true,
+            OverrideW = 1264,
+            OverrideH = 1680,
+            OverrideDpr = 1.875,
+        };
+        var wire = s.Serialize();
+        Assert.Contains("ovr=1", wire);
+        Assert.Contains("ovrw=1264", wire);
+        Assert.Contains("ovrh=1680", wire);
+        Assert.Contains("ovrd=1.875", wire);   // invariant, never "1,875"
+
+        var read = DeviceSettings.Read(RequestWithCookie(wire));
+        Assert.True(read.OverrideScreen);
+        Assert.Equal(1264, read.OverrideW);
+        Assert.Equal(1680, read.OverrideH);
+        Assert.Equal(1.875, read.OverrideDpr);
+    }
+
+    [Fact]
+    public void Screen_override_defaults_to_off_and_empty()
+    {
+        // A cookie written before this setting existed.
+        var s = DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav="));
+        Assert.False(s.OverrideScreen);
+        Assert.Equal(0, s.OverrideW);
+        Assert.Equal(0, s.OverrideH);
+        Assert.Equal(0, s.OverrideDpr);
+        Assert.Null(s.ActiveOverride);
+    }
+
+    [Fact]
+    public void Screen_override_accepts_a_comma_decimal_ratio()
+    {
+        // The UI is translated; a German-locale user typing 1,875 must not
+        // silently fall through to the invalid-value path. The comma is
+        // percent-encoded here (%2C) the way a real Cookie header carries it —
+        // ASP.NET's own cookie-header parser splits raw, unescaped commas as if
+        // they separated multiple header values, which would corrupt every other
+        // field in this cookie before Read ever saw it.
+        var s = DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=de&fav=&ovr=1&ovrw=800&ovrh=1000&ovrd=1%2C875"));
+        Assert.Equal(1.875, s.OverrideDpr);
+    }
+
+    [Theory]
+    [InlineData("0", "1000", "1")]        // zero width
+    [InlineData("-5", "1000", "1")]       // negative width
+    [InlineData("99999", "1000", "1")]    // past MaxDimension
+    [InlineData("800", "1000", "0")]      // zero ratio
+    [InlineData("800", "1000", "99")]     // past MaxDpr
+    [InlineData("800", "1000", "abc")]    // unparseable ratio
+    public void Screen_override_rejects_values_out_of_range(string w, string h, string dpr)
+    {
+        // A hand-edited cookie must not mint an absurd page size: the value is
+        // dropped to 0, which makes the override inactive rather than dangerous.
+        var s = DeviceSettings.Read(RequestWithCookie($"retina=1&gray=0&lang=&fav=&ovr=1&ovrw={w}&ovrh={h}&ovrd={dpr}"));
+        Assert.Null(s.ActiveOverride);
+    }
+
+    [Fact]
+    public void Active_override_needs_the_flag_and_all_three_numbers()
+    {
+        var numbers = new DeviceSettings(true, false, "") { OverrideW = 800, OverrideH = 1000, OverrideDpr = 2 };
+        Assert.Null(numbers.ActiveOverride);                                  // flag off
+        Assert.Null((numbers with { OverrideScreen = true, OverrideH = 0 }).ActiveOverride);
+
+        var on = numbers with { OverrideScreen = true };
+        Assert.Equal(new ScreenOverride(800, 1000, 2), on.ActiveOverride);
     }
 }

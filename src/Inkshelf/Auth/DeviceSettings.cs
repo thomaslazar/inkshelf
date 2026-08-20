@@ -2,6 +2,7 @@ using Inkshelf.Convert;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
+using System.Globalization;
 using System.Security.Cryptography;
 
 namespace Inkshelf.Auth;
@@ -39,6 +40,24 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // calibration per device, not something anyone wants to fine-tune.
     public static readonly int[] Scales = [100, 95, 90, 85, 80];
 
+    // A hand-entered screen geometry, used INSTEAD of the "scr" probe when
+    // OverrideScreen is set. The numbers are kept even while the override is off,
+    // so switching it off does not throw them away and the fields can show what
+    // was last used. 0 means "nothing stored", which is what renders the field
+    // blank rather than a misleading 0.
+    public bool OverrideScreen { get; init; }
+    public int OverrideW { get; init; }
+    public int OverrideH { get; init; }
+    public double OverrideDpr { get; init; }
+
+    // The override as the converter wants it, or null when it is off or
+    // incomplete. Incomplete counts as off: a half-filled override would produce
+    // a zero-sized page, which is worse than falling back to the probe.
+    public ScreenOverride? ActiveOverride =>
+        OverrideScreen && OverrideW > 0 && OverrideH > 0 && OverrideDpr > 0
+            ? new ScreenOverride(OverrideW, OverrideH, OverrideDpr)
+            : null;
+
     // An opaque per-device handle, minted by Set (below) and used to key this
     // device's downloaded-file marks. An init property for the same reason as Fav:
     // the existing three-argument construction sites keep compiling.
@@ -56,7 +75,9 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     public string Serialize() =>
         $"retina={(Retina ? 1 : 0)}&gray={(Grayscale ? 1 : 0)}"
         + $"&lang={SanitizeLang(Lang)}&fav={SanitizeId(Fav)}&did={SanitizeId(Did)}"
-        + $"&spread={Spread.ToString().ToLowerInvariant()}&scale={Scale}";
+        + $"&spread={Spread.ToString().ToLowerInvariant()}&scale={Scale}"
+        + $"&ovr={(OverrideScreen ? 1 : 0)}&ovrw={OverrideW}&ovrh={OverrideH}"
+        + $"&ovrd={OverrideDpr.ToString(CultureInfo.InvariantCulture)}";
 
     public static DeviceSettings Read(HttpRequest req)
     {
@@ -84,6 +105,12 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
                 ? sm : Default.Spread,
             Scale = q.TryGetValue("scale", out var sc) && int.TryParse(sc.ToString(), out var pc)
                 ? SanitizeScale(pc) : Default.Scale,
+            OverrideScreen = Flag(q, "ovr", Default.OverrideScreen),
+            OverrideW = q.TryGetValue("ovrw", out var ow) && int.TryParse(ow.ToString(), out var owv)
+                ? SanitizeDim(owv) : 0,
+            OverrideH = q.TryGetValue("ovrh", out var oh) && int.TryParse(oh.ToString(), out var ohv)
+                ? SanitizeDim(ohv) : 0,
+            OverrideDpr = q.TryGetValue("ovrd", out var od) ? SanitizeDpr(ParseDpr(od.ToString())) : 0,
         };
     }
 
@@ -104,6 +131,24 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // A hand-edited cookie must not mint an absurd page size, so clamp to the offered
     // range rather than trusting the value.
     public static int SanitizeScale(int pct) => pct is >= 50 and <= 100 ? pct : Default.Scale;
+
+    // Out of range becomes 0 ("nothing stored") rather than being clamped to the
+    // bound: a typo'd 99999 is not a request for 4096, it is a mistake, and
+    // silently converting at a size the user never asked for is worse than
+    // falling back to the probe.
+    // NOT `Convert.ScreenTarget…` — `Convert` binds to System.Convert here, which is
+    // why this file already fully-qualifies System.Convert.ToHexString. The file's
+    // `using Inkshelf.Convert;` makes the bare type name work.
+    public static int SanitizeDim(int px) => px > 0 && px <= ScreenTarget.MaxDimension ? px : 0;
+
+    public static double SanitizeDpr(double dpr) => dpr > 0 && dpr <= ScreenTarget.MaxDpr ? dpr : 0;
+
+    // Accepts both "1.875" and "1,875": the UI is translated and a comma is what a
+    // German-locale user will type. 0 on anything unparseable.
+    public static double ParseDpr(string? s) =>
+        !string.IsNullOrWhiteSpace(s)
+        && double.TryParse(s.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var d)
+            ? d : 0;
 
     // Accept a short lowercase code (letters + dash), else "" (→ resolve from header).
     private static string SanitizeLang(string s)

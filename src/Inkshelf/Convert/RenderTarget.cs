@@ -31,3 +31,12 @@ public readonly record struct RenderTarget(int MaxW, int MaxH, double Dpr, bool 
     // off the page: see EpubWriter. Init property so positional construction still works.
     public int Scale { get; init; } = 100;
 }
+
+// A hand-entered screen geometry, replacing the "scr" probe. W/H are physical
+// image pixels (what a vendor spec sheet gives); Dpr is how many image pixels the
+// reader draws per CSS layout pixel, so viewport = px × scale ÷ Dpr.
+//
+// Only ever constructed from already-sanitised values (DeviceSettings clamps them
+// on the way out of the cookie), but ScreenTarget clamps again — the numbers cross
+// a trust boundary and clamping twice is cheaper than trusting once.
+public readonly record struct ScreenOverride(int W, int H, double Dpr);
