@@ -33,7 +33,7 @@ Reading direction, spread handling and page scale are untouched.
 Width and height are **physical screen pixels** — the number a vendor spec
 sheet gives. Pixel ratio is how many image pixels the reader draws per CSS
 layout pixel, which is what turns those pixels into the declared viewport:
-`viewport = px / (dpr / scale)`, unchanged from today.
+`viewport = px × scale ÷ dpr` (scale as a fraction), unchanged from today.
 
 When the override is active it supplies the whole answer:
 
@@ -71,9 +71,13 @@ a hand-typed value is no more trustworthy than a cookie.
 ### C. Storage
 
 Four new fields on `DeviceSettings`, in the one existing settings cookie:
-`OverrideScreen` (bool), `OverrideW`, `OverrideH` (int px), `OverrideDpr`
-(double). Init properties, like `Fav`/`Did`/`Spread`/`Scale`, so the existing
+`OverrideScreen` (bool, default false), `OverrideW`, `OverrideH` (int px,
+default 0 = nothing stored), `OverrideDpr` (double, default 0 = nothing
+stored). Init properties, like `Fav`/`Did`/`Spread`/`Scale`, so the existing
 positional construction sites keep compiling.
+
+Zero means "no stored value", which is what makes the fields render blank
+rather than as a misleading `0` on a device that has never had an override.
 
 The numbers are stored whether or not the override is on, so they survive being
 switched off and can be shown as a starting point.
