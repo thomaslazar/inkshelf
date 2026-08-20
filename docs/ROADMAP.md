@@ -97,8 +97,7 @@ Shipped; kept as a short record (full detail in git history / the PR).
   the `scr` probe is missing, wrong, or simply not what the user wants. It takes
   precedence over the probe entirely, including when the probe is absent, which is
   also what finally gives `SpreadMode.Fit` a page box on a device with no
-  JavaScript. The pixel ratio joined the EPUB cache key with it: an explicit
-  override makes two targets that differ only in ratio collide on one filename.
+  JavaScript.
 - **Two-page spread handling** — a landscape page image (two pages scanned as one)
   used to keep its wide fixed-layout viewport, which the reader letterboxed
   vertically and clipped on the right. A per-device setting now picks how: split in
