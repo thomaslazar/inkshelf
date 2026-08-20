@@ -68,13 +68,13 @@
             <input type="checkbox" name="ovr" id="ovr" value="on" @(Model.Settings.OverrideScreen ? "checked" : "") />
             @L["Override detected screen"]
         </label>
-        <label>@L["Width"]
+        <label class="setting-num">@L["Width"]
             <input type="number" name="ovrw" id="ovrw" min="1" max="@ScreenTarget.MaxDimension" value="@(Model.PrefillW > 0 ? Model.PrefillW.ToString() : "")" />
         </label>
-        <label>@L["Height"]
+        <label class="setting-num">@L["Height"]
             <input type="number" name="ovrh" id="ovrh" min="1" max="@ScreenTarget.MaxDimension" value="@(Model.PrefillH > 0 ? Model.PrefillH.ToString() : "")" />
         </label>
-        <label>@L["Pixel ratio"]
+        <label class="setting-num">@L["Pixel ratio"]
             <input type="text" name="ovrd" id="ovrd" value="@Model.PrefillDpr" />
         </label>
         <span class="settings-note">@L["Width/height are the screen's physical pixels; a higher ratio lays pages out smaller."]</span>

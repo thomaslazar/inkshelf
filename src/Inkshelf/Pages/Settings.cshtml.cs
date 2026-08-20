@@ -36,25 +36,32 @@ public class SettingsModel : PageModel
         // screen, or the page contradicts itself (one number for "detected", a
         // different one prefilled into the override fields).
         var probe = ParseScreen(Request.Cookies["scr"]);
-        DetectedScreen = probe is { } p
-            ? $"{p.CssW} × {p.CssH} @ dpr {p.Dpr.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
-            : FormatScreenFallback(Request.Cookies["scr"]);
 
-        // The prefill is what this device is CURRENTLY getting, so accepting it as
-        // an override is a no-op for image weight: retina on converts at physical
-        // pixels (css × dpr), retina off converts at CSS pixels with dpr 1 — mirrors
-        // ScreenTarget.FromCookie exactly.
-        int curW = 0, curH = 0; double curDpr = 0;
+        // Both the readout and the override fields report the screen in PHYSICAL
+        // pixels — the number a person goes looking for, and the number a vendor spec
+        // sheet gives. The cookie stores CSS pixels plus the ratio, so multiply.
+        // Printing the cookie raw made the page look like it gave two sizes for one
+        // screen (769 × 953 in the readout, 1442 × 1787 in the fields).
+        //
+        // Deliberately NOT retina-aware: this is a statement about the hardware and
+        // the fields have to agree with it. So ticking the override converts at the
+        // screen's real resolution whatever retina says — consistent with retina being
+        // disabled while an override is active.
+        int devW = 0, devH = 0; double devDpr = 0;
         if (probe is { } cur)
         {
-            (curW, curH, curDpr) = Settings.Retina
-                ? ((int)Math.Round(cur.CssW * cur.Dpr), (int)Math.Round(cur.CssH * cur.Dpr), cur.Dpr)
-                : (cur.CssW, cur.CssH, 1);
+            devW = (int)Math.Round(cur.CssW * cur.Dpr);
+            devH = (int)Math.Round(cur.CssH * cur.Dpr);
+            devDpr = cur.Dpr;
         }
 
-        PrefillW = Settings.OverrideW > 0 ? Settings.OverrideW : curW;
-        PrefillH = Settings.OverrideH > 0 ? Settings.OverrideH : curH;
-        var dpr = Settings.OverrideDpr > 0 ? Settings.OverrideDpr : curDpr;
+        DetectedScreen = probe is { } p
+            ? $"{devW} × {devH} @ dpr {p.Dpr.ToString(System.Globalization.CultureInfo.InvariantCulture)}"
+            : FormatScreenFallback(Request.Cookies["scr"]);
+
+        PrefillW = Settings.OverrideW > 0 ? Settings.OverrideW : devW;
+        PrefillH = Settings.OverrideH > 0 ? Settings.OverrideH : devH;
+        var dpr = Settings.OverrideDpr > 0 ? Settings.OverrideDpr : devDpr;
         PrefillDpr = dpr > 0 ? dpr.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
     }
 

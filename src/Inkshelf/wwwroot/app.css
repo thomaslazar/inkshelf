@@ -115,16 +115,22 @@ nav.pager span { margin-right: 1rem; }
 /* Block label so the whole row toggles, not just the 13px box. */
 .settings-form label { display: block; cursor: pointer; padding: .35rem 0; }
 .settings-form .setting-title { display: block; margin-bottom: .1rem; }
-.settings-form .settings-note { margin: .35rem 0 0; }
+/* display:block because the note follows inline-block fields now — as a plain
+   inline span it continued on their line and wrapped mid-sentence. */
+.settings-form .settings-note { display: block; margin: .35rem 0 0; }
 /* Sizing a checkbox is honoured unevenly on old engines; if it is ignored this
    degrades to the browser default, which is what we have today anyway. */
 .settings-form input[type=checkbox] { width: 1.2rem; height: 1.2rem; margin-right: .5rem; vertical-align: -.15rem; }
 .settings-form select { font: inherit; padding: .5rem; margin-top: .3rem; }
-/* Narrow, so a number field doesn't stretch to the row's full width like a select.
-   Each stacks on its own line (.settings-form label is block) — narrow width isn't
-   about grouping them into one row. A disabled field must LOOK disabled — the
-   whole point of disabling it is to stop it implying it affects anything. */
-.settings-form input[type=number], .settings-form input[type=text] { font: inherit; padding: .4rem; width: 6rem; }
+/* The three override numbers sit on ONE line: inline-block, not flex — the target
+   e-ink engine has no flex `gap`, and margins on inline-block are the boring thing
+   that works everywhere. They wrap on a narrow phone, which is fine. */
+.settings-form label.setting-num { display: inline-block; margin-right: 1rem; }
+/* Narrow enough that three of them fit one line on an e-reader; the values are at
+   most four digits or "1.875". */
+.settings-form input[type=number], .settings-form input[type=text] { font: inherit; padding: .4rem; width: 5rem; }
+/* A disabled field must LOOK disabled — the point of disabling it is to stop it
+   implying it affects anything. Honoured in Chromium; the e-ink engine may ignore it. */
 .settings-form input:disabled { color: #888; background: #eee; }
 .settings-form button { margin-top: 1rem; }
 .item .actions .read-form { margin: 0; }
