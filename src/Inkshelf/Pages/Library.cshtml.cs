@@ -139,7 +139,7 @@ public class LibraryModel : PageModel
     private void ComputeConvertStates(IEnumerable<AbsItem> items)
     {
         var s = DeviceSettings.Read(Request);
-        var t = ScreenTarget.FromCookie(Request.Cookies["scr"], s.Retina, s.Grayscale, s.Spread, s.Scale);
+        var t = ScreenTarget.FromCookie(Request.Cookies["scr"], s.Retina, s.Grayscale, s.Spread, s.Scale, s.ActiveOverride);
         foreach (var item in items)
         {
             _structured.TryGetValue(item.Id, out var media);
