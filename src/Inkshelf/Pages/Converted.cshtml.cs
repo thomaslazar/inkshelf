@@ -75,7 +75,7 @@ public class ConvertedModel : PageModel
         foreach (var v in _cache.ListVariants())
         {
             if (v.MaxW != target.MaxW || v.MaxH != target.MaxH || v.Grayscale != target.Grayscale
-                || v.Spread != target.Spread || v.Scale != target.Scale) continue;
+                || v.Spread != target.Spread || v.Scale != target.Scale || v.Dpr != target.Dpr) continue;
             if (!convertedAt.TryGetValue(v.ItemId, out var seen) || v.ConvertedAtUtc > seen)
                 convertedAt[v.ItemId] = v.ConvertedAtUtc;
         }

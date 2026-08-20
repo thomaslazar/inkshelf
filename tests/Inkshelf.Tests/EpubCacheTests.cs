@@ -200,4 +200,48 @@ public class EpubCacheTests
         Assert.Equal((SpreadMode.RotateRight, 90, true), (v[0].Spread, v[0].Scale, v[0].Grayscale));
         Assert.Equal((SpreadMode.SplitLeftFirst, 100, false), (v[1].Spread, v[1].Scale, v[1].Grayscale));
     }
+
+    [Fact]
+    public void PathFor_encodes_dpr_only_when_it_is_not_one()
+    {
+        // Dpr got away with being absent from the key while it was always implied by
+        // WxH: under retina the cap IS css × dpr, and without retina it is always 1.
+        // An explicit override breaks that — 1000x2000 at dpr 1 and at dpr 2 are
+        // different EPUBs — so the second device would be served the first one's file.
+        var c = new EpubCache(TempDirPath());
+        Assert.EndsWith("i1-1-2-800x1000-f.epub", c.PathFor("i1", 1, 2, 800, 1000));
+        Assert.EndsWith("i1-1-2-800x1000-f-d1.875.epub", c.PathFor("i1", 1, 2, 800, 1000, dpr: 1.875));
+        Assert.EndsWith("i1-1-2-800x1000-f-s90-d2.epub",
+            c.PathFor("i1", 1, 2, 800, 1000, scale: 90, dpr: 2));
+    }
+
+    [Fact]
+    public void ListVariants_round_trips_dpr()
+    {
+        var dir = TempDirPath();
+        var c = new EpubCache(dir);
+        File.WriteAllText(c.PathFor("i1", 1, 2, 800, 1000, spread: SpreadMode.RotateLeft, scale: 90, dpr: 1.875), "e");
+        File.WriteAllText(c.PathFor("i2", 3, 4, 800, 1000), "e");
+
+        var v = c.ListVariants().OrderBy(x => x.ItemId).ToList();
+        Assert.Equal(2, v.Count);
+        Assert.Equal((1.875, 90, SpreadMode.RotateLeft), (v[0].Dpr, v[0].Scale, v[0].Spread));
+        Assert.Equal((1.0, 100, SpreadMode.Fit), (v[1].Dpr, v[1].Scale, v[1].Spread));
+    }
+
+    [Fact]
+    public void ListVariants_round_trips_id_containing_dash_d()
+    {
+        // Item ids are UUIDs, so a filename can legitimately contain "-d" inside the
+        // id itself. LastIndexOf("-d") finding that is harmless because the
+        // remainder never parses as a double.
+        var dir = TempDirPath();
+        var c = new EpubCache(dir);
+        var id = "2cd6b9eb-d322-4eca-b5c6-f3f9ef2685bd";
+        File.WriteAllText(c.PathFor(id, 1, 2, 800, 1000), "e");
+
+        var v = Assert.Single(c.ListVariants());
+        Assert.Equal(id, v.ItemId);
+        Assert.Equal(1.0, v.Dpr);
+    }
 }
