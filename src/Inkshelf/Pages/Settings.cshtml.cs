@@ -70,15 +70,21 @@ public class SettingsModel : PageModel
     // "769x953x1.875" → (769, 953, 1.875) in CSS pixels × dpr, as the "scr" cookie
     // itself reports them — NOT multiplied together. Callers decide what to do with
     // the two numbers. null when absent/unparseable.
+    //
+    // The legacy 2-part cookie ("769x953", written before the script reported dpr) is
+    // accepted as dpr 1, matching what ScreenTarget.FromCookie does with it. Rejecting
+    // it here instead would blank the prefill on a device whose cookie is mid-upgrade,
+    // while conversion happily used the same numbers.
     private static (int CssW, int CssH, double Dpr)? ParseScreen(string? scr)
     {
         if (string.IsNullOrEmpty(scr)) return null;
         var p = scr.Split('x');
-        if (p.Length < 3
+        if (p.Length < 2
             || !int.TryParse(p[0], out var w) || !int.TryParse(p[1], out var h)
-            || w <= 0 || h <= 0
-            || !double.TryParse(p[2], System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out var d) || d <= 0) return null;
-        return (w, h, d);
+            || w <= 0 || h <= 0) return null;
+        if (p.Length == 2) return (w, h, 1);
+        return double.TryParse(p[2], System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out var d) && d > 0
+            ? (w, h, d) : null;
     }
 }

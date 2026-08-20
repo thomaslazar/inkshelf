@@ -281,10 +281,14 @@ public class EndpointTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         var token = await GetAntiforgeryTokenAsync(client);
 
-        // Retina on, override off.
+        // Retina on, override off. `retinalive` marks the box as having been live, so
+        // this POST genuinely sets retina rather than falling onto the stored default —
+        // without it the assertion below would hold even if nothing were preserved,
+        // because the default is already on.
         await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["__RequestVerificationToken"] = token,
+            ["retinalive"] = "1",
             ["retina"] = "on",
             ["lang"] = "en",
         }));
