@@ -265,6 +265,73 @@ public class EndpointTests
     }
 
     [Fact]
+    public async Task Saving_with_the_override_on_keeps_retina()
+    {
+        // A disabled checkbox is NOT submitted, and the UI disables retina while the
+        // override is on. With the usual "absent means off" rule that would silently
+        // switch retina off every time the override was saved.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        // Retina on, override off.
+        await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["retina"] = "on",
+            ["lang"] = "en",
+        }));
+
+        // Now turn the override on. The disabled retina box sends nothing.
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["ovr"] = "on",
+            ["ovrw"] = "1000",
+            ["ovrh"] = "2000",
+            ["ovrd"] = "1.5",
+        }));
+
+        var setCookie = string.Join(" ", saved.Headers.GetValues("Set-Cookie"));
+        Assert.Contains("retina%3D1", setCookie);   // survived
+        Assert.Contains("ovr%3D1", setCookie);
+        Assert.Contains("ovrw%3D1000", setCookie);
+    }
+
+    [Fact]
+    public async Task Saving_with_the_override_off_keeps_the_numbers()
+    {
+        // The three fields are disabled while the override is off, so they submit
+        // nothing — and must not be zeroed, or switching the override off would
+        // throw away numbers the user had to look up.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["ovr"] = "on",
+            ["ovrw"] = "1000",
+            ["ovrh"] = "2000",
+            ["ovrd"] = "1.5",
+        }));
+
+        var off = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+        }));
+
+        var setCookie = string.Join(" ", off.Headers.GetValues("Set-Cookie"));
+        Assert.Contains("ovr%3D0", setCookie);      // switched off
+        Assert.Contains("ovrw%3D1000", setCookie);  // but remembered
+        Assert.Contains("ovrd%3D1.5", setCookie);
+    }
+
+    [Fact]
     public async Task Read_post_without_antiforgery_returns_bad_request()
     {
         using var factory = CreateFactory();

@@ -18,7 +18,7 @@
     @Html.AntiForgeryToken()
     <p>
         <label>
-            <input type="checkbox" name="retina" value="on" @(Model.Settings.Retina ? "checked" : "") />
+            <input type="checkbox" name="retina" id="retina" value="on" @(Model.Settings.Retina ? "checked" : "") />
             @L["Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)"]
         </label>
     </p>
@@ -63,6 +63,21 @@
         <span class="settings-note">@L["Lower this if your reader cuts off the edge of a page."]</span>
     </p>
     <p>
+        <label>
+            <input type="checkbox" name="ovr" id="ovr" value="on" @(Model.Settings.OverrideScreen ? "checked" : "") />
+            @L["Override detected screen"]
+        </label>
+        <label>@L["Width"]
+            <input type="number" name="ovrw" id="ovrw" min="1" max="4096" value="@(Model.PrefillW > 0 ? Model.PrefillW.ToString() : "")" />
+        </label>
+        <label>@L["Height"]
+            <input type="number" name="ovrh" id="ovrh" min="1" max="4096" value="@(Model.PrefillH > 0 ? Model.PrefillH.ToString() : "")" />
+        </label>
+        <label>@L["Pixel ratio"]
+            <input type="text" name="ovrd" id="ovrd" value="@Model.PrefillDpr" />
+        </label>
+    </p>
+    <p>
         <label>@L["Language"]<br />
             <select name="lang">
                 @foreach (var (code, name) in Model.AvailableLanguages)
@@ -74,3 +89,23 @@
     </p>
     <p class="settings-actions"><button type="submit" class="btn">@L["Save"]</button></p>
 </form>
+<script>
+/* Light on purpose: ES5, no libraries, nothing an old e-reader browser cannot do.
+   With JS off the fields stay enabled and the server still ignores them unless the
+   checkbox is set, so the page degrades cleanly. */
+(function () {
+    var cb = document.getElementById("ovr");
+    if (!cb) { return; }
+    function sync() {
+        var off = !cb.checked;
+        document.getElementById("ovrw").disabled = off;
+        document.getElementById("ovrh").disabled = off;
+        document.getElementById("ovrd").disabled = off;
+        /* Retina only chooses CSS vs CSS x dpr; an explicit override states both. */
+        var r = document.getElementById("retina");
+        if (r) { r.disabled = cb.checked; }
+    }
+    cb.onclick = sync;
+    sync();
+})();
+</script>

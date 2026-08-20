@@ -120,6 +120,11 @@ nav.pager span { margin-right: 1rem; }
    degrades to the browser default, which is what we have today anyway. */
 .settings-form input[type=checkbox] { width: 1.2rem; height: 1.2rem; margin-right: .5rem; vertical-align: -.15rem; }
 .settings-form select { font: inherit; padding: .5rem; margin-top: .3rem; }
+/* Narrow, so three of them read as one row of numbers rather than three settings.
+   A disabled field must LOOK disabled — the whole point of disabling it is to stop
+   it implying it affects anything. */
+.settings-form input[type=number], .settings-form input[type=text] { font: inherit; padding: .4rem; width: 6rem; }
+.settings-form input:disabled { color: #888; background: #eee; }
 .settings-form button { margin-top: 1rem; }
 .item .actions .read-form { margin: 0; }
 /* .btn now carries the whole look. This rule only stops the browser's default
