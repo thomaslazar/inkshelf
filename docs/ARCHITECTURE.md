@@ -157,9 +157,18 @@ from the repo root (inside the devcontainer) must stay green, and
   conversion target is computed, read **both** and combine them via
   `ScreenTarget.FromCookie` into a `RenderTarget` — otherwise a real conversion
   and the badge that describes it disagree. **Every knob that changes the bytes is
-  part of the cache key** — size cap, grayscale, spread mode, page scale — or the
-  user flips a setting and is handed the old file, which reads as "the setting is
-  broken".
+  part of the cache key** — size cap, grayscale, spread mode, page scale, dpr — or
+  the user flips a setting and is handed the old file, which reads as "the setting
+  is broken".
+- **A hand-set screen override wins over the probe, and is consulted first.**
+  `ScreenTarget.FromCookie` returns early when the `scr` cookie is missing, so an
+  override checked later would never be reached in exactly the case it exists for.
+  `retina` is not consulted while an override is active — it only chooses between
+  the CSS size and CSS × dpr, and both are explicit.
+- **A disabled input is not submitted.** The settings form disables fields it does
+  not want used, so the POST handler treats an absent field as "keep what is
+  stored" for those — otherwise saving would silently zero the override numbers, or
+  turn retina off, since absent normally means off for a checkbox.
 - **One page size per book, and it is load-bearing.** The e-reader lays every page
   of a book out in a single box and CLIPS anything bigger, so a book with mixed
   page sizes loses the right edge of its odd-sized pages. `EpubConverter`'s page

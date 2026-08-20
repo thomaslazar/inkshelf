@@ -1,6 +1,6 @@
 # Resolution override
 
-**Status:** design approved, not yet implemented
+**Status:** design approved, implemented
 **Date:** 2026-08-20
 **Roadmap item:** Settings → "Resolution override"
 
