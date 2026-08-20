@@ -177,6 +177,13 @@ from the repo root (inside the devcontainer) must stay green, and
   of a book out in a single box and CLIPS anything bigger, so a book with mixed
   page sizes loses the right edge of its odd-sized pages. `EpubConverter`'s page
   box fixes one size from the first page and letterboxes every page onto it.
+- **The declared viewport is scaled up to the cap, never taken from the image
+  alone.** The reader draws a page at its declared CSS size and never scales it UP,
+  so a book whose scans are smaller than the screen (`image px ÷ dpr` below the CSS
+  screen size) is drawn small with dead margin around it — measured on device at 78%
+  of the width for 1125×1600 scans. `EpubConverter.Viewport` scales the box to the
+  cap; the image keeps its own pixels and the reader upscales it, so this costs no
+  bytes and no decode memory.
 - **The reader cuts a strip off the page and we cannot measure it.** Its usable box
   is smaller than the screen the `scr` probe reports, it never scales a page to
   fit, and nothing in the EPUB reaches a fixed-layout path — a commercially

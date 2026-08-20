@@ -219,4 +219,60 @@ public class EpubConverterTests
         }
         File.Delete(full); File.Delete(small);
     }
+
+    private static MemoryStream SmallScansCbz()
+    {
+        // 1125x1600 scans — the real proportions of a book that rendered small on
+        // device, and smaller than the cap used below.
+        var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+            for (var i = 1; i <= 3; i++)
+            {
+                using var s = zip.CreateEntry($"p-{i:D2}.jpg").Open();
+                s.Write(Img(1125, 1600, new JpegEncoder()));
+            }
+        ms.Position = 0; return ms;
+    }
+
+    [Fact]
+    public async Task Scans_smaller_than_the_screen_still_declare_a_full_size_page()
+    {
+        // The reader lays a page out at its declared CSS size and never scales it UP,
+        // so a viewport of image px ÷ dpr drew a low-resolution book small with dead
+        // margin around it — 1125x1600 scans on a 1442x1787 screen came out at 78% of
+        // the width. The viewport is scaled to the cap instead, while the IMAGE keeps
+        // its own pixels: no extra bytes, and the reader does the upscaling.
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        var target = new RenderTarget(1442, 1787, 1.875, false) { Spread = SpreadMode.Fit };
+        await new EpubConverter().ConvertAsync(SmallScansCbz(), new EbookMeta("T", "A", null, null),
+            outPath, target, default);
+
+        // fit = min(1442/1125, 1787/1600) = 1.1169 → 1125*1.1169/1.875 = 670, and the
+        // height lands exactly on the screen: 1600*1.1169/1.875 = 953.
+        Assert.All(Viewports(outPath), v => Assert.Equal((670, 953), v));
+
+        using (var epub = ZipFile.OpenRead(outPath))
+        {
+            var info = Image.Identify(epub.Entries.First(e => e.FullName.StartsWith("OEBPS/img/")).Open());
+            Assert.Equal((1125, 1600), (info.Width, info.Height));   // NOT upscaled
+        }
+        File.Delete(outPath);
+    }
+
+    [Fact]
+    public async Task A_page_at_the_cap_is_unaffected_by_the_upscale_rule()
+    {
+        // The regression risk of the rule above: it must be a no-op for a book whose
+        // scans already meet or exceed the cap, or every existing conversion changes.
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        var target = new RenderTarget(1442, 1787, 1.875, false) { Spread = SpreadMode.Fit };
+        await new EpubConverter().ConvertAsync(MixedCbz(), new EbookMeta("T", "A", null, null),
+            outPath, target, default);
+
+        // First page 600x900 fits inside the cap unscaled, so the box is 600x900 and
+        // fit = min(1442/600, 1787/900) = 1.9856 → 600*1.9856/1.875 = 635, and the
+        // height lands on the screen exactly: 900*1.9856/1.875 = 953.
+        Assert.All(Viewports(outPath), v => Assert.Equal((635, 953), v));
+        File.Delete(outPath);
+    }
 }
