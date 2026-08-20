@@ -162,9 +162,12 @@ Add the sanitisers next to `SanitizeScale`:
     // bound: a typo'd 99999 is not a request for 4096, it is a mistake, and
     // silently converting at a size the user never asked for is worse than
     // falling back to the probe.
-    public static int SanitizeDim(int px) => px > 0 && px <= Convert.ScreenTarget.MaxDimension ? px : 0;
+    // NOT `Convert.ScreenTarget…` — `Convert` binds to System.Convert here, which is
+    // why this file already fully-qualifies System.Convert.ToHexString. The file's
+    // `using Inkshelf.Convert;` makes the bare type name work.
+    public static int SanitizeDim(int px) => px > 0 && px <= ScreenTarget.MaxDimension ? px : 0;
 
-    public static double SanitizeDpr(double dpr) => dpr > 0 && dpr <= Convert.ScreenTarget.MaxDpr ? dpr : 0;
+    public static double SanitizeDpr(double dpr) => dpr > 0 && dpr <= ScreenTarget.MaxDpr ? dpr : 0;
 
     // Accepts both "1.875" and "1,875": the UI is translated and a comma is what a
     // German-locale user will type. 0 on anything unparseable.

@@ -62,11 +62,14 @@ With an override there is always a page box, which also closes the one gap left
 in spread handling: `SpreadMode.Fit` needs a box to letterbox a spread onto, and
 without a probe it had none.
 
-Invalid input (zero, negative, unparseable, or absurd) falls back to the probe
-rather than erroring — the same posture as a malformed `scr` cookie. Values are
-clamped to the existing `MaxDimension` (4096) and `MaxDpr` (4); those bounds
-already exist to stop a client-supplied size from exhausting disk or memory, and
-a hand-typed value is no more trustworthy than a cookie.
+Invalid input (zero, negative, unparseable, or past `MaxDimension` (4096) /
+`MaxDpr` (4)) is dropped to 0 on the way out of the cookie, which makes the
+override inactive and falls back to the probe — the same posture as a malformed
+`scr` cookie. Deliberately dropped rather than clamped: 4096 is far beyond any
+e-reader, so a bigger number is a typo, and converting at a size the user never
+asked for is worse than ignoring it. `ScreenTarget` clamps again anyway, because
+the value crosses a trust boundary and clamping twice is cheaper than trusting
+once.
 
 ### C. Storage
 
