@@ -23,9 +23,24 @@ public static class ScreenTarget
     // dpr is bounded to MaxDpr, and dimensions are clamped to MaxDimension AFTER
     // the dpr multiply (a raw cssW × dpr must not exceed the cap). Returns
     // (0, 0, 1, grayscale) when absent/unparseable → no downscaling.
+    //
+    // An override (hand-entered geometry) wins over the cookie entirely, including
+    // when the cookie is missing.
     public static RenderTarget FromCookie(string? scr, bool retina = false, bool grayscale = false,
-        SpreadMode spread = SpreadMode.Fit, int scale = 100)
+        SpreadMode spread = SpreadMode.Fit, int scale = 100, ScreenOverride? over = null)
     {
+        // FIRST, before the cookie is even looked at. Being merely "preferred over a
+        // bad value" would not help: the no-probe case returns at the bottom of this
+        // method, so an override consulted later would never be reached when the
+        // cookie is absent — which is one of the reasons the override exists.
+        //
+        // retina is deliberately not consulted: it only chooses between the CSS size
+        // and CSS × dpr, and both numbers are explicit here.
+        if (over is { W: > 0, H: > 0, Dpr: > 0 } o)
+            return new RenderTarget(
+                    Math.Min(o.W, MaxDimension), Math.Min(o.H, MaxDimension),
+                    Math.Min(o.Dpr, MaxDpr), grayscale)
+            { Spread = spread, Scale = scale };
         if (!string.IsNullOrEmpty(scr))
         {
             var p = scr.Split('x');
