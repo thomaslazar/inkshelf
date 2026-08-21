@@ -18,24 +18,61 @@ limits, which apply to every device below.
 
 ## Matrix
 
-| Device | Panel | Detected resolution | Working settings | Status |
-|---|---|---|---|---|
-| Tolino epos 2 | 1440 × 1920 | 1442 × 1787 @ dpr 1.875 | retina on, grayscale on, page scale 98, no override | Works |
-| Tolino shine | 758 × 1024 | 751 × 909 @ dpr 1.325 | retina on, grayscale on, **override 1021 × 1236 @ ratio 1.325**, page scale has no effect | Usable, but see below |
+<!-- An HTML table, not a markdown one, so each device can carry a Notes row
+     spanning the full width. Adding a device means copying the two <tr> blocks. -->
+<table>
+  <thead>
+    <tr>
+      <th>Device</th>
+      <th>Panel</th>
+      <th>Detected resolution</th>
+      <th>Working settings</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Tolino epos 2</td>
+      <td>1440 × 1920</td>
+      <td>1442 × 1787 @ dpr 1.875</td>
+      <td>retina on, grayscale on, page scale 98, no override</td>
+      <td>Works</td>
+    </tr>
+    <tr>
+      <td colspan="5">
+        <strong>Notes:</strong> Needs no override. Page scale 98 offsets the
+        ~19 px strip the reader trims off the bottom of a page; 100 cuts into
+        the art, 95 leaves a visible gap.
+      </td>
+    </tr>
+    <tr>
+      <td>Tolino shine</td>
+      <td>758 × 1024</td>
+      <td>751 × 909 @ dpr 1.325</td>
+      <td>retina on, grayscale on, <strong>override 1021 × 1236 @ ratio 1.325</strong></td>
+      <td>Usable, with caveats</td>
+    </tr>
+    <tr>
+      <td colspan="5">
+        <strong>Notes:</strong> <strong>Retains no cookies</strong> — reopening
+        the browser logs you out and clears every setting, the measured override
+        included. Cookie expiry is not the variable; that store keeps nothing
+        across a browser restart, so keep your numbers noted off-device.
+        <strong>Page scale has no effect</strong> here: this reader sizes pages
+        from the image's own pixels and ignores the box we declare, so the
+        override dimensions are the only knob. Without one, comic pages render
+        at about two thirds of the screen. Rendering is fine once it is set up —
+        the setting up, every time, is what makes it tiring.
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 Two further readers have been reported working without special settings; models
 to be filled in.
 
-**The shine does not retain cookies.** Reopening its browser loses everything we
-store: you are logged out, and every setting goes with it — the language, the
-spread mode, and the screen override you just spent time measuring. Cookie
-expiry is not the variable; that store simply keeps nothing across a browser
-restart. Comics render correctly once it is set up, but setting it up again on
-every browser start makes it tiring to live with. Keep your numbers written down
-somewhere off-device.
-
-**Three different numbers, and they rarely agree.** Read the row above from left
-to right:
+**Three different numbers, and they rarely agree.** Reading a device row from
+left to right:
 
 - **Panel** is the vendor's hardware resolution.
 - **Detected resolution** is what the Settings page shows: the browser's own
