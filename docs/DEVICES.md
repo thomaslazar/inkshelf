@@ -21,10 +21,18 @@ limits, which apply to every device below.
 | Device | Panel | Detected resolution | Working settings | Status |
 |---|---|---|---|---|
 | Tolino epos 2 | 1440 × 1920 | 1442 × 1787 @ dpr 1.875 | retina on, grayscale on, page scale 98, no override | Works |
-| Tolino shine | 758 × 1024 | 751 × 909 @ dpr 1.325 | retina on, grayscale on, **override 1021 × 1236 @ ratio 1.325**, page scale has no effect | Works with calibration |
+| Tolino shine | 758 × 1024 | 751 × 909 @ dpr 1.325 | retina on, grayscale on, **override 1021 × 1236 @ ratio 1.325**, page scale has no effect | Usable, but see below |
 
 Two further readers have been reported working without special settings; models
 to be filled in.
+
+**The shine does not retain cookies.** Reopening its browser loses everything we
+store: you are logged out, and every setting goes with it — the language, the
+spread mode, and the screen override you just spent time measuring. Cookie
+expiry is not the variable; that store simply keeps nothing across a browser
+restart. Comics render correctly once it is set up, but setting it up again on
+every browser start makes it tiring to live with. Keep your numbers written down
+somewhere off-device.
 
 **Three different numbers, and they rarely agree.** Read the row above from left
 to right:
@@ -69,7 +77,7 @@ answer.
 | A blank screen appears between every page | The page box is slightly taller than the reader's viewport, so one page paginates into two screens | Shrink the override ~2% at a time until it goes away |
 | The right or bottom edge of a page is cut off | The page box is larger than the reader's viewport | Shrink the override, or drop page scale a few percent |
 | Page scale changes nothing | Some readers size pages from the image's own pixels and ignore the declared box; scale only shrinks the box | Use the override dimensions instead |
-| Logged out and settings lost whenever the browser is reopened | The device's cookie store does not persist cookies across a browser restart | Nothing yet — re-enter, and keep a note of your numbers |
+| Logged out and settings lost whenever the browser is reopened | The device's cookie store does not persist cookies across a browser restart (seen on the shine) | Nothing yet — log in and re-enter the override; keep the numbers noted off-device |
 
 ## Reporting a device
 
