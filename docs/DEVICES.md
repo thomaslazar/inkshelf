@@ -37,6 +37,20 @@ would expect:
       <td>Works</td>
     </tr>
     <tr>
+      <td>Tolino vision 5</td>
+      <td>?</td>
+      <td>1266 × 1547 @ dpr 1.875</td>
+      <td>no override needed</td>
+      <td>Works</td>
+    </tr>
+    <tr>
+      <td>Tolino page 2</td>
+      <td>?</td>
+      <td>759 × 930 @ dpr 1.325</td>
+      <td>no override needed</td>
+      <td>Works</td>
+    </tr>
+    <tr>
       <td>Tolino shine</td>
       <td>758 × 1024</td>
       <td>751 × 909 @ dpr 1.325</td>
@@ -56,9 +70,6 @@ would expect:
     </tr>
   </tbody>
 </table>
-
-Two further readers have been reported working without special settings; models
-to be filled in.
 
 **Three different numbers, and they rarely agree.** Reading a device row from
 left to right:

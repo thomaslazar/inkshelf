@@ -15,6 +15,11 @@ leaves ~541 px tall), devicePixelRatio 1.875. **Treat it as Chrome 30 / ES5.**
 
 ## Confirmed support (epos 2 probe, 2026-07-13)
 
+The same profile was confirmed byte for byte on a **vision 5** and a **page 2**
+(2026-08-21): both are the identical engine — `Android 4.4.2 … Chrome/30.0.0.0 …
+AppleWebKit/537.36` — differing only in screen size and pixel ratio. Treat this
+list as covering that whole generation.
+
 Supported: `display:flex` (old flexbox), `calc()`, `overflow-wrap`,
 `XMLHttpRequest`, `localStorage`, `addEventListener`.
 
