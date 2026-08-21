@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Inkshelf.Convert;
 
 public class EpubCache
@@ -13,18 +15,13 @@ public class EpubCache
     // The spread letter is emitted ALWAYS, including for the default, so that files
     // cached by an older build (which had no spread handling at all) can never be
     // mistaken for a current one. Scale is emitted only when it is not 100.
+    // Dpr is emitted only when it is not 1 — see the dpr test for why it has to be
+    // in the key at all.
     public string PathFor(string itemId, long size, long mtimeMs, int maxW, int maxH,
-        bool grayscale = false, SpreadMode spread = SpreadMode.Fit, int scale = 100) =>
+        bool grayscale = false, SpreadMode spread = SpreadMode.Fit, int scale = 100, double dpr = 1) =>
         Path.Combine(_dir, $"{itemId}-{size}-{mtimeMs}-{maxW}x{maxH}{(grayscale ? "-g" : "")}"
-            + $"-{Letter(spread)}{(scale == 100 ? "" : $"-s{scale}")}.epub");
-
-    // `out path` sits before the optional knobs so the existing call sites keep working.
-    public bool TryGet(string itemId, long size, long mtimeMs, int maxW, int maxH, bool grayscale,
-        out string path, SpreadMode spread = SpreadMode.Fit, int scale = 100)
-    {
-        path = PathFor(itemId, size, mtimeMs, maxW, maxH, grayscale, spread, scale);
-        return File.Exists(path);
-    }
+            + $"-{Letter(spread)}{(scale == 100 ? "" : $"-s{scale}")}"
+            + (dpr == 1 ? "" : $"-d{dpr.ToString(CultureInfo.InvariantCulture)}") + ".epub");
 
     // One letter per spread mode. Deliberately NOT reusing the letters an earlier
     // build wrote ('h' for split, 'r' for rotate): those files were laid out
@@ -94,7 +91,7 @@ public class EpubCache
     // "when was this converted" wants ConvertedAtUtc.
     public sealed record CachedVariant(
         string ItemId, long Size, long MtimeMs, int MaxW, int MaxH, bool Grayscale, string Path,
-        DateTime ConvertedAtUtc, SpreadMode Spread = SpreadMode.Fit, int Scale = 100);
+        DateTime ConvertedAtUtc, SpreadMode Spread = SpreadMode.Fit, int Scale = 100, double Dpr = 1);
 
     // Enumerate cached EPUBs, parsing each filename back into its parts. Parsed
     // RIGHT-TO-LEFT (dims, then mtime, then size) so an item id containing '-'
@@ -112,7 +109,12 @@ public class EpubCache
         var path = file.FullName;
         var name = System.IO.Path.GetFileNameWithoutExtension(path); // drops ".epub"
 
-        // Parsed in the reverse of PathFor's order: scale, spread, grayscale, dims.
+        // Parsed in the reverse of PathFor's order: dpr, scale, spread, grayscale, dims.
+        var dpr = 1.0;
+        var di = name.LastIndexOf("-d", StringComparison.Ordinal);
+        if (di > 0 && double.TryParse(name[(di + 2)..], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedDpr))
+        { dpr = parsedDpr; name = name[..di]; }
+
         var scale = 100;
         var si = name.LastIndexOf("-s", StringComparison.Ordinal);
         if (si > 0 && int.TryParse(name[(si + 2)..], out var parsedScale))
@@ -146,6 +148,6 @@ public class EpubCache
         var itemId = name[..d3];
         if (itemId.Length == 0) return null;
         return new CachedVariant(itemId, size, mtimeMs, maxW, maxH, grayscale, path,
-            file.LastWriteTimeUtc, spread, scale);
+            file.LastWriteTimeUtc, spread, scale, dpr);
     }
 }

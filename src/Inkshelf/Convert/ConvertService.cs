@@ -103,7 +103,7 @@ public class ConvertService
         var seq = md?.Series is { Count: > 0 } ? md.Series[0].Sequence : null;
         var seriesName = md?.Series is { Count: > 0 } ? md.Series[0].Name : md?.SeriesName;
 
-        var path = _cache.PathFor(id, size, mtime, target.MaxW, target.MaxH, target.Grayscale, target.Spread, target.Scale);
+        var path = _cache.PathFor(id, size, mtime, target.MaxW, target.MaxH, target.Grayscale, target.Spread, target.Scale, target.Dpr);
         var meta = new EbookMeta(title, author, seriesName, seq, id);
         var downloadName = Sanitize($"{author} - {title}") + ".epub";
         return (path, meta, downloadName, size);

@@ -12,14 +12,6 @@ No priority features atm.
 
 Settings to add to the per-device settings system:
 
-- **Resolution override.** Let the user hand-set the conversion resolution per
-  device, for when the browser-reported screen size isn't ideal. Pairs with the
-  retina toggle. It must take precedence over the *absence* of the `scr` probe,
-  not just over a bad value: `ScreenTarget.FromCookie` currently returns
-  `(0, 0, 1)` the moment the cookie is missing and never looks further, so the
-  override has to be consulted first. That also makes it the fix for the one gap
-  in spread handling — `SpreadMode.Fit` needs a cap to pad onto, so without a
-  resolution from either source a wide spread stays wide.
 - **EPUB2 reflowable fallback.** Fixed-layout (EPUB3) is flagged by some older
   e-ink eReaders ("Das Öffnen dieses Buches kann zu Fehlern führen") and can crash
   them, as their Adobe engines are EPUB2-only. Offer a reflowable EPUB2 mode —
@@ -101,6 +93,11 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Resolution override** — width, height and pixel ratio can be set by hand when
+  the `scr` probe is missing, wrong, or simply not what the user wants. It takes
+  precedence over the probe entirely, including when the probe is absent, which is
+  also what finally gives `SpreadMode.Fit` a page box on a device with no
+  JavaScript.
 - **Two-page spread handling** — a landscape page image (two pages scanned as one)
   used to keep its wide fixed-layout viewport, which the reader letterboxed
   vertically and clipped on the right. A per-device setting now picks how: split in
@@ -110,8 +107,9 @@ Shipped; kept as a short record (full detail in git history / the PR).
 - **One page size per book, and a page-scale knob** — every page is letterboxed
   onto a single box, because the reader lays a whole book out in one box and clips
   the pages that do not fit it. It also cuts a strip off every page, from an inset
-  that cannot be probed from the browser, so `Scale` (100–80%) lets the user shrink
-  pages until nothing is lost.
+  that cannot be probed from the browser, so `Scale` (a percentage, 50–100) lets the
+  user shrink pages until nothing is lost. It started as a menu of coarse steps; the
+  useful values turned out to be a percent or two below 100, so it is a free number.
 - **Build identification** — the version on the libraries and login pages is now
   `InformationalVersion`, which the Docker build stamps as `X.Y.Z+pr-34.a1b2c3d` or
   `X.Y.Z+main.a1b2c3d`; a version with no `+` suffix means a release image. Paired with CI

@@ -11,7 +11,7 @@
 <p class="settings-note">@L["These settings apply to this device / browser only."]</p>
 @if (Model.DetectedScreen is not null)
 {
-    <p class="settings-note">@L["Detected screen: {0}", Model.DetectedScreen]</p>
+    <p class="settings-note">@L["Detected resolution: {0}", Model.DetectedScreen]</p>
 }
 
 <form class="settings-form" method="post" action="/settings">
@@ -52,15 +52,35 @@
         </label>
     </p>
     <p>
-        <label>@L["Page scale"]<br />
-            <select name="scale">
-                @foreach (var pct in Inkshelf.Auth.DeviceSettings.Scales)
-                {
-                    <option value="@pct" selected="@(pct == Model.Settings.Scale)">@pct%</option>
-                }
-            </select>
+        <label class="setting-num">@L["Page scale"]
+            <input type="number" name="scale" min="@Inkshelf.Auth.DeviceSettings.MinScale" max="100" step="1"
+                   value="@Model.Settings.Scale" />
         </label>
-        <span class="settings-note">@L["Lower this if your reader cuts off the edge of a page."]</span>
+        <span class="settings-note">@L["Percent. Lower this if your reader cuts off the edge of a page."]</span>
+@if (Model.ScaleWarning)
+{
+        <span class="settings-note">@L["Not used: the page scale must be between 50 and 100."]</span>
+}
+    </p>
+    <p>
+        <label>
+            <input type="checkbox" name="ovr" id="ovr" value="on" @(Model.Settings.OverrideScreen ? "checked" : "") />
+            @L["Override screen resolution"]
+        </label>
+        <label class="setting-num">@L["Width"]
+            <input type="number" name="ovrw" id="ovrw" min="1" max="@ScreenTarget.MaxDimension" value="@(Model.PrefillW > 0 ? Model.PrefillW.ToString() : "")" />
+        </label>
+        <label class="setting-num">@L["Height"]
+            <input type="number" name="ovrh" id="ovrh" min="1" max="@ScreenTarget.MaxDimension" value="@(Model.PrefillH > 0 ? Model.PrefillH.ToString() : "")" />
+        </label>
+        <label class="setting-num">@L["Pixel ratio"]
+            <input type="text" name="ovrd" id="ovrd" value="@Model.PrefillDpr" />
+        </label>
+        <span class="settings-note">@L["Width and height are the screen's physical pixels. A higher ratio lays pages out smaller."]</span>
+@if (Model.RangeWarning)
+{
+        <span class="settings-note">@L["Not used: width and height must be between 1 and 4096, and the ratio between 1 and 4."]</span>
+}
     </p>
     <p>
         <label>@L["Language"]<br />
@@ -74,3 +94,20 @@
     </p>
     <p class="settings-actions"><button type="submit" class="btn">@L["Save"]</button></p>
 </form>
+<script>
+/* Light on purpose: ES5, no libraries, nothing an old e-reader browser cannot do.
+   With JS off the fields stay enabled and the server still ignores them unless the
+   checkbox is set, so the page degrades cleanly. */
+(function () {
+    var cb = document.getElementById("ovr");
+    if (!cb) { return; }
+    function sync() {
+        var off = !cb.checked;
+        document.getElementById("ovrw").disabled = off;
+        document.getElementById("ovrh").disabled = off;
+        document.getElementById("ovrd").disabled = off;
+    }
+    cb.onclick = sync;
+    sync();
+})();
+</script>

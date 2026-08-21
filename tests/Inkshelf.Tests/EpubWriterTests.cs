@@ -24,7 +24,7 @@ public class EpubWriterTests
     {
         var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
         await EpubWriter.WriteAsync(outPath, new EbookMeta("Vol 1", "Artist", "Saga", "1"),
-            Stream(new EpubWriter.Page("page-0001.jpg", Jpg(80, 120), 80, 120)), pxPerCss: 1, default);
+            Stream(new EpubWriter.Page("page-0001.jpg", Jpg(80, 120), 80, 120, 80, 120)), default);
 
         using var epub = ZipFile.OpenRead(outPath);
         var names = epub.Entries.Select(e => e.FullName).ToList();
@@ -44,14 +44,20 @@ public class EpubWriterTests
     }
 
     [Fact]
-    public async Task WriteAsync_sets_viewport_to_css_size_via_pxPerCss()
+    public async Task WriteAsync_declares_the_viewport_it_was_handed_not_the_image_size()
     {
+        // The writer does no geometry: the viewport is computed by EpubConverter, which
+        // is the only place that knows the device cap and the page scale. Handing a
+        // viewport deliberately unequal to the image size proves the writer is not
+        // quietly deriving one.
         var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
         await EpubWriter.WriteAsync(outPath, new EbookMeta("T", "A", null, null),
-            Stream(new EpubWriter.Page("page-0001.jpg", Jpg(400, 600), 400, 600)), pxPerCss: 2, default);
+            Stream(new EpubWriter.Page("page-0001.jpg", Jpg(400, 600), 400, 600, 213, 320)), default);
         using var epub = ZipFile.OpenRead(outPath);
         var page = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("page-0001.xhtml")).Open()).ReadToEnd();
-        Assert.Contains("width=200, height=300", page);
+        Assert.Contains("width=213, height=320", page);
+        // The CSS box must agree with the declared viewport or the image overflows it.
+        Assert.Contains("width:213px;height:320px", page);
         File.Delete(outPath);
     }
 
@@ -73,12 +79,12 @@ public class EpubWriterTests
             for (var i = 1; i <= 3; i++)
             {
                 sizesWhenAsked.Add(File.Exists(tmp) ? new FileInfo(tmp).Length : 0);
-                yield return new EpubWriter.Page($"page-{i:D4}.jpg", big, 1600, 2400);
+                yield return new EpubWriter.Page($"page-{i:D4}.jpg", big, 1600, 2400, 1600, 2400);
             }
             await Task.CompletedTask;
         }
 
-        await EpubWriter.WriteAsync(outPath, new EbookMeta("T", "A", null, null), Produce(), 1, default);
+        await EpubWriter.WriteAsync(outPath, new EbookMeta("T", "A", null, null), Produce(), default);
 
         // Buffered-then-write would show all three sizes equal (only mimetype+container
         // present at each pull). Streaming shows strict growth as prior pages land.
@@ -92,8 +98,8 @@ public class EpubWriterTests
     {
         var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
         await EpubWriter.WriteAsync(outPath, new EbookMeta("T", "A", null, null),
-            Stream(new EpubWriter.Page("page-0001.jpg", Jpg(80, 120), 80, 120)),
-            pxPerCss: 1, default, new EpubWriter.Cover(Jpg(600, 900), ".jpg"));
+            Stream(new EpubWriter.Page("page-0001.jpg", Jpg(80, 120), 80, 120, 80, 120)),
+            default, new EpubWriter.Cover(Jpg(600, 900), ".jpg"));
 
         using var epub = ZipFile.OpenRead(outPath);
         var names = epub.Entries.Select(e => e.FullName).ToList();
@@ -111,9 +117,9 @@ public class EpubWriterTests
     {
         var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
         await EpubWriter.WriteAsync(outPath, new EbookMeta("T", "A", null, null),
-            Stream(new EpubWriter.Page("page-0001.jpg", Jpg(80, 120), 80, 120),
-                   new EpubWriter.Page("page-0002.jpg", Jpg(80, 120), 80, 120)),
-            pxPerCss: 1, default);
+            Stream(new EpubWriter.Page("page-0001.jpg", Jpg(80, 120), 80, 120, 80, 120),
+                   new EpubWriter.Page("page-0002.jpg", Jpg(80, 120), 80, 120, 80, 120)),
+            default);
 
         using var epub = ZipFile.OpenRead(outPath);
         Assert.DoesNotContain(epub.Entries.Select(e => e.FullName), n => n.StartsWith("OEBPS/cover"));
@@ -129,7 +135,7 @@ public class EpubWriterTests
     {
         var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
         await EpubWriter.WriteAsync(outPath, new EbookMeta("T", "A", null, null),
-            Stream(), pxPerCss: 1, default);
+            Stream(), default);
 
         using var epub = ZipFile.OpenRead(outPath);
         var opf = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("content.opf")).Open()).ReadToEnd();

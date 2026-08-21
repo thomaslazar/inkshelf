@@ -157,13 +157,31 @@ from the repo root (inside the devcontainer) must stay green, and
   conversion target is computed, read **both** and combine them via
   `ScreenTarget.FromCookie` into a `RenderTarget` — otherwise a real conversion
   and the badge that describes it disagree. **Every knob that changes the bytes is
-  part of the cache key** — size cap, grayscale, spread mode, page scale — or the
-  user flips a setting and is handed the old file, which reads as "the setting is
-  broken".
+  part of the cache key** — size cap, grayscale, spread mode, page scale, dpr — or
+  the user flips a setting and is handed the old file, which reads as "the setting
+  is broken".
+- **A hand-set screen override wins over the probe, and is consulted first.**
+  `ScreenTarget.FromCookie` returns early when the `scr` cookie is missing, so an
+  override checked later would never be reached in exactly the case it exists for.
+  `retina` is not consulted while an override is active — it only chooses between
+  the CSS size and CSS × dpr, and both are explicit.
+- **A disabled input is not submitted.** The settings form disables the override's
+  number fields while the override is off, so the POST handler treats an absent one
+  as "keep what is stored" — otherwise saving would silently zero numbers the user
+  had to look up. Checkboxes are never disabled, so `absent == off` still holds for
+  them; keep it that way, because a disabled checkbox is indistinguishable from an
+  unchecked one and disambiguating it costs a hidden companion field.
 - **One page size per book, and it is load-bearing.** The e-reader lays every page
   of a book out in a single box and CLIPS anything bigger, so a book with mixed
   page sizes loses the right edge of its odd-sized pages. `EpubConverter`'s page
   box fixes one size from the first page and letterboxes every page onto it.
+- **The declared viewport is scaled up to the cap, never taken from the image
+  alone.** The reader draws a page at its declared CSS size and never scales it UP,
+  so a book whose scans are smaller than the screen (`image px ÷ dpr` below the CSS
+  screen size) is drawn small with dead margin around it — measured on device at 78%
+  of the width for 1125×1600 scans. `EpubConverter.Viewport` scales the box to the
+  cap; the image keeps its own pixels and the reader upscales it, so this costs no
+  bytes and no decode memory.
 - **The reader cuts a strip off the page and we cannot measure it.** Its usable box
   is smaller than the screen the `scr` probe reports, it never scales a page to
   fit, and nothing in the EPUB reaches a fixed-layout path — a commercially

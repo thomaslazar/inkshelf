@@ -9,17 +9,38 @@ public record EbookMeta(string Title, string Author, string? Series, string? Seq
 // process each image, stream it into the EPUB (one page held at a time).
 public class EpubConverter
 {
-    // target.MaxW/MaxH cap page image pixels (0 = no cap); target.Dpr converts those
-    // pixels to the CSS viewport (viewport = px / dpr). dpr ≤ 0 falls back to 1.
-    // target.Scale then shrinks that viewport (percent, 100 = no shrink).
+    // target.MaxW/MaxH cap page image pixels (0 = no cap); target.Dpr and target.Scale
+    // turn those pixels into the declared CSS viewport. dpr ≤ 0 falls back to 1.
     public async Task ConvertAsync(Stream archive, EbookMeta meta, string outPath, RenderTarget target,
         CancellationToken ct, (byte[] Bytes, string Ext)? cover = null)
     {
-        var dpr = target.Dpr <= 0 ? 1 : target.Dpr;
-        var scale = target.Scale is >= 10 and <= 100 ? target.Scale : 100;
         var processedCover = await ProcessCoverAsync(cover, target, ct);
         await EpubWriter.WriteAsync(outPath, meta,
-            ProcessPagesAsync(archive, target, ct), dpr / (scale / 100.0), ct, processedCover);
+            ProcessPagesAsync(archive, target, ct), ct, processedCover);
+    }
+
+    // The CSS viewport for a page of `box` pixels.
+    //
+    // NOT simply box ÷ dpr. The reader lays a page out at its declared CSS size and
+    // never scales it UP, so a book whose scans are smaller than the screen would
+    // declare a small page and be drawn small, with dead margin around it — measured
+    // on device: 1125×1600 scans on a 1442×1787 screen rendered at 78% of the width.
+    // Scaling the viewport to the cap fixes that for free: the IMAGE stays small (no
+    // extra bytes, no extra memory on a device short of both) and the reader upscales
+    // it into the larger box, which is the same blur we would have baked in by
+    // upscaling ourselves.
+    //
+    // The box never exceeds the cap (PageBox caps it), so the factor is ≥ 1.
+    private static (int W, int H) Viewport((int W, int H) box, RenderTarget target)
+    {
+        var dpr = target.Dpr <= 0 ? 1 : target.Dpr;
+        var scale = target.Scale is >= 10 and <= 100 ? target.Scale : 100;
+        var fit = target.MaxW > 0 && target.MaxH > 0
+            ? Math.Max(1, Math.Min((double)target.MaxW / box.W, (double)target.MaxH / box.H))
+            : 1;
+        var factor = fit * (scale / 100.0) / dpr;
+        return (Math.Max(1, (int)Math.Round(box.W * factor)),
+                Math.Max(1, (int)Math.Round(box.H * factor)));
     }
 
     // Process the raw ABS cover through the same pipeline as pages (cap, grayscale,
@@ -58,18 +79,24 @@ public class EpubConverter
     {
         var idx = 0;
         var (boxW, boxH) = (0, 0);
+        var (viewW, viewH) = (0, 0);
         await foreach (var raw in ComicArchiveReader.ReadAsync(archive, ct))
         {
             ct.ThrowIfCancellationRequested();
             var ext = Path.GetExtension(raw.Key).ToLowerInvariant();
             // Identify is header-only (no decode), so fixing the box off the first page
             // costs nothing and lets page 1 itself be letterboxed into it.
-            if (boxH == 0) (boxW, boxH) = PageBox(Image.Identify(raw.Bytes), target);
+            if (boxH == 0)
+            {
+                (boxW, boxH) = PageBox(Image.Identify(raw.Bytes), target);
+                (viewW, viewH) = Viewport((boxW, boxH), target);
+            }
             foreach (var img in await PageImageProcessor.ProcessAsync(raw.Bytes, ext,
                 boxW, boxH, target.Grayscale, target.Spread, padToBox: true, ct))
             {
                 idx++;
-                yield return new EpubWriter.Page($"page-{idx:D4}{img.Extension}", img.Bytes, img.Width, img.Height);
+                yield return new EpubWriter.Page($"page-{idx:D4}{img.Extension}", img.Bytes,
+                    img.Width, img.Height, viewW, viewH);
             }
         }
     }

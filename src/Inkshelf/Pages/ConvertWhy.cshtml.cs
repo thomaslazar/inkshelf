@@ -33,7 +33,7 @@ public class ConvertWhyModel : PageModel
     {
         if (string.IsNullOrEmpty(Id)) return NotFound();
         var ds = DeviceSettings.Read(Request);
-        var target = ScreenTarget.FromCookie(Request.Cookies["scr"], ds.Retina, ds.Grayscale, ds.Spread, ds.Scale);
+        var target = ds.ToRenderTarget(Request.Cookies["scr"]);
 
         var f = await _convert.FailureAsync(Id, target, ct, FileIno);
         BackUrl = ConvertEndpoints.LocalReturn(Return);

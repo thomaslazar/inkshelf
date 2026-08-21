@@ -86,13 +86,15 @@ public class ListingRenderTests
 
     // settings: raw "inkshelf_settings" cookie value (DeviceSettings.Serialize's
     // "<retina><grayscale>" digit pair, e.g. "01"), omitted when null.
-    private static HttpRequestMessage LibraryRequest(WebApplicationFactory<Program> factory, string? settings = null)
+    private static HttpRequestMessage LibraryRequest(WebApplicationFactory<Program> factory,
+        string? settings = null, bool includeScr = true)
     {
         var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
         var protector = dp.CreateProtector("inkshelf.session.v1");
         var sessionCookie = protector.Protect("access\nrefresh");
         var req = new HttpRequestMessage(HttpMethod.Get, $"/library/{LibId}");
-        var cookie = $"inkshelf_session={Uri.EscapeDataString(sessionCookie)}; scr={W}x{H}x1";
+        var cookie = $"inkshelf_session={Uri.EscapeDataString(sessionCookie)}";
+        if (includeScr) cookie += $"; scr={W}x{H}x1";
         if (settings is not null) cookie += $"; inkshelf_settings={settings}";
         req.Headers.Add("Cookie", cookie);
         return req;
@@ -452,5 +454,37 @@ public class ListingRenderTests
 
         var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
         Assert.Contains($"href=\"/item/{ItemId}\"", html);
+    }
+
+    // The override has to reach the REAL conversion target, not just ScreenTarget's
+    // unit tests: with no scr cookie at all, a cache file at the overridden size must
+    // count as this request's cache path and the row must render as converted.
+    [Fact]
+    public async Task An_override_supplies_the_target_when_there_is_no_probe()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, 1000, 2000,
+            spread: DeviceSettings.Default.Spread), "epub");
+
+        // No scr cookie; the override supplies 1000x2000 at dpr 1.
+        const string overridden = "retina=0&gray=0&lang=&fav=&spread=splitleftfirst&scale=100"
+            + "&ovr=1&ovrw=1000&ovrh=2000&ovrd=1";
+        var response = await client.SendAsync(LibraryRequest(factory, overridden, includeScr: false));
+        var html = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("data-warm", PrimaryConvertAnchor(html));
+
+        // Same request with the override switched off: no probe, so no cap, so the
+        // 1000x2000 file is not this request's cache path and the row still offers
+        // a plain Convert.
+        const string plain = "retina=0&gray=0&lang=&fav=&spread=splitleftfirst&scale=100"
+            + "&ovr=0&ovrw=1000&ovrh=2000&ovrd=1";
+        var off = await client.SendAsync(LibraryRequest(factory, plain, includeScr: false));
+        Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(await off.Content.ReadAsStringAsync()));
     }
 }

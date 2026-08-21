@@ -320,6 +320,27 @@ public class ConvertedRenderTests
     }
 
     [Fact]
+    public async Task A_variant_cached_at_a_different_dpr_is_not_listed_for_this_device()
+    {
+        // The device's target has Dpr 1 (the request's "scr" cookie carries no
+        // retina/override, so FromCookie returns Dpr 1). A cache file that differs
+        // from the target ONLY in Dpr must not be treated as a match — otherwise a
+        // device would be served a variant sized for a different pixel ratio.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        File.WriteAllText(
+            cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, dpr: 2),
+            "epub");
+
+        var html = await (await client.SendAsync(Request(factory, "/converted"))).Content.ReadAsStringAsync();
+        Assert.Contains("Nothing converted for this device yet.", html);
+    }
+
+    [Fact]
     public async Task Batch_failure_shows_a_notice_not_a_500()
     {
         using var cacheDir = new TempDir();

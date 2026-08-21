@@ -9,8 +9,12 @@ namespace Inkshelf.Convert;
 public static class EpubWriter
 {
     // One page: its in-zip image file name (e.g. page-0001.jpg), the image bytes,
-    // and the image's pixel size (the fixed-layout viewport is derived from it).
-    public sealed record Page(string Name, byte[] Bytes, int Width, int Height);
+    // the image's pixel size, and the CSS viewport to declare for it.
+    //
+    // The viewport is NOT derived here: it needs the device cap and the user's page
+    // scale, which only the caller has. EpubConverter computes it — see the note there
+    // on why it is not simply the image size divided by the pixel ratio.
+    public sealed record Page(string Name, byte[] Bytes, int Width, int Height, int ViewW, int ViewH);
 
     // A processed cover image: its bytes and in-zip extension (with dot, e.g. ".jpg").
     // Metadata-only — declared as the cover, never added to the spine.
@@ -20,13 +24,11 @@ public static class EpubWriter
     // bytes have already been streamed into the zip and released.
     private sealed record PageMeta(string Name);
 
-    // maxWidth/maxHeight are applied upstream (PageImageProcessor). pxPerCss converts
-    // image pixels to the CSS viewport (viewport = px / pxPerCss) so the reader lays
-    // each page out full-screen while the image stays physical. The caller folds the
-    // device pixel ratio AND the user's page scale into it (EpubConverter), so a 95%
-    // scale arrives here as a slightly larger divisor. Caller passes pxPerCss ≥ 1.
+    // Image sizing (the pixel cap, grayscale, spreads) is applied upstream in
+    // PageImageProcessor; the CSS viewport arrives per page on Page.ViewW/ViewH. This
+    // writer does no geometry of its own — it lacked the inputs to do it correctly.
     public static async Task WriteAsync(string outPath, EbookMeta meta,
-        IAsyncEnumerable<Page> pages, double pxPerCss, CancellationToken ct, Cover? cover = null)
+        IAsyncEnumerable<Page> pages, CancellationToken ct, Cover? cover = null)
     {
         var tmp = outPath + ".tmp";
         var metas = new List<PageMeta>();
@@ -54,8 +56,8 @@ public static class EpubWriter
                 // Write the image + its xhtml, then keep only the light metadata so
                 // the page's bytes become collectable — one page live at a time.
                 using (var s = zip.CreateEntry($"OEBPS/img/{p.Name}").Open()) s.Write(p.Bytes);
-                var vw = Math.Max(1, (int)Math.Round(p.Width / pxPerCss));
-                var vh = Math.Max(1, (int)Math.Round(p.Height / pxPerCss));
+                var vw = Math.Max(1, p.ViewW);
+                var vh = Math.Max(1, p.ViewH);
                 i++;
                 Write($"OEBPS/page-{i:D4}.xhtml", PageXhtml(p.Name, vw, vh, i));
                 metas.Add(new PageMeta(p.Name));
