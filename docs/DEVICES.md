@@ -48,7 +48,10 @@ would expect:
         <strong>Notes:</strong> Retains no cookies — every browser restart means
         logging in again and re-entering the override, so keep the numbers noted
         off-device. Page scale has no effect: this reader sizes pages from the
-        image and ignores the box we declare.
+        image and ignores the box we declare. The layout itself is rough here
+        rather than broken — its browser predates unprefixed <code>flex</code>
+        and <code>box-sizing</code>, so rows stack and full-width fields
+        overflow slightly. Everything works; it is not pretty.
       </td>
     </tr>
   </tbody>
