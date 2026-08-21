@@ -1,5 +1,9 @@
 # Tolino e-reader browser — known limitations
 
+> This file is about the **browser engine's** CSS/JS limits. For per-device
+> rendering settings and which readers are known to work, see
+> [`DEVICES.md`](DEVICES.md).
+
 Inkshelf targets the Tolino's built-in web browser, which is an old,
 limited engine. Design CSS/HTML for it, not for a modern browser.
 
