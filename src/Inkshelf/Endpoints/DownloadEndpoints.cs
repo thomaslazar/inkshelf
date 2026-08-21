@@ -41,6 +41,6 @@ public static class DownloadEndpoints
                 return Results.File(stream, contentType, fileDownloadName: name);
             }
             catch (HttpRequestException) { return Results.NotFound(); }
-        });
+        }).RespondsWithoutHtml();
     }
 }

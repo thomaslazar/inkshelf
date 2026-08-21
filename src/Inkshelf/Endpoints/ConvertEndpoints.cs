@@ -35,7 +35,7 @@ public static class ConvertEndpoints
             marks.Add(did, DownloadMarks.EpubKey(id, file));
 
             return Results.File(result.FilePath!, "application/epub+zip", fileDownloadName: result.DownloadName);
-        });
+        }).RespondsWithoutHtml();
     }
 
     private static string Text(ConvertStatus s) => s.ToString().ToLowerInvariant();

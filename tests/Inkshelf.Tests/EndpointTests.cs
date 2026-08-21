@@ -62,8 +62,17 @@ public class EndpointTests
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Fact]
-    public async Task Cover_WithoutSession_RedirectsToLogin()
+    // No session cookie → AbsAuthHandler finds no token → throws AbsAuthException
+    // before any network call. Endpoints that serve a file answer 401 in plain
+    // text rather than redirecting: an e-reader's download manager follows the
+    // redirect and saves the HTML login page under the requested `.epub` name, so
+    // a failed download arrives as a damaged book instead of an error.
+    [Theory]
+    [InlineData("/download/abc123")]
+    [InlineData("/download/abc123?file=9999")]
+    [InlineData("/convert/abc123")]
+    [InlineData("/cover/abc123?w=120")]
+    public async Task A_file_endpoint_without_a_session_returns_401_not_the_login_page(string path)
     {
         using var factory = CreateFactory();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -71,9 +80,28 @@ public class EndpointTests
             AllowAutoRedirect = false
         });
 
-        // No session cookie → AbsAuthHandler finds no token → throws AbsAuthException
-        // before any network call → the auth middleware redirects to /login.
-        var response = await client.GetAsync("/cover/abc123?w=120");
+        var response = await client.GetAsync(path);
+
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("text/plain", response.Content.Headers.ContentType?.MediaType);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("<", body);   // never markup — that is the whole point
+        Assert.NotEmpty(body);
+    }
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/library/lib1")]
+    [InlineData("/item/abc123")]
+    public async Task A_page_without_a_session_still_redirects_to_login(string path)
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        var response = await client.GetAsync(path);
 
         Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal("/login", response.Headers.Location?.OriginalString);
@@ -121,14 +149,17 @@ public class EndpointTests
     }
 
     [Fact]
-    public async Task Convert_status_without_session_redirects_to_login()
+    public async Task Convert_status_without_session_returns_401()
     {
         using var factory = CreateFactory();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        // No session → GetItemDetailAsync throws AbsAuthException → middleware → /login.
+        // No session → GetItemDetailAsync throws AbsAuthException → middleware.
+        // The poll reads bare words off this endpoint, so it must not be handed a
+        // page either: XHR follows a redirect transparently and would read the
+        // login HTML as a status. On a 401 the script falls back to its "not
+        // converting" branch, which lands on /login by way of the reason link.
         var res = await client.GetAsync("/convert/abc?status=1");
-        Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
-        Assert.Equal("/login", res.Headers.Location?.OriginalString);
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, res.StatusCode);
     }
 
     [Fact]

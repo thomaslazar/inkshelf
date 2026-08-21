@@ -126,13 +126,24 @@ app.UseStaticFiles();
 
 // Any page/handler that hits an unauthenticated/expired session throws
 // AbsAuthException; a double-401 (retry also rejected) surfaces as a raw
-// AbsUnauthorizedException instead. Either way, send the user to /login.
+// AbsUnauthorizedException instead. Pages send the user to /login; endpoints that
+// answer with a file or bare text get a 401 in plain text instead, because a
+// download manager following that redirect would save the login page as the book
+// (see NonHtmlEndpoint).
 app.Use(async (ctx, next) =>
 {
     try { await next(); }
     catch (Exception ex) when (ex is AbsAuthException or AbsUnauthorizedException)
     {
-        if (!ctx.Response.HasStarted) ctx.Response.Redirect("/login");
+        if (ctx.Response.HasStarted) return;
+        if (ctx.GetEndpoint()?.Metadata.GetMetadata<NonHtmlEndpoint>() is null)
+        {
+            ctx.Response.Redirect("/login");
+            return;
+        }
+        ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        ctx.Response.ContentType = "text/plain; charset=utf-8";
+        await ctx.Response.WriteAsync("Not logged in to Inkshelf.", ctx.RequestAborted);
     }
 });
 
