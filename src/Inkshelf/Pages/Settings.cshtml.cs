@@ -18,6 +18,10 @@ public class SettingsModel : PageModel
     public IReadOnlyList<(string Code, string Name)> AvailableLanguages { get; private set; } = [];
     public string CurrentLang => Settings.Lang;
 
+    // Set by the PRG redirect when the override was saved ticked but unusable, so the
+    // page can say why nothing changed instead of silently re-showing the probe.
+    public bool RangeWarning { get; private set; }
+
     // What the override fields show: the stored override when there is one, else
     // whatever the probe reported, else blank. 0 / "" render as an empty field.
     public int PrefillW { get; private set; }
@@ -27,6 +31,7 @@ public class SettingsModel : PageModel
     public void OnGet()
     {
         Settings = DeviceSettings.Read(Request);
+        RangeWarning = Request.Query.ContainsKey("range");
         var langs = new List<(string, string)> { ("en", "English") };
         foreach (var code in _catalog.Languages.OrderBy(c => c))
             langs.Add((code, _catalog.DisplayName(code)));

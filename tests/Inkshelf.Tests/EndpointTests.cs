@@ -507,4 +507,72 @@ public class EndpointTests
         Assert.Equal("application/epub+zip", response.Content.Headers.ContentType?.MediaType);
         Assert.Equal("cached-epub-bytes", await response.Content.ReadAsStringAsync());
     }
+
+    [Theory]
+    [InlineData("1000", "2000", "0.5")]     // ratio below 1 — would double the viewport
+    [InlineData("1000", "2000", "9")]       // ratio past MaxDpr
+    [InlineData("99999", "2000", "1.5")]    // width past MaxDimension
+    [InlineData("", "", "")]                // ticked with nothing filled in
+    public async Task An_unusable_override_says_so_instead_of_reverting_silently(string w, string h, string dpr)
+    {
+        // The value is dropped to 0, which leaves the override stored but INACTIVE:
+        // conversion keeps using the probe and the field re-displays the detected
+        // number. Without the redirect flag that is indistinguishable from the setting
+        // being broken.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["ovr"] = "on",
+            ["ovrw"] = w,
+            ["ovrh"] = h,
+            ["ovrd"] = dpr,
+        }));
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, saved.StatusCode);
+        Assert.Equal("/settings?range=1", saved.Headers.Location?.ToString());
+    }
+
+    [Fact]
+    public async Task A_usable_override_redirects_without_the_warning()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["ovr"] = "on",
+            ["ovrw"] = "1000",
+            ["ovrh"] = "2000",
+            ["ovrd"] = "1.5",
+        }));
+
+        Assert.Equal("/settings", saved.Headers.Location?.ToString());
+    }
+
+    [Fact]
+    public async Task Saving_without_the_override_never_warns()
+    {
+        // The three fields are disabled (and so absent) while the override is off, and
+        // stored 0s must not be read as "unusable" and warn about a setting the user
+        // did not touch.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+        }));
+
+        Assert.Equal("/settings", saved.Headers.Location?.ToString());
+    }
 }

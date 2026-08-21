@@ -78,6 +78,10 @@
             <input type="text" name="ovrd" id="ovrd" value="@Model.PrefillDpr" />
         </label>
         <span class="settings-note">@L["Width/height are the screen's physical pixels; a higher ratio lays pages out smaller."]</span>
+@if (Model.RangeWarning)
+{
+        <span class="settings-note">@L["Not used: width and height must be 1-4096 and the ratio 1-4."]</span>
+}
     </p>
     <p>
         <label>@L["Language"]<br />

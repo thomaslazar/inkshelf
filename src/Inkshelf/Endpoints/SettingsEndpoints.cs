@@ -50,7 +50,14 @@ public static class SettingsEndpoints
                     : stored.OverrideDpr,
             };
             DeviceSettings.Set(ctx.Response, settings);
-            return Results.Redirect("/settings"); // PRG: back to the page, showing saved state
+
+            // Ticked but unusable — a value out of range is dropped to 0, and blanks
+            // are 0 already, so the override is stored yet inactive and conversion
+            // quietly keeps using the probe. Say so: without this the field simply
+            // re-displays the detected number and the setting looks broken.
+            var unusable = settings.OverrideScreen && settings.ActiveOverride is null;
+            // PRG: back to the page, showing saved state.
+            return Results.Redirect(unusable ? "/settings?range=1" : "/settings");
         }).DisableAntiforgery();
     }
 }
