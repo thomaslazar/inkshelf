@@ -75,6 +75,7 @@ it runs `CSS.supports()` / `matchMedia` / JS feature checks, renders a table
 on-screen, and best-effort POSTs the results to `/diag` (logged server-side).
 Update the "Confirmed" list above from a real probe run.
 
-The page also prints the payload as one selectable block, and the server logs
-it, so a probe from someone else's device can be lifted out of the container
-log: `docker logs inkshelf 2>&1 | grep "Browser probe"`.
+The server log is the only practical way to get a probe off an e-reader — those
+browsers cannot select or copy text — so read it there:
+`docker logs inkshelf 2>&1 | grep "Browser probe"`. The page repeats the payload
+as one block for probes run from a desktop or phone.
