@@ -107,8 +107,9 @@ Shipped; kept as a short record (full detail in git history / the PR).
 - **One page size per book, and a page-scale knob** — every page is letterboxed
   onto a single box, because the reader lays a whole book out in one box and clips
   the pages that do not fit it. It also cuts a strip off every page, from an inset
-  that cannot be probed from the browser, so `Scale` (100–80%) lets the user shrink
-  pages until nothing is lost.
+  that cannot be probed from the browser, so `Scale` (a percentage, 50–100) lets the
+  user shrink pages until nothing is lost. It started as a menu of coarse steps; the
+  useful values turned out to be a percent or two below 100, so it is a free number.
 - **Build identification** — the version on the libraries and login pages is now
   `InformationalVersion`, which the Docker build stamps as `X.Y.Z+pr-34.a1b2c3d` or
   `X.Y.Z+main.a1b2c3d`; a version with no `+` suffix means a release image. Paired with CI
