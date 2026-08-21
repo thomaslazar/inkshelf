@@ -202,8 +202,9 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         // Failed-row layout on the LISTING — the fixed-width .actions column is
         // where the narrow-screen overflow of the "warum?" link shows (the item
         // detail page's file-row is full-width and doesn't reproduce it). The three
-        // broken comics above are now Failed and sit on page 1 of the default sort.
-        await page.GotoAsync(libUrl);
+        // broken comics above are now Failed; they were seeded first, so sort by
+        // added ASCENDING to keep them on page 1 (the default is newest-first).
+        await page.GotoAsync(libUrl + "?sort=addedAt");
         await page.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 15000 });
         await Shot("failed-row-de");
         Expect("failed-row-de", await page.InnerTextAsync("body"), "warum?");

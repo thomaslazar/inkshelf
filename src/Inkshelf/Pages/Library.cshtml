@@ -79,12 +79,12 @@ else
     @* No "·" separators: the padded boxes do the separating now. *@
     <nav class="sortbar">
         <span class="sortbar-label">@L["Sort:"]</span>
-        <a href="@Model.Links.SortHref("media.metadata.title")">@L["Title"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.title", Model.Sort, Model.Desc))</a>
-        <a href="@Model.Links.SortHref("media.metadata.authorNameLF")">@L["Author"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.authorNameLF", Model.Sort, Model.Desc))</a>
-        <a href="@Model.Links.SortHref("addedAt")">@L["Added"]@(Inkshelf.Pages.SortLinks.Arrow("addedAt", Model.Sort, Model.Desc))</a>
+        <a href="@Model.Links.SortHref("media.metadata.title")">@L["Title"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.title", Model.EffectiveSort, Model.EffectiveDesc))</a>
+        <a href="@Model.Links.SortHref("media.metadata.authorNameLF")">@L["Author"]@(Inkshelf.Pages.SortLinks.Arrow("media.metadata.authorNameLF", Model.EffectiveSort, Model.EffectiveDesc))</a>
+        <a href="@Model.Links.SortHref("addedAt")">@L["Added"]@(Inkshelf.Pages.SortLinks.Arrow("addedAt", Model.EffectiveSort, Model.EffectiveDesc))</a>
         @if (!string.IsNullOrEmpty(Model.Series) || Model.Filter?.StartsWith("series.") == true)
         {
-            <a href="@Model.Links.SortHref("sequence")">@L["Sequence"]@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.Sort, Model.Desc))</a>
+            <a href="@Model.Links.SortHref("sequence")">@L["Sequence"]@(Inkshelf.Pages.SortLinks.Arrow("sequence", Model.EffectiveSort, Model.EffectiveDesc))</a>
         }
     </nav>
     <partial name="_Pager" model="Model" />

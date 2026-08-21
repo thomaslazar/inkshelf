@@ -31,6 +31,18 @@ public class LibraryModel : PageModel
     [FromQuery(Name = "desc")] public string? DescParam { get; set; }
     public bool Desc => DescParam == "1";
 
+    // With no sort in the query the MAIN listing defaults to newest-first —
+    // landing on the oldest additions is the least useful page. A facet listing
+    // is left alone: ABS's own order there is the meaningful one (series
+    // sequence, and the "Sequence" sort link only exists in that branch).
+    // Turning sorting off therefore needs its own query value (SortLinks.Off),
+    // since an absent one now means "the default".
+    public bool SortDefaulted => Sort is null && string.IsNullOrEmpty(Filter)
+        && string.IsNullOrEmpty(Author) && string.IsNullOrEmpty(Series);
+    public string? EffectiveSort =>
+        SortDefaulted ? "addedAt" : Sort == SortLinks.Off ? null : Sort;
+    public bool EffectiveDesc => SortDefaulted || Desc;
+
     public bool IsFavorite { get; private set; }
     public bool IsSearch => !string.IsNullOrWhiteSpace(Q);
     // The active facet's humanized type ("Series"/"Author"/…) and, when known,
@@ -74,7 +86,8 @@ public class LibraryModel : PageModel
 
         var filter = await ResolveFilterAsync(ct);
         var zeroPage = Math.Max(0, page - 1);
-        var result = await _api.GetItemsAsync(Id, zeroPage, PageSize, filter, Sort, Desc, ct);
+        var result = await _api.GetItemsAsync(Id, zeroPage, PageSize, filter,
+            EffectiveSort, EffectiveDesc, ct);
         Items = result.Results;
         _structured = await FetchStructuredAsync(Items, ct);
         RefineFilterLabel();
@@ -228,5 +241,5 @@ public class LibraryModel : PageModel
     public bool IsFiltered => FilterType is not null;
 
     // One shared builder for every library URL (page + row partial).
-    public LibraryLinks Links => new(Id, Filter, Author, Series, Sort, Desc);
+    public LibraryLinks Links => new(Id, Filter, Author, Series, EffectiveSort, EffectiveDesc);
 }
