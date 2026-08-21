@@ -118,7 +118,12 @@ answer.
 
 ## Reporting a device
 
-Useful to include: the *Detected resolution* line, whether retina and grayscale
-are on, the override and page scale values that work, and which of the symptoms
-above you hit. `/diag.html` (with `DIAG_ENABLED=true`) reports the browser's
-capabilities if the device turns out to need engine-specific CSS.
+Open a [GitHub issue](https://github.com/thomaslazar/inkshelf/issues) — whether
+your reader works or not, both are worth knowing, and a row here saves the next
+owner of the same model the measuring.
+
+Useful to include: the model, the *Detected resolution* line from Settings,
+whether retina and grayscale are on, the override and page scale values that
+work, and which of the symptoms above you hit. `/diag.html` (with
+`DIAG_ENABLED=true`) reports the browser's capabilities if the device turns out
+to need engine-specific CSS.
