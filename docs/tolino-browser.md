@@ -13,7 +13,7 @@ Tolino epos 2 — `AppleWebKit/537.36 … Chrome/30.0.0.0 … Android 4.4.2`
 (a 2013-era Chromium), `Linux armv7l`. Viewport 769×953 CSS px (browser chrome
 leaves ~541 px tall), devicePixelRatio 1.875. **Treat it as Chrome 30 / ES5.**
 
-## Confirmed support (probe, 2026-07-13)
+## Confirmed support (epos 2 probe, 2026-07-13)
 
 Supported: `display:flex` (old flexbox), `calc()`, `overflow-wrap`,
 `XMLHttpRequest`, `localStorage`, `addEventListener`.
@@ -33,6 +33,31 @@ Practical rules:
   always applies on-device (dark variants are only for GitHub, etc.).
 - **JS:** keep it out of app pages. Any diagnostic JS must be ES5 + `XMLHttpRequest`.
 
+## Older floor: Tolino shine (probe 2026-08-21)
+
+`Android 2.3.4 … AppleWebKit/533.1 … Version/4.0 Mobile Safari/533.1` — the 2011
+Gingerbread stock browser, `Linux armv7l`. Two engine generations behind the
+epos 2, and it is the floor that matters:
+
+- **No `CSS.supports()`**, so CSS capabilities cannot be feature-detected there
+  at all. Every CSS row in its probe came back unknown, not supported. Nothing
+  in the epos 2 list above — flexbox, `calc()`, `overflow-wrap` — can be
+  assumed here.
+- **JS confirmed absent:** `Promise`, `fetch`, `Array.prototype.includes`,
+  `const`/`let`, arrow functions, template literals. So the ES5 rule is a hard
+  floor, not a preference.
+- **JS confirmed present:** `XMLHttpRequest`, `localStorage`,
+  `addEventListener` — which is exactly what the convert poll script uses.
+
+Its screen metrics are not trustworthy. The probe page reported
+`screen 749×906`, `innerWidth == screenWidth` (no chrome subtracted) and
+`devicePixelRatio 1.325` — multiply those out and you get 992×1200 for a
+758×1024 panel. The app's own probe on the same device yields 567×686 CSS,
+i.e. the 751×909 the settings readout shows. Same viewport meta on both pages,
+so the discrepancy is the engine's, not ours. Treat `screen.*` on this class of
+device as indicative only, and calibrate against what pages actually look like
+— see [`DEVICES.md`](DEVICES.md).
+
 ## Guidance
 
 - Prefer margins/padding over `gap`.
@@ -49,3 +74,7 @@ place JS is used, and it is not part of the app flow). Visit it on the device;
 it runs `CSS.supports()` / `matchMedia` / JS feature checks, renders a table
 on-screen, and best-effort POSTs the results to `/diag` (logged server-side).
 Update the "Confirmed" list above from a real probe run.
+
+The page also prints the payload as one selectable block, and the server logs
+it, so a probe from someone else's device can be lifted out of the container
+log: `docker logs inkshelf 2>&1 | grep "Browser probe"`.
