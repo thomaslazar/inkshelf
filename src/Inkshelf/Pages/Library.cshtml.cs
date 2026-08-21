@@ -74,7 +74,10 @@ public class LibraryModel : PageModel
 
         var filter = await ResolveFilterAsync(ct);
         var zeroPage = Math.Max(0, page - 1);
-        var result = await _api.GetItemsAsync(Id, zeroPage, PageSize, filter, Sort, Desc, ct);
+        // No explicit sort → newest first, rather than ABS's added-ascending
+        // default. Sort/Desc stay raw so the sort bar keeps its own cycle.
+        var result = await _api.GetItemsAsync(Id, zeroPage, PageSize, filter,
+            Sort ?? "addedAt", Sort is null || Desc, ct);
         Items = result.Results;
         _structured = await FetchStructuredAsync(Items, ct);
         RefineFilterLabel();
