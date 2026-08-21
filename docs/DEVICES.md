@@ -126,11 +126,15 @@ whether retina and grayscale are on, the override and page scale values that
 work, and which of the symptoms above you hit.
 
 If the device turns out to need engine-specific CSS, open `/diag.html` on it
-(needs `DIAG_ENABLED=true`, the default). It shows the browser's capabilities on
-screen, with the same data as one block at the bottom — and it reports them to
-the server, so you can lift the result from the container log rather than
-retyping it off an e-ink screen:
+(needs `DIAG_ENABLED=true`, the default). It renders the browser's capabilities
+on screen *and* reports them to the server — and the server log is how you get
+them off the device, because e-reader browsers generally cannot select or copy
+text:
 
 ```bash
 docker logs inkshelf 2>&1 | grep "Browser probe"
 ```
+
+That prints the whole probe as one line of JSON, ready to paste into the issue.
+The page also shows the same block at the bottom, which only helps if you are
+probing from a desktop or phone.
