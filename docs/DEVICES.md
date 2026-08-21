@@ -13,9 +13,6 @@ would expect:
   different pixel space than the browser reports, which is what the screen
   override exists to correct.
 
-See [`tolino-browser.md`](tolino-browser.md) for the browser engine's CSS/JS
-limits, which apply to every device below.
-
 ## Matrix
 
 <!-- An HTML table, not a markdown one, so each device can carry a Notes row
@@ -115,6 +112,19 @@ answer.
 | The right or bottom edge of a page is cut off | The page box is larger than the reader's viewport | Shrink the override, or drop page scale a few percent |
 | Page scale changes nothing | Some readers size pages from the image's own pixels and ignore the declared box; scale only shrinks the box | Use the override dimensions instead |
 | Logged out and settings lost whenever the browser is reopened | The device's cookie store does not persist cookies across a browser restart (seen on the shine) | Nothing yet — log in and re-enter the override; keep the numbers noted off-device |
+
+## Browser engines
+
+The browsers on these readers are old, and Inkshelf's markup is written for the
+oldest one rather than for a modern engine. What is and is not supported —
+no `object-fit`, no flex `gap`, no CSS custom properties, ES5 JavaScript only —
+is documented in [`tolino-browser.md`](tolino-browser.md), probed on the epos 2
+and treated as the floor for every device here.
+
+The EPUB reader app is a separate engine and a far less documented one. It is
+not probeable: our JavaScript runs in the browser, while comic layout happens in
+the reader. Everything known about it comes from what pages look like on
+hardware, which is what the Notes rows in the matrix record.
 
 ## Reporting a device
 
