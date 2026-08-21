@@ -15,8 +15,9 @@ would expect:
 
 ## Matrix
 
-<!-- An HTML table, not a markdown one, so each device can carry a Notes row
-     spanning the full width. Adding a device means copying the two <tr> blocks. -->
+<!-- An HTML table, not a markdown one, so a device can carry a Notes row
+     spanning the full width. The Notes row is optional — only add one for
+     behaviour the Working settings column cannot express. -->
 <table>
   <thead>
     <tr>
@@ -36,13 +37,6 @@ would expect:
       <td>Works</td>
     </tr>
     <tr>
-      <td colspan="5">
-        <strong>Notes:</strong> Needs no override. Page scale 98 offsets the
-        ~19 px strip the reader trims off the bottom of a page; 100 cuts into
-        the art, 95 leaves a visible gap.
-      </td>
-    </tr>
-    <tr>
       <td>Tolino shine</td>
       <td>758 × 1024</td>
       <td>751 × 909 @ dpr 1.325</td>
@@ -51,15 +45,10 @@ would expect:
     </tr>
     <tr>
       <td colspan="5">
-        <strong>Notes:</strong> <strong>Retains no cookies</strong> — reopening
-        the browser logs you out and clears every setting, the measured override
-        included. Cookie expiry is not the variable; that store keeps nothing
-        across a browser restart, so keep your numbers noted off-device.
-        <strong>Page scale has no effect</strong> here: this reader sizes pages
-        from the image's own pixels and ignores the box we declare, so the
-        override dimensions are the only knob. Without one, comic pages render
-        at about two thirds of the screen. Rendering is fine once it is set up —
-        the setting up, every time, is what makes it tiring.
+        <strong>Notes:</strong> Retains no cookies — every browser restart means
+        logging in again and re-entering the override, so keep the numbers noted
+        off-device. Page scale has no effect: this reader sizes pages from the
+        image and ignores the box we declare.
       </td>
     </tr>
   </tbody>
