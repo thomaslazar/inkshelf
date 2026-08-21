@@ -11,7 +11,7 @@
 <p class="settings-note">@L["These settings apply to this device / browser only."]</p>
 @if (Model.DetectedScreen is not null)
 {
-    <p class="settings-note">@L["Detected screen: {0}", Model.DetectedScreen]</p>
+    <p class="settings-note">@L["Detected resolution: {0}", Model.DetectedScreen]</p>
 }
 
 <form class="settings-form" method="post" action="/settings">
@@ -59,13 +59,13 @@
         <span class="settings-note">@L["Percent. Lower this if your reader cuts off the edge of a page."]</span>
 @if (Model.ScaleWarning)
 {
-        <span class="settings-note">@L["Not used: the page scale must be 50-100."]</span>
+        <span class="settings-note">@L["Not used: the page scale must be between 50 and 100."]</span>
 }
     </p>
     <p>
         <label>
             <input type="checkbox" name="ovr" id="ovr" value="on" @(Model.Settings.OverrideScreen ? "checked" : "") />
-            @L["Override detected screen"]
+            @L["Override screen resolution"]
         </label>
         <label class="setting-num">@L["Width"]
             <input type="number" name="ovrw" id="ovrw" min="1" max="@ScreenTarget.MaxDimension" value="@(Model.PrefillW > 0 ? Model.PrefillW.ToString() : "")" />
@@ -76,10 +76,10 @@
         <label class="setting-num">@L["Pixel ratio"]
             <input type="text" name="ovrd" id="ovrd" value="@Model.PrefillDpr" />
         </label>
-        <span class="settings-note">@L["Width/height are the screen's physical pixels; a higher ratio lays pages out smaller."]</span>
+        <span class="settings-note">@L["Width and height are the screen's physical pixels. A higher ratio lays pages out smaller."]</span>
 @if (Model.RangeWarning)
 {
-        <span class="settings-note">@L["Not used: width and height must be 1-4096 and the ratio 1-4."]</span>
+        <span class="settings-note">@L["Not used: width and height must be between 1 and 4096, and the ratio between 1 and 4."]</span>
 }
     </p>
     <p>
