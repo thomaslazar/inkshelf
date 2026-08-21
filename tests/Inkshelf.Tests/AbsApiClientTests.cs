@@ -227,7 +227,7 @@ public class AbsApiClientTests
     {
         var h = new StubHandler(_ => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
         { Content = new ByteArrayContent(new byte[] { 1, 2 }) });
-        var (stream, _) = await Client(h).GetEbookFileStreamAsync("i1", "12");
+        var (stream, _, _) = await Client(h).GetEbookFileStreamAsync("i1", "12");
         await using var _s = stream;
         Assert.Equal("/api/items/i1/ebook/12", h.Last!.RequestUri!.AbsolutePath);
     }

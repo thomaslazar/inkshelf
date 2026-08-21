@@ -64,22 +64,30 @@ public class AbsApiClient
             ?? new AbsItemDetail(null);
     }
 
-    public async Task<(Stream Content, string ContentType)> GetEbookStreamAsync(string itemId, CancellationToken ct = default)
+    // Length comes back too: the stream is a live network stream, so nothing
+    // downstream can work it out, and a response with no Content-Length is one
+    // some e-reader download managers refuse (no size to show, no resume).
+    public async Task<(Stream Content, string ContentType, long? Length)> GetEbookStreamAsync(
+        string itemId, CancellationToken ct = default)
     {
         var url = $"/api/items/{Uri.EscapeDataString(itemId)}/ebook";
-        var res = await SendAsync(HttpMethod.Get, url, ct); // caller owns the stream
-        var type = res.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
-        return (await res.Content.ReadAsStreamAsync(ct), type);
+        return await StreamAsync(url, ct);
     }
 
     // A specific ebook file by its libraryFile ino (multi-format items).
-    public async Task<(Stream Content, string ContentType)> GetEbookFileStreamAsync(
+    public async Task<(Stream Content, string ContentType, long? Length)> GetEbookFileStreamAsync(
         string itemId, string fileIno, CancellationToken ct = default)
     {
         var url = $"/api/items/{Uri.EscapeDataString(itemId)}/ebook/{Uri.EscapeDataString(fileIno)}";
+        return await StreamAsync(url, ct);
+    }
+
+    private async Task<(Stream Content, string ContentType, long? Length)> StreamAsync(
+        string url, CancellationToken ct)
+    {
         var res = await SendAsync(HttpMethod.Get, url, ct); // caller owns the stream
         var type = res.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
-        return (await res.Content.ReadAsStreamAsync(ct), type);
+        return (await res.Content.ReadAsStreamAsync(ct), type, res.Content.Headers.ContentLength);
     }
 
     public async Task<AbsSearchResults> SearchAsync(string libraryId,

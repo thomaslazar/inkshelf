@@ -25,14 +25,19 @@ public static class DownloadEndpoints
                     var lf = detail.LibraryFiles?.FirstOrDefault(f => f.Ino == file && f.FileType == "ebook");
                     var fname = lf?.Metadata?.Filename;
                     if (string.IsNullOrEmpty(fname)) return Results.NotFound();
-                    var (fs, ftype) = await api.GetEbookFileStreamAsync(id, file, ct);
+                    var (fs, ftype, flen) = await api.GetEbookFileStreamAsync(id, file, ct);
                     marks.Add(EnsureDid(ctx), DownloadMarks.RawKey(id, file));
+                    ctx.Response.ContentLength = flen;
                     return Results.File(fs, ftype, fileDownloadName: fname);
                 }
                 var name = detail.Media?.EbookFile?.Metadata?.Filename;
                 if (string.IsNullOrEmpty(name)) return Results.NotFound();
-                var (stream, contentType) = await api.GetEbookStreamAsync(id, ct);
+                var (stream, contentType, length) = await api.GetEbookStreamAsync(id, ct);
                 marks.Add(EnsureDid(ctx), DownloadMarks.RawKey(id, null));
+                // ABS knows the size; the stream is a live network stream, so
+                // Results.File cannot work it out and the response would go out
+                // chunked. Ranges stay unadvertised — we can't serve them.
+                ctx.Response.ContentLength = length;
                 return Results.File(stream, contentType, fileDownloadName: name);
             }
             catch (HttpRequestException) { return Results.NotFound(); }

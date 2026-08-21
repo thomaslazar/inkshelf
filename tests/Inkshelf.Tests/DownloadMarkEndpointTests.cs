@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using System.Net;
 using Inkshelf;
 using Inkshelf.Abs;
@@ -28,6 +29,29 @@ public class DownloadMarkEndpointTests
     private const string Did = "abc123def4560000";
 
     private const string Ino = "9999";
+    private static readonly byte[] StubEbookBytes = "epub-bytes"u8.ToArray();
+
+    // ABS answers a file request over the network: the body is NOT seekable, and
+    // the size arrives as a header. A ByteArrayContent stub would hand out a
+    // seekable MemoryStream instead, which Results.File can measure by itself —
+    // hiding whether the endpoint passes the length on.
+    private sealed class NetworkLikeStream(byte[] data) : MemoryStream(data)
+    {
+        public override bool CanSeek => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+    }
+
+    private static StreamContent EbookContent()
+    {
+        var content = new StreamContent(new NetworkLikeStream(StubEbookBytes));
+        content.Headers.ContentLength = StubEbookBytes.Length;
+        return content;
+    }
 
     // Expanded item detail: one primary epub file, plus a second ebook in
     // libraryFiles so the `?file={ino}` branch has something to resolve.
@@ -52,7 +76,7 @@ public class DownloadMarkEndpointTests
         if (path == $"/api/items/{ItemId}") return StubHandler.Json(DetailJson);
         if (path == $"/api/items/{ComicId}") return StubHandler.Json(ComicDetailJson());
         if (path == $"/api/items/{ItemId}/ebook" || path == $"/api/items/{ItemId}/ebook/{Ino}")
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent("epub-bytes"u8.ToArray()) };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = EbookContent() };
         if (path == "/api/me") return StubHandler.Json("""{"mediaProgress":[]}""");
         return new HttpResponseMessage(HttpStatusCode.NotFound);
     });
@@ -72,15 +96,49 @@ public class DownloadMarkEndpointTests
             });
         });
 
-    private static HttpRequestMessage Download(WebApplicationFactory<Program> factory, string? did)
+    private static HttpRequestMessage Download(WebApplicationFactory<Program> factory, string? did,
+        string query = "")
     {
         var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
         var protector = dp.CreateProtector("inkshelf.session.v1");
-        var req = new HttpRequestMessage(HttpMethod.Get, $"/download/{ItemId}");
+        var req = new HttpRequestMessage(HttpMethod.Get, $"/download/{ItemId}{query}");
         var cookie = $"inkshelf_session={Uri.EscapeDataString(protector.Protect("access\nrefresh"))}";
         if (did is not null) cookie += $"; inkshelf_settings=retina=1&gray=0&lang=&fav=&did={did}";
         req.Headers.Add("Cookie", cookie);
         return req;
+    }
+
+    // Old e-reader download managers want the size up front — one refuses the
+    // transfer without it, and none can show progress or resume. ABS sends a
+    // Content-Length; the endpoint hands out a live network stream, so nothing
+    // downstream can work the length out and it has to be passed on explicitly
+    // or the response goes out chunked.
+    // Driven through TestServer.SendAsync, not an HttpClient: HttpClient reports a
+    // Content-Length for a buffered in-memory response whether the server set one
+    // or not, so it cannot tell a declared length from a chunked reply.
+    [Theory]
+    [InlineData("")]
+    [InlineData("?file=" + Ino)]
+    public async Task A_download_declares_its_size(string query)
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(cacheDir.Path, keysDir.Path);
+        _ = factory.CreateClient();   // force the host to start
+        var protector = factory.Services.GetRequiredService<IDataProtectionProvider>()
+            .CreateProtector("inkshelf.session.v1");
+
+        var ctx = await factory.Server.SendAsync(c =>
+        {
+            c.Request.Method = HttpMethods.Get;
+            c.Request.Path = $"/download/{ItemId}";
+            c.Request.QueryString = new QueryString(query);
+            c.Request.Headers.Cookie =
+                $"inkshelf_session={Uri.EscapeDataString(protector.Protect("access\nrefresh"))}";
+        });
+
+        Assert.Equal(StatusCodes.Status200OK, ctx.Response.StatusCode);
+        Assert.Equal(StubEbookBytes.Length, ctx.Response.ContentLength);
     }
 
     [Fact]
