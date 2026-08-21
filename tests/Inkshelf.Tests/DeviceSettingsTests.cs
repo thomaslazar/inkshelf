@@ -358,6 +358,28 @@ public class DeviceSettingsTests
         Assert.Equal(1.875, read.OverrideDpr);
     }
 
+    // A ratio prefilled from the probe arrives as a float widened to a double. Left
+    // raw it lands in this cookie as "ovrd=1.3250000476837158", and from there in the
+    // cache filename and the settings readout.
+    [Theory]
+    [InlineData(1.3250000476837158, 1.325)]
+    [InlineData(1.875, 1.875)]
+    [InlineData(1.00001234, 1.0)]
+    public void A_float_widened_ratio_is_stored_rounded(double entered, double stored)
+    {
+        Assert.Equal(stored, DeviceSettings.SanitizeDpr(entered));
+
+        var wire = new DeviceSettings(true, false, "de")
+        {
+            OverrideScreen = true,
+            OverrideW = 1120,
+            OverrideH = 1355,
+            OverrideDpr = entered,
+        }.Serialize();
+        Assert.Contains($"ovrd={stored.ToString(System.Globalization.CultureInfo.InvariantCulture)}", wire);
+        Assert.Equal(stored, DeviceSettings.Read(RequestWithCookie(wire)).OverrideDpr);
+    }
+
     [Fact]
     public void Screen_override_defaults_to_off_and_empty()
     {

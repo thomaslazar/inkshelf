@@ -146,7 +146,10 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // dpr is the only input that can violate it. A dpr below 1 would enlarge the
     // declared viewport past the physical screen — pages clipped to a corner, the
     // exact disease this override cures.
-    public static double SanitizeDpr(double dpr) => dpr >= 1 && dpr <= ScreenTarget.MaxDpr ? dpr : 0;
+    // Rounded on the way in, so the cookie carries "1.325" rather than the raw
+    // float-widened "1.3250000476837158" — see ScreenTarget.RoundDpr.
+    public static double SanitizeDpr(double dpr) =>
+        dpr >= 1 && dpr <= ScreenTarget.MaxDpr ? ScreenTarget.RoundDpr(dpr) : 0;
 
     // Accepts both "1.875" and "1,875": the UI is translated and a comma is what a
     // German-locale user will type. 0 on anything unparseable.

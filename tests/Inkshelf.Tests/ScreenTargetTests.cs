@@ -74,6 +74,28 @@ public class ScreenTargetTests
         Assert.Equal(ScreenTarget.MaxDpr, t.Dpr, 3);
     }
 
+    // devicePixelRatio is a float widened to a double, so a 1.325 screen probes as
+    // 1.3250000476837158. That number ends up in the settings cookie, the settings
+    // readout and the cache filename, so it is rounded where it enters.
+    [Fact]
+    public void A_float_widened_probe_ratio_is_rounded()
+    {
+        var t = ScreenTarget.FromCookie("845x1022x1.3250000476837158", retina: true);
+        Assert.Equal(1.325, t.Dpr);
+        // The cap follows the ROUNDED ratio, so the key, the cap and the declared
+        // viewport all agree.
+        Assert.Equal((int)Math.Round(845 * 1.325), t.MaxW);
+        Assert.Equal((int)Math.Round(1022 * 1.325), t.MaxH);
+    }
+
+    [Fact]
+    public void A_float_widened_override_ratio_is_rounded()
+    {
+        var t = ScreenTarget.FromCookie(null, retina: true,
+            over: new ScreenOverride(1120, 1355, 1.3250000476837158));
+        Assert.Equal(1.325, t.Dpr);
+    }
+
     [Fact]
     public void An_override_beats_a_perfectly_good_probe()
     {
