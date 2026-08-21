@@ -41,11 +41,15 @@ When the override is active it supplies the whole answer:
 |---|---|---|
 | `MaxW`/`MaxH` | from `scr`, × dpr under retina | the entered pixels |
 | `Dpr` | from `scr` (1 without retina) | the entered ratio |
-| retina | chooses CSS vs CSS × dpr | **not consulted** |
+| retina | chooses CSS vs CSS × dpr | same: on = as entered, off = ÷ ratio |
 
-Retina's only job is choosing between the CSS size and CSS × dpr. With both
-numbers stated explicitly there is nothing left for it to decide, so the UI
-disables it rather than leaving a control that silently does nothing.
+Retina keeps its meaning under an override: the entered numbers are physical
+pixels, so retina off converts at the CSS size (numbers ÷ ratio, dpr 1). Identical
+page layout, a quarter of the pixels at ratio 2. An earlier revision ignored retina
+here and had the UI disable the checkbox instead — that cost a hidden companion
+field to tell "disabled" from "unchecked", a special case in the POST handler, and
+an invariant to explain both. Making the control mean something was cheaper than
+explaining why it meant nothing.
 
 A higher pixel ratio means a smaller declared viewport, so the page lays out
 smaller. That is the direction to move if pages come out too large or clipped.
@@ -106,25 +110,22 @@ probe, else blank. Labels stay bare — no explanatory prose beyond at most one
 short line. This is a setting most people should scroll past.
 
 A small inline script (ES5: `getElementById`, `onclick`, no libraries) toggles
-`disabled` on the three fields, and on the retina checkbox in the opposite
-direction. JS is a guideline rather than a hard rule for something this simple,
+`disabled` on the three fields. JS is a guideline rather than a hard rule for
+something this simple,
 and without it the page still works: the server ignores the fields when the
 checkbox is off.
 
 ### E. The disabled-input trap
 
-**A disabled input is not submitted.** So the POST handler must treat an absent
-field as "keep what is stored", or the UI would quietly destroy settings:
+**A disabled input is not submitted.** The three number fields are disabled while
+the override is off, so the POST handler must treat an absent field as "keep what is
+stored" — otherwise switching the override off would erase numbers the user had to
+look up.
 
-- override off → the three numbers are disabled → absent → they must be
-  preserved, not zeroed.
-- override on → retina is disabled → absent → it must be preserved. The current
-  code reads `form.ContainsKey("retina")`, where absent means **off**, so
-  without this rule turning the override on would silently switch retina off.
-
-Narrow the rule to exactly that case: retina is absent-means-keep **only when
-the override checkbox is on**. Everywhere else, a checkbox absent still means
-off, which is what the other toggles rely on.
+Checkboxes are deliberately never disabled, so `absent == off` keeps holding for
+them. A disabled checkbox cannot be told apart from an unchecked one without a
+hidden companion field, and the way to avoid needing that is for every checkbox to
+stay meaningful — which is what §A does for retina.
 
 ### F. Cache key
 

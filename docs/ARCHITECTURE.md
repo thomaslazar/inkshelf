@@ -165,14 +165,12 @@ from the repo root (inside the devcontainer) must stay green, and
   override checked later would never be reached in exactly the case it exists for.
   `retina` is not consulted while an override is active — it only chooses between
   the CSS size and CSS × dpr, and both are explicit.
-- **A disabled input is not submitted.** The settings form disables fields it does
-  not want used, so the POST handler treats an absent field as "keep what is
-  stored" for those — otherwise saving would silently zero the override numbers.
-  Retina is trickier: absent is ambiguous between "disabled" and "unchecked", so
-  a hidden `retinalive` marker (disabled by the same script line) disambiguates —
-  present means the box was live and its value is trusted, absent means keep what
-  is stored. Not a script dependency: with JS off both boxes stay enabled and are
-  submitted together, so the marker's presence still tells the truth.
+- **A disabled input is not submitted.** The settings form disables the override's
+  number fields while the override is off, so the POST handler treats an absent one
+  as "keep what is stored" — otherwise saving would silently zero numbers the user
+  had to look up. Checkboxes are never disabled, so `absent == off` still holds for
+  them; keep it that way, because a disabled checkbox is indistinguishable from an
+  unchecked one and disambiguating it costs a hidden companion field.
 - **One page size per book, and it is load-bearing.** The e-reader lays every page
   of a book out in a single box and CLIPS anything bigger, so a book with mixed
   page sizes loses the right edge of its odd-sized pages. `EpubConverter`'s page

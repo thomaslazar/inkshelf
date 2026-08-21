@@ -271,103 +271,7 @@ public class EndpointTests
         Assert.DoesNotContain("checked", grayInput);
     }
 
-    [Fact]
-    public async Task Saving_with_the_override_on_keeps_retina()
-    {
-        // A disabled checkbox is NOT submitted, and the UI disables retina while the
-        // override is on. With the usual "absent means off" rule that would silently
-        // switch retina off every time the override was saved.
-        using var factory = CreateFactory();
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var token = await GetAntiforgeryTokenAsync(client);
 
-        // Retina on, override off. `retinalive` marks the box as having been live, so
-        // this POST genuinely sets retina rather than falling onto the stored default —
-        // without it the assertion below would hold even if nothing were preserved,
-        // because the default is already on.
-        await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["__RequestVerificationToken"] = token,
-            ["retinalive"] = "1",
-            ["retina"] = "on",
-            ["lang"] = "en",
-        }));
-
-        // Now turn the override on. The disabled retina box sends nothing.
-        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["__RequestVerificationToken"] = token,
-            ["lang"] = "en",
-            ["ovr"] = "on",
-            ["ovrw"] = "1000",
-            ["ovrh"] = "2000",
-            ["ovrd"] = "1.5",
-        }));
-
-        var setCookie = string.Join(" ", saved.Headers.GetValues("Set-Cookie"));
-        Assert.Contains("retina%3D1", setCookie);   // survived
-        Assert.Contains("ovr%3D1", setCookie);
-        Assert.Contains("ovrw%3D1000", setCookie);
-    }
-
-    [Fact]
-    public async Task An_explicit_uncheck_with_the_marker_present_turns_retina_off()
-    {
-        // The JS-off case, made distinguishable: with JS off both boxes stay
-        // enabled and are submitted, so "retinalive present, retina absent" must
-        // read as a deliberate uncheck, not as "the box was disabled".
-        using var factory = CreateFactory();
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var token = await GetAntiforgeryTokenAsync(client);
-
-        await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["__RequestVerificationToken"] = token,
-            ["retina"] = "on",
-            ["retinalive"] = "1",
-            ["lang"] = "en",
-        }));
-
-        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["__RequestVerificationToken"] = token,
-            ["retinalive"] = "1",
-            ["lang"] = "en",
-            // retina deliberately absent — an explicit uncheck.
-        }));
-
-        var setCookie = string.Join(" ", saved.Headers.GetValues("Set-Cookie"));
-        Assert.Contains("retina%3D0", setCookie);
-    }
-
-    [Fact]
-    public async Task Absent_marker_preserves_retina_the_JSon_disabled_case()
-    {
-        // The JS-on case: the box is disabled while the override is live, so both
-        // it and its hidden companion are absent from the submit — the stored
-        // value must survive, not be read as an uncheck.
-        using var factory = CreateFactory();
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var token = await GetAntiforgeryTokenAsync(client);
-
-        await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["__RequestVerificationToken"] = token,
-            ["retina"] = "on",
-            ["retinalive"] = "1",
-            ["lang"] = "en",
-        }));
-
-        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["__RequestVerificationToken"] = token,
-            ["lang"] = "en",
-            // both retina and retinalive absent — the disabled-by-script case.
-        }));
-
-        var setCookie = string.Join(" ", saved.Headers.GetValues("Set-Cookie"));
-        Assert.Contains("retina%3D1", setCookie); // preserved, not switched off
-    }
 
     [Fact]
     public async Task Saving_with_the_override_off_keeps_the_numbers()
@@ -637,5 +541,44 @@ public class EndpointTests
         }));
 
         Assert.Equal("/settings?range=1&scalerange=1", saved.Headers.Location?.ToString());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Retina_is_an_ordinary_checkbox_even_with_an_override(bool overriding)
+    {
+        // It used to be disabled while an override was on, which meant it submitted
+        // nothing and the handler had to guess whether that meant "unchecked" or
+        // "disabled". retina now applies under an override too (converting at the CSS
+        // size), so the control is live and the plain absent-means-off rule holds.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var on = new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["retina"] = "on",
+        };
+        var off = new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+        };
+        if (overriding)
+        {
+            foreach (var d in new[] { on, off })
+            {
+                d["ovr"] = "on"; d["ovrw"] = "1000"; d["ovrh"] = "2000"; d["ovrd"] = "1.5";
+            }
+        }
+
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(on));
+        Assert.Contains("retina%3D1", string.Join(" ", saved.Headers.GetValues("Set-Cookie")));
+
+        var cleared = await client.PostAsync("/settings", new FormUrlEncodedContent(off));
+        Assert.Contains("retina%3D0", string.Join(" ", cleared.Headers.GetValues("Set-Cookie")));
     }
 }

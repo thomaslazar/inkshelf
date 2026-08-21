@@ -95,19 +95,25 @@ public class ScreenTargetTests
     }
 
     [Fact]
-    public void An_override_ignores_the_retina_toggle()
+    public void An_override_honours_retina_by_converting_at_the_css_size()
     {
-        // Retina's only job is choosing CSS vs CSS × dpr. Both numbers are stated
-        // explicitly here, so there is nothing left for it to decide.
-        var on = ScreenTarget.FromCookie("769x953x1.875", retina: true, over: new ScreenOverride(1000, 2000, 2));
-        var off = ScreenTarget.FromCookie("769x953x1.875", retina: false, over: new ScreenOverride(1000, 2000, 2));
-        Assert.Equal(on, off);
+        // The entered numbers are physical pixels. retina off means the same thing here
+        // as on the probe path — convert at the CSS size, dpr 1 — so the page lays out
+        // identically with a quarter of the pixels. If this were ignored, retina would
+        // be an inert control whenever an override was set.
+        var on = ScreenTarget.FromCookie(null, retina: true, over: new ScreenOverride(1000, 2000, 2));
+        Assert.Equal((1000, 2000, 2.0), (on.MaxW, on.MaxH, on.Dpr));
+
+        var off = ScreenTarget.FromCookie(null, retina: false, over: new ScreenOverride(1000, 2000, 2));
+        Assert.Equal((500, 1000, 1.0), (off.MaxW, off.MaxH, off.Dpr));
     }
 
     [Fact]
     public void An_override_is_clamped_to_the_same_bounds_as_the_probe()
     {
-        var t = ScreenTarget.FromCookie(null, over: new ScreenOverride(99999, 99999, 99));
+        // retina: true so the entered numbers are used as-is — with retina off they are
+        // divided by the ratio, which is a different test (see the retina case above).
+        var t = ScreenTarget.FromCookie(null, retina: true, over: new ScreenOverride(99999, 99999, 99));
         Assert.Equal(ScreenTarget.MaxDimension, t.MaxW);
         Assert.Equal(ScreenTarget.MaxDimension, t.MaxH);
         Assert.Equal(ScreenTarget.MaxDpr, t.Dpr);

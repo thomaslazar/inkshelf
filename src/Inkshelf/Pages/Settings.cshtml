@@ -18,10 +18,9 @@
     @Html.AntiForgeryToken()
     <p>
         <label>
-            <input type="checkbox" name="retina" id="retina" value="on" @(Model.Settings.Retina ? "checked" : "") />
+            <input type="checkbox" name="retina" value="on" @(Model.Settings.Retina ? "checked" : "") />
             @L["Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)"]
         </label>
-        <input type="hidden" name="retinalive" id="retinalive" value="1" />
     </p>
     <p>
         <label>
@@ -107,11 +106,6 @@
         document.getElementById("ovrw").disabled = off;
         document.getElementById("ovrh").disabled = off;
         document.getElementById("ovrd").disabled = off;
-        /* Retina only chooses CSS vs CSS x dpr; an explicit override states both. */
-        var r = document.getElementById("retina");
-        if (r) { r.disabled = cb.checked; }
-        var rl = document.getElementById("retinalive");
-        if (rl) { rl.disabled = cb.checked; }
     }
     cb.onclick = sync;
     sync();

@@ -33,14 +33,22 @@ public static class ScreenTarget
         // bad value" would not help: the no-probe case returns at the bottom of this
         // method, so an override consulted later would never be reached when the
         // cookie is absent — which is one of the reasons the override exists.
-        //
-        // retina is deliberately not consulted: it only chooses between the CSS size
-        // and CSS × dpr, and both numbers are explicit here.
         if (over is { W: > 0, H: > 0, Dpr: > 0 } o)
-            return new RenderTarget(
-                    Math.Min(o.W, MaxDimension), Math.Min(o.H, MaxDimension),
-                    Math.Min(o.Dpr, MaxDpr), grayscale)
-            { Spread = spread, Scale = scale };
+        {
+            var od = Math.Min(o.Dpr, MaxDpr);
+            var ow = Math.Min(o.W, MaxDimension);
+            var oh = Math.Min(o.H, MaxDimension);
+            // retina means the same thing here as on the probe path below: the entered
+            // numbers are PHYSICAL pixels, so retina off converts at the CSS size
+            // (numbers ÷ ratio, dpr 1) — identical page layout, a quarter of the pixels
+            // at ratio 2. Ignoring retina here would leave it an inert control, which
+            // was the only reason the UI ever had to disable it.
+            return retina
+                ? new RenderTarget(ow, oh, od, grayscale) { Spread = spread, Scale = scale }
+                : new RenderTarget(Math.Max(1, (int)Math.Round(ow / od)),
+                                   Math.Max(1, (int)Math.Round(oh / od)), 1, grayscale)
+                { Spread = spread, Scale = scale };
+        }
         if (!string.IsNullOrEmpty(scr))
         {
             var p = scr.Split('x');

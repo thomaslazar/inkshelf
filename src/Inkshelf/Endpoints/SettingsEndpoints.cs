@@ -20,22 +20,16 @@ public static class SettingsEndpoints
             // `with`, NOT a fresh instance — the favorite lives in this same cookie
             // and constructing a new record would wipe it.
             var stored = DeviceSettings.Read(ctx.Request);
-            var overriding = form.ContainsKey("ovr");
             var settings = stored with
             {
-                // The retina box is disabled while an override is on, and a disabled
-                // input is not submitted — indistinguishable from unchecked. The
-                // hidden companion is disabled by the same script line, so its
-                // PRESENCE means the box was live and its value can be trusted;
-                // absence means it was disabled and the stored value stands.
-                Retina = form.ContainsKey("retinalive") ? form.ContainsKey("retina") : stored.Retina,
+                Retina = form.ContainsKey("retina"),
                 Grayscale = form.ContainsKey("grayscale"),
                 Lang = form["lang"].ToString(),
                 Spread = Enum.TryParse<SpreadMode>(form["spread"].ToString(), true, out var sp)
                     ? sp : DeviceSettings.Default.Spread,
                 Scale = int.TryParse(form["scale"].ToString(), out var pc)
                     ? DeviceSettings.SanitizeScale(pc) : DeviceSettings.Default.Scale,
-                OverrideScreen = overriding,
+                OverrideScreen = form.ContainsKey("ovr"),
                 // Same trap, other direction: the three numbers are disabled while
                 // the override is off, so keep what is stored rather than zeroing
                 // values the user had to look up.
