@@ -36,9 +36,10 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // falls outside it. Device-specific and unknowable from here, hence a knob.
     public int Scale { get; init; } = 100;
 
-    // Page scales offered in the UI. Coarse on purpose — this is a one-time
-    // calibration per device, not something anyone wants to fine-tune.
-    public static readonly int[] Scales = [100, 95, 90, 85, 80];
+    // Lowest page scale accepted. The useful values turned out to be a percent or two
+    // below 100 — a fixed list of coarse steps could not express them — so this is a
+    // free number with a floor rather than a menu.
+    public const int MinScale = 50;
 
     // A hand-entered screen geometry, used INSTEAD of the "scr" probe when
     // OverrideScreen is set. The numbers are kept even while the override is off,
@@ -128,9 +129,9 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
             ? new DeviceSettings(v[0] == '1', v[1] == '1', SanitizeLang(v.Length > 2 ? v[2..] : ""))
             : Default;
 
-    // A hand-edited cookie must not mint an absurd page size, so clamp to the offered
-    // range rather than trusting the value.
-    public static int SanitizeScale(int pct) => pct is >= 50 and <= 100 ? pct : Default.Scale;
+    // A hand-edited cookie must not mint an absurd page size. Out of range means the
+    // documented default, not a clamp: 20 is not a request for 50.
+    public static int SanitizeScale(int pct) => pct >= MinScale && pct <= 100 ? pct : Default.Scale;
 
     // Out of range becomes 0 ("nothing stored") rather than being clamped to the
     // bound: a typo'd 99999 is not a request for 4096, it is a mistake, and

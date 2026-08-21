@@ -575,4 +575,67 @@ public class EndpointTests
 
         Assert.Equal("/settings", saved.Headers.Location?.ToString());
     }
+
+    [Theory]
+    [InlineData("98", "/settings")]            // the reason this became a free number
+    [InlineData("50", "/settings")]            // the floor is accepted
+    [InlineData("49", "/settings?scalerange=1")]
+    [InlineData("101", "/settings?scalerange=1")]
+    [InlineData("abc", "/settings?scalerange=1")]
+    public async Task An_out_of_range_page_scale_says_so(string scale, string expected)
+    {
+        // It used to be a dropdown, so out-of-range was impossible. As a free number it
+        // reverts to 100 when rejected, which looks like the field ignoring you.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["scale"] = scale,
+        }));
+
+        Assert.Equal(expected, saved.Headers.Location?.ToString());
+    }
+
+    [Fact]
+    public async Task A_fine_grained_page_scale_survives_the_round_trip()
+    {
+        // 98 is not on any menu — the whole reason the control changed.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["scale"] = "98",
+        }));
+
+        Assert.Contains("scale%3D98", string.Join(" ", saved.Headers.GetValues("Set-Cookie")));
+    }
+
+    [Fact]
+    public async Task Both_range_warnings_can_fire_at_once()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["scale"] = "500",
+            ["ovr"] = "on",
+            ["ovrw"] = "99999",
+            ["ovrh"] = "2000",
+            ["ovrd"] = "1.5",
+        }));
+
+        Assert.Equal("/settings?range=1&scalerange=1", saved.Headers.Location?.ToString());
+    }
 }

@@ -56,8 +56,17 @@ public static class SettingsEndpoints
             // quietly keeps using the probe. Say so: without this the field simply
             // re-displays the detected number and the setting looks broken.
             var unusable = settings.OverrideScreen && settings.ActiveOverride is null;
+
+            // The page scale silently reverts the same way: an out-of-range number
+            // becomes the default, which looks like the field ignoring you.
+            var rawScale = form["scale"].ToString();
+            var scaleRejected = !string.IsNullOrWhiteSpace(rawScale)
+                && (!int.TryParse(rawScale, out var typed) || DeviceSettings.SanitizeScale(typed) != typed);
+
             // PRG: back to the page, showing saved state.
-            return Results.Redirect(unusable ? "/settings?range=1" : "/settings");
+            var flags = (unusable ? "range=1" : "") + (unusable && scaleRejected ? "&" : "")
+                + (scaleRejected ? "scalerange=1" : "");
+            return Results.Redirect(flags.Length == 0 ? "/settings" : $"/settings?{flags}");
         }).DisableAntiforgery();
     }
 }

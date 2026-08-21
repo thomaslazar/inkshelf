@@ -22,6 +22,9 @@ public class SettingsModel : PageModel
     // page can say why nothing changed instead of silently re-showing the probe.
     public bool RangeWarning { get; private set; }
 
+    // Same idea for the page scale, which is a free number rather than a menu now.
+    public bool ScaleWarning { get; private set; }
+
     // What the override fields show: the stored override when there is one, else
     // whatever the probe reported, else blank. 0 / "" render as an empty field.
     public int PrefillW { get; private set; }
@@ -32,6 +35,7 @@ public class SettingsModel : PageModel
     {
         Settings = DeviceSettings.Read(Request);
         RangeWarning = Request.Query.ContainsKey("range");
+        ScaleWarning = Request.Query.ContainsKey("scalerange");
         var langs = new List<(string, string)> { ("en", "English") };
         foreach (var code in _catalog.Languages.OrderBy(c => c))
             langs.Add((code, _catalog.DisplayName(code)));

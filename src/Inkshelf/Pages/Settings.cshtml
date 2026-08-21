@@ -53,15 +53,15 @@
         </label>
     </p>
     <p>
-        <label>@L["Page scale"]<br />
-            <select name="scale">
-                @foreach (var pct in Inkshelf.Auth.DeviceSettings.Scales)
-                {
-                    <option value="@pct" selected="@(pct == Model.Settings.Scale)">@pct%</option>
-                }
-            </select>
+        <label class="setting-num">@L["Page scale"]
+            <input type="number" name="scale" min="@Inkshelf.Auth.DeviceSettings.MinScale" max="100" step="1"
+                   value="@Model.Settings.Scale" />
         </label>
-        <span class="settings-note">@L["Lower this if your reader cuts off the edge of a page."]</span>
+        <span class="settings-note">@L["Percent. Lower this if your reader cuts off the edge of a page."]</span>
+@if (Model.ScaleWarning)
+{
+        <span class="settings-note">@L["Not used: the page scale must be 50-100."]</span>
+}
     </p>
     <p>
         <label>
