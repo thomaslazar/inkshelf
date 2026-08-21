@@ -13,6 +13,15 @@ public static class ScreenTarget
     // past MaxDimension's intent.
     public const double MaxDpr = 4.0;
 
+    // devicePixelRatio reaches us as a float widened to a double, so a screen at
+    // 1.325 reports 1.3250000476837158. That value is not just noise in a
+    // calculation: it is stored in the settings cookie, shown in the settings
+    // readout, and written into the cache filename. Four decimals is finer than any
+    // real screen and keeps all three short and stable.
+    public const int DprDecimals = 4;
+
+    public static double RoundDpr(double dpr) => Math.Round(dpr, DprDecimals);
+
     // Parse the "scr" cookie ("<cssW>x<cssH>x<dpr>", written by the layout script)
     // into a RenderTarget. The Tolino reader lays fixed-layout pages out in CSS
     // pixels, so the viewport must be the CSS size to fill the screen.
@@ -35,7 +44,7 @@ public static class ScreenTarget
         // cookie is absent — which is one of the reasons the override exists.
         if (over is { W: > 0, H: > 0, Dpr: > 0 } o)
         {
-            var od = Math.Min(o.Dpr, MaxDpr);
+            var od = RoundDpr(Math.Min(o.Dpr, MaxDpr));
             var ow = Math.Min(o.W, MaxDimension);
             var oh = Math.Min(o.H, MaxDimension);
             // retina means the same thing here as on the probe path below: the entered
@@ -59,7 +68,7 @@ public static class ScreenTarget
             {
                 if (retina)
                 {
-                    dpr = Math.Min(dpr, MaxDpr);
+                    dpr = RoundDpr(Math.Min(dpr, MaxDpr));
                     var w = Math.Min((int)Math.Round(cw * dpr), MaxDimension);
                     var h = Math.Min((int)Math.Round(ch * dpr), MaxDimension);
                     return new RenderTarget(w, h, dpr, grayscale) { Spread = spread, Scale = scale };

@@ -101,6 +101,6 @@ public class SettingsModel : PageModel
         if (p.Length == 2) return (w, h, 1);
         return double.TryParse(p[2], System.Globalization.NumberStyles.Float,
             System.Globalization.CultureInfo.InvariantCulture, out var d) && d > 0
-            ? (w, h, d) : null;
+            ? (w, h, Inkshelf.Convert.ScreenTarget.RoundDpr(d)) : null;
     }
 }
