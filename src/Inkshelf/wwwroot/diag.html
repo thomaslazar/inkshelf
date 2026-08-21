@@ -11,12 +11,17 @@
   .y { font-weight: bold; }
   .n { color: #666; }
   #status { margin: .5rem 0; }
+  #raw { width: 100%; font-family: monospace; font-size: .8em; }
 </style>
 </head>
 <body>
 <h1>Browser capability probe</h1>
 <p id="status">Running…</p>
 <table id="out"><tbody></tbody></table>
+<h2>Raw result</h2>
+<p>The same data in one block, for pasting into a device report. The server also
+logs it — see <code>docs/DEVICES.md</code>.</p>
+<textarea id="raw" rows="8" readonly></textarea>
 <script>
 /* Deliberately ES5-only (var, no arrow/template-literals/fetch) so it runs on
    an old engine. Results render on-page and are best-effort POSTed to /diag. */
@@ -91,6 +96,10 @@
   // Best-effort POST back so the server (and the dev) can read exact results.
   var payload = { info: info, features: {} };
   for (var j = 0; j < rows.length; j++) payload.features[rows[j][0]] = rows[j][1];
+
+  // The same payload, selectable on the device: the table above is readable but
+  // nobody is going to retype thirty rows off an e-ink screen.
+  try { document.getElementById('raw').value = JSON.stringify(payload); } catch (e) {}
   var st = document.getElementById('status');
   try {
     var xhr = new XMLHttpRequest();

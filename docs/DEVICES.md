@@ -123,6 +123,14 @@ owner of the same model the measuring.
 
 Useful to include: the model, the *Detected resolution* line from Settings,
 whether retina and grayscale are on, the override and page scale values that
-work, and which of the symptoms above you hit. `/diag.html` (with
-`DIAG_ENABLED=true`) reports the browser's capabilities if the device turns out
-to need engine-specific CSS.
+work, and which of the symptoms above you hit.
+
+If the device turns out to need engine-specific CSS, open `/diag.html` on it
+(needs `DIAG_ENABLED=true`, the default). It shows the browser's capabilities on
+screen, with the same data as one block at the bottom — and it reports them to
+the server, so you can lift the result from the container log rather than
+retyping it off an e-ink screen:
+
+```bash
+docker logs inkshelf 2>&1 | grep "Browser probe"
+```
