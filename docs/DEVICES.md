@@ -38,14 +38,14 @@ would expect:
     </tr>
     <tr>
       <td>Tolino vision 5</td>
-      <td>?</td>
+      <td>—</td>
       <td>1266 × 1547 @ dpr 1.875</td>
       <td>no override needed</td>
       <td>Works</td>
     </tr>
     <tr>
       <td>Tolino page 2</td>
-      <td>?</td>
+      <td>—</td>
       <td>759 × 930 @ dpr 1.325</td>
       <td>no override needed</td>
       <td>Works</td>
@@ -70,6 +70,9 @@ would expect:
     </tr>
   </tbody>
 </table>
+
+A dash in **Panel** means the vendor does not publish a pixel count for that
+model and we have not measured one — the detected column is all we have.
 
 **Three different numbers, and they rarely agree.** Reading a device row from
 left to right:
