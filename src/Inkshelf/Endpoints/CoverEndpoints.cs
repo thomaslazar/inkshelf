@@ -20,6 +20,6 @@ public static class CoverEndpoints
                 // just shows nothing rather than the page 500ing.
                 return Results.NotFound();
             }
-        });
+        }).RespondsWithoutHtml();
     }
 }
