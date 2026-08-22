@@ -70,7 +70,7 @@ public class ConvertedRenderTests
     // Seed one cache file per item with an explicit conversion time.
     private static void SeedConverted(EpubCache cache, string itemId, DateTime convertedAtUtc)
     {
-        var p = cache.PathFor(itemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread);
+        var p = cache.PathFor(itemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale);
         File.WriteAllText(p, "epub");
         File.SetLastWriteTimeUtc(p, convertedAtUtc);
     }
@@ -279,7 +279,7 @@ public class ConvertedRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread), "epub"); // matches the request's device target
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale), "epub"); // matches the request's device target
 
         var html = await (await client.SendAsync(Request(factory, "/converted"))).Content.ReadAsStringAsync();
 
@@ -333,7 +333,7 @@ public class ConvertedRenderTests
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
         File.WriteAllText(
-            cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, dpr: 2),
+            cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale, dpr: 2),
             "epub");
 
         var html = await (await client.SendAsync(Request(factory, "/converted"))).Content.ReadAsStringAsync();
@@ -356,7 +356,7 @@ public class ConvertedRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread), "epub"); // non-empty → batch is attempted
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale), "epub"); // non-empty → batch is attempted
 
         var response = await client.SendAsync(Request(factory, "/converted"));
         var html = await response.Content.ReadAsStringAsync();
@@ -394,7 +394,7 @@ public class ConvertedRenderTests
 
         const string did = "abc123def4560000";
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread), "epub");
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale), "epub");
         factory.Services.GetRequiredService<DownloadMarks>()
             .Add(did, DownloadMarks.EpubKey(ItemId, null));
 

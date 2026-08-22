@@ -237,7 +237,7 @@ public class DownloadMarkEndpointTests
         // — and KickAsync sees ConvertStatus.Done, serving + marking immediately
         // instead of only enqueuing a background job.
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ComicId, CSize, CMtime, 0, 0, spread: DeviceSettings.Default.Spread), "epub");
+        File.WriteAllText(cache.PathFor(ComicId, CSize, CMtime, 0, 0, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale), "epub");
 
         var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
         var protector = dp.CreateProtector("inkshelf.session.v1");

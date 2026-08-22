@@ -323,16 +323,20 @@ public class DeviceSettingsTests
     }
 
     [Fact]
-    public void Scale_round_trips_and_defaults_to_100()
+    public void Scale_round_trips_and_falls_back_to_the_default()
     {
+        var d = DeviceSettings.Default.Scale;
         // A cookie written before this setting existed has no scale key: it must land on
-        // 100, not on 0, or every page would be laid out at zero size.
-        Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=")).Scale);
+        // the default, not on 0, or every page would be laid out at zero size.
+        Assert.Equal(d, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=")).Scale);
         Assert.Equal(90, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=90")).Scale);
+        // 100 is a real choice — a reader that honours the declared viewport exactly
+        // wants it — so it must survive the round trip rather than being normalised away.
+        Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=100")).Scale);
         // A hand-edited cookie must not mint an absurd page size.
-        Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=5")).Scale);
-        Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=400")).Scale);
-        Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=abc")).Scale);
+        Assert.Equal(d, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=5")).Scale);
+        Assert.Equal(d, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=400")).Scale);
+        Assert.Equal(d, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=abc")).Scale);
     }
 
     [Fact]
