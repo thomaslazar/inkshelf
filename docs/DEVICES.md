@@ -22,6 +22,7 @@ would expect:
   <thead>
     <tr>
       <th>Device</th>
+      <th>Firmware</th>
       <th>Panel</th>
       <th>Detected resolution</th>
       <th>Working settings</th>
@@ -31,38 +32,43 @@ would expect:
   <tbody>
     <tr>
       <td>Tolino epos 2</td>
+      <td>16.x</td>
       <td>1440 × 1920</td>
       <td>1442 × 1787 @ dpr 1.875</td>
-      <td>retina on, grayscale on, page scale 98, no override</td>
+      <td>retina on, grayscale on, no override; page scale 98 on the beta reader</td>
       <td>Works</td>
     </tr>
     <tr>
       <td>Tolino vision 5</td>
+      <td>16.2.0</td>
       <td>1264 × 1680</td>
       <td>1266 × 1547 @ dpr 1.875</td>
-      <td>no override needed</td>
+      <td>no override needed; page scale 98 on the beta reader</td>
       <td>Works</td>
     </tr>
     <tr>
       <td>Tolino page 2</td>
+      <td>16.2.0</td>
       <td>768 × 1024</td>
       <td>759 × 930 @ dpr 1.325</td>
-      <td>no override needed</td>
+      <td>no override needed; page scale 98 on the beta reader</td>
       <td>Works</td>
     </tr>
     <tr>
       <td>Tolino shine</td>
+      <td>10.5.0</td>
       <td>758 × 1024</td>
       <td>751 × 909 @ dpr 1.325</td>
       <td>retina on, grayscale on, <strong>override 1021 × 1236 @ ratio 1.325</strong></td>
       <td>Usable, with caveats</td>
     </tr>
     <tr>
-      <td colspan="5">
+      <td colspan="6">
         <strong>Notes:</strong> Retains no cookies — every browser restart means
         logging in again and re-entering the override, so keep the numbers noted
         off-device. Page scale has no effect: this reader sizes pages from the
-        image and ignores the box we declare. The layout itself is rough here
+        image and ignores the box we declare — its reader is old enough to honour
+        nothing we declare. The layout itself is rough here
         rather than broken — its browser predates unprefixed <code>flex</code>
         and <code>box-sizing</code>, so rows stack and full-width fields
         overflow slightly. Everything works; it is not pretty.
@@ -149,11 +155,15 @@ converted comics look:
   the declared viewport — so the override dimensions are the only knob that
   moves anything.
 
-A device chooses on its own: a vision 5 used the legacy engine for un-DRMed
-books while an epos 2 on the same firmware used the beta one. Firmware 16.2.0 is
-the last release the epos 2, vision 5 and page 2 will receive, so the beta reader
-stays permanently "beta" and both engines matter indefinitely. The shine (10.5.0)
-has no beta reader at all.
+Firmware predicts this better than the model does. Every 16.x reader tested — an
+epos 2, a vision 5 and a page 2 — behaves identically: **the beta reader clips
+the bottom of a page and wants scale 98, the legacy reader shows the full page at
+100.** 16.x is also the last release those devices receive, so the beta reader
+stays permanently "beta" and both engines matter indefinitely.
+
+The shine (10.5.0) has no beta reader, and its old one honours nothing we
+declare, which is why it is the only device here needing a hand-measured
+override.
 
 ## Reporting a device
 
