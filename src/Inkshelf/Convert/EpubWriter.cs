@@ -79,34 +79,14 @@ public static class EpubWriter
         _ => "image/jpeg",
     };
 
-    // Fixed-layout page: the declared viewport is the page's CSS size and the image
-    // fills it full-bleed (no reader margins).
+    // Fixed-layout page. Every page in a book is the same size because
+    // PageImageProcessor pads each image to the box, NOT because of this CSS.
     //
-    // Every page in a book declares the SAME size — EpubConverter's page box
-    // guarantees it — because a real e-reader lays every page out in one box and clips
-    // anything bigger, costing the odd-sized pages their right edge. Verified on
-    // device. That guarantee comes from PageImageProcessor padding every image to the
-    // box, NOT from the CSS below.
-    //
-    // The CSS is deliberately RELATIVE — percentages only, no pixel sizes. Only some
-    // readers honour the viewport meta above: the ones that do get 100% == the
-    // declared box, and the ones that don't get their own page area instead of a box
-    // a fraction of their screen. Pinning the image to {w}px shipped exactly that bug
-    // — a page in the top-left quarter. Tolino firmware carries two readers and they
-    // differ on this: the BETA reader honours the meta, the STANDARD one ignores it
-    // and renders the image at its own pixel size. The shine's much older reader
-    // (firmware 10.5) honours nothing declared here.
-    //
-    // It must be max-width AND max-height against a definite-height box, i.e. the
-    // pre-object-fit way of saying "contain". Scaling by width alone is what a bare
-    // width:100% does, and that overflows vertically whenever the reader's page is
-    // proportionally shorter than the image — the bottom of the page simply falls
-    // off. Verified on device, twice: as a cut-off bottom on the shine, and as a blank
-    // second screen back when a fixed-px box was declared taller than its page.
-    //
-    // height:100% on the IMG stays off — that was the original trap, resolving to
-    // nothing or stretching the page on an old engine. The height belongs on
-    // html/body/div, so the percentages have something definite to resolve against.
+    // The CSS must stay relative: no pixel sizes (readers that ignore the viewport
+    // meta then lay the page out in a fraction of their screen), max-height as well as
+    // max-width (width alone drops the bottom off a page shorter than the image), and
+    // never a height on the img (auto-height body: an old engine resolves it to
+    // nothing or stretches the page). All three verified on device.
     private static string PageXhtml(string img, int w, int h, int page) =>
         $"<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\"/><title>Page {page}</title><meta name=\"viewport\" content=\"width={w}, height={h}\"/><style>html,body{{margin:0;padding:0;height:100%}}div.page{{width:100%;height:100%;overflow:hidden;text-align:center}}img{{max-width:100%;max-height:100%;margin:0}}</style></head><body><div class=\"page\"><img src=\"img/{img}\" alt=\"\"/></div></body></html>";
 

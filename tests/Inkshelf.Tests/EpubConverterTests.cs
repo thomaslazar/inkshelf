@@ -211,10 +211,7 @@ public class EpubConverterTests
             var ib = Image.Identify(b.Entries.First(e => e.FullName.StartsWith("OEBPS/img/")).Open());
             Assert.Equal((ia.Width, ia.Height), (ib.Width, ib.Height));   // same pixels
         }
-        // The scale lives in the DECLARED viewport only — the CSS stays relative, so a
-        // reader that ignores the viewport meta shows the page full-bleed instead of
-        // pinned to a box smaller than its screen. That also makes the knob inert on
-        // such readers; see the device notes.
+        // The scale lives in the DECLARED viewport only; the CSS stays relative.
         using (var b = ZipFile.OpenRead(small))
         {
             var xhtml = await new StreamReader(

@@ -57,19 +57,12 @@ public class EpubWriterTests
         using var epub = ZipFile.OpenRead(outPath);
         var page = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("page-0001.xhtml")).Open()).ReadToEnd();
         Assert.Contains("width=213, height=320", page);
-        // …and the CSS must NOT restate those numbers. Only some readers honour the
-        // viewport meta; pinning the image to the declared box renders it in a
-        // fraction of the screen on the ones that don't. Relative sizing only, and no
-        // declared height at all, so a page can never be taller than its image.
+        // …and the CSS must not restate them: pixel sizes pinned to the declared box
+        // put the page in a fraction of the screen on readers that ignore the meta.
         Assert.DoesNotContain("213px", page);
         Assert.DoesNotContain("320px", page);
-        // "contain", the pre-object-fit way: both maxima against a definite-height
-        // box. Scaling by width alone overflows the page bottom on a reader whose
-        // page is proportionally shorter than the image.
         Assert.Contains("max-width:100%;max-height:100%", page);
-        // The img carries MAXIMA only. An outright width or height on it is the
-        // original trap: on an old engine height:100% there resolves to nothing or
-        // stretches the page.
+        // Maxima only on the img — an outright width or height there is the trap.
         var imgRule = Regex.Match(page, @"img\{([^}]*)\}").Groups[1].Value;
         Assert.NotEqual("", imgRule);
         Assert.DoesNotMatch(@"(?:^|;)(?:width|height):", imgRule);
