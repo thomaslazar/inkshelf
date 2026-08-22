@@ -119,7 +119,8 @@ answer.
 | Comic pages render far too small, complete, with space around them | The reader lays out in a larger pixel space than the browser reports | Raise the override until pages fill the screen |
 | A blank screen appears between every page | The page box is slightly taller than the reader's viewport, so one page paginates into two screens | Shrink the override ~2% at a time until it goes away |
 | The right or bottom edge of a page is cut off | The page box is larger than the reader's viewport | Shrink the override, or drop page scale a few percent |
-| Page scale changes nothing | Some readers size pages from the image's own pixels and ignore the declared box; scale only shrinks the box | Use the override dimensions instead |
+| The bottom of every page is clipped | The beta reader honours the declared viewport, then keeps ~2% of the page height | Set page scale to 98 |
+| Page scale changes nothing | The legacy reader ignores the declared viewport, and scale only ever multiplies that viewport | Use the override dimensions instead |
 | Logged out and settings lost whenever the browser is reopened | The device's cookie store does not persist cookies across a browser restart (seen on the shine) | Nothing yet — log in and re-enter the override; keep the numbers noted off-device |
 
 ## Browser engines
@@ -134,6 +135,25 @@ The EPUB reader app is a separate engine and a far less documented one. It is
 not probeable: our JavaScript runs in the browser, while comic layout happens in
 the reader. Everything known about it comes from what pages look like on
 hardware, which is what the Notes rows in the matrix record.
+
+Tolino firmware carries **two** of them, and which one opens a book decides how
+converted comics look:
+
+- The **beta reader** honours the `viewport` a fixed-layout page declares — then
+  keeps roughly 2% of the page height for itself. At page scale 100 that clips
+  the bottom of every page, so **set page scale to 98 on the beta reader**. It is
+  not the default: the readers that need it are specific ones, and correcting for
+  them everywhere would shrink pages on readers that do not.
+- The **legacy reader** ignores the declared viewport and lays the page out in
+  its own area. Page scale has no effect there at all — it only ever multiplies
+  the declared viewport — so the override dimensions are the only knob that
+  moves anything.
+
+A device chooses on its own: a vision 5 used the legacy engine for un-DRMed
+books while an epos 2 on the same firmware used the beta one. Firmware 16.2.0 is
+the last release the epos 2, vision 5 and page 2 will receive, so the beta reader
+stays permanently "beta" and both engines matter indefinitely. The shine (10.5.0)
+has no beta reader at all.
 
 ## Reporting a device
 
