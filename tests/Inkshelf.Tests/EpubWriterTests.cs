@@ -56,8 +56,14 @@ public class EpubWriterTests
         using var epub = ZipFile.OpenRead(outPath);
         var page = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("page-0001.xhtml")).Open()).ReadToEnd();
         Assert.Contains("width=213, height=320", page);
-        // The CSS box must agree with the declared viewport or the image overflows it.
-        Assert.Contains("width:213px;height:320px", page);
+        // …and the CSS must NOT restate those numbers. Only some readers honour the
+        // viewport meta; pinning the image to the declared box renders it in a
+        // fraction of the screen on the ones that don't. Relative sizing only, and no
+        // declared height at all, so a page can never be taller than its image.
+        Assert.DoesNotContain("213px", page);
+        Assert.DoesNotContain("320px", page);
+        Assert.Contains("width:100%", page);
+        Assert.DoesNotContain("height:", page);
         File.Delete(outPath);
     }
 

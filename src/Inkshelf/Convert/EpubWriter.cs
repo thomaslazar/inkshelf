@@ -79,19 +79,28 @@ public static class EpubWriter
         _ => "image/jpeg",
     };
 
-    // Fixed-layout page: the viewport is the page's CSS size and the image fills it
-    // full-bleed (no reader margins).
+    // Fixed-layout page: the declared viewport is the page's CSS size and the image
+    // fills it full-bleed (no reader margins).
     //
     // Every page in a book declares the SAME size — EpubConverter's page box
     // guarantees it — because a real e-reader lays every page out in one box and clips
-    // anything bigger, costing the odd-sized pages their right edge. Verified on device.
+    // anything bigger, costing the odd-sized pages their right edge. Verified on
+    // device. That guarantee comes from PageImageProcessor padding every image to the
+    // box, NOT from the CSS below.
     //
-    // The box is a fixed-px absolutely-positioned div with overflow:hidden, and the
-    // image is width:100% with NO height. Do NOT put height:100% back on the img: the
-    // body has auto height, so on an old engine that either resolves to nothing or
-    // stretches the page. This markup is what a commercial fixed-layout comic uses.
+    // The CSS is deliberately RELATIVE — percentages, no pixel sizes, no declared
+    // height. Only some readers honour the viewport meta above: the ones that do get
+    // 100% == the declared box, and the ones that don't get their own page area
+    // instead of a box a fraction of their screen. Pinning the image to {w}px shipped
+    // exactly that bug — a page rendering in the top-left quarter of readers that
+    // ignore the meta (epos 2 honours it, vision 5 and shine do not).
+    //
+    // No height anywhere is load-bearing twice over: a page can never be taller than
+    // its image, so a reader cannot paginate one page into two screens; and
+    // height:100% on the img must stay off, because the body's height is auto and an
+    // old engine either resolves that to nothing or stretches the page.
     private static string PageXhtml(string img, int w, int h, int page) =>
-        $"<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\"/><title>Page {page}</title><meta name=\"viewport\" content=\"width={w}, height={h}\"/><style>html,body{{margin:0;padding:0}}div.page{{position:absolute;top:0;left:0;width:{w}px;height:{h}px;overflow:hidden}}img{{position:absolute;top:0;left:0;width:100%;margin:0}}</style></head><body><div class=\"page\"><img src=\"img/{img}\" alt=\"\"/></div></body></html>";
+        $"<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\"/><title>Page {page}</title><meta name=\"viewport\" content=\"width={w}, height={h}\"/><style>html,body{{margin:0;padding:0}}div.page{{width:100%;overflow:hidden}}img{{display:block;width:100%;margin:0}}</style></head><body><div class=\"page\"><img src=\"img/{img}\" alt=\"\"/></div></body></html>";
 
     private static string Nav(int n)
     {
