@@ -211,11 +211,14 @@ public class EpubConverterTests
             var ib = Image.Identify(b.Entries.First(e => e.FullName.StartsWith("OEBPS/img/")).Open());
             Assert.Equal((ia.Width, ia.Height), (ib.Width, ib.Height));   // same pixels
         }
-        // The CSS box must agree with the declared viewport or the image overflows it.
+        // The scale lives in the DECLARED viewport only; the CSS stays relative.
         using (var b = ZipFile.OpenRead(small))
         {
-            using var r = new StreamReader(b.Entries.First(e => e.FullName.EndsWith("page-0001.xhtml")).Open());
-            Assert.Contains("width:540px;height:810px", await r.ReadToEndAsync());
+            var xhtml = await new StreamReader(
+                b.Entries.First(e => e.FullName.EndsWith("page-0001.xhtml")).Open()).ReadToEndAsync();
+            Assert.Contains("width=540, height=810", xhtml);
+            Assert.DoesNotContain("540px", xhtml);
+            Assert.DoesNotContain("810px", xhtml);
         }
         File.Delete(full); File.Delete(small);
     }

@@ -79,19 +79,16 @@ public static class EpubWriter
         _ => "image/jpeg",
     };
 
-    // Fixed-layout page: the viewport is the page's CSS size and the image fills it
-    // full-bleed (no reader margins).
+    // Fixed-layout page. Every page in a book is the same size because
+    // PageImageProcessor pads each image to the box, NOT because of this CSS.
     //
-    // Every page in a book declares the SAME size — EpubConverter's page box
-    // guarantees it — because a real e-reader lays every page out in one box and clips
-    // anything bigger, costing the odd-sized pages their right edge. Verified on device.
-    //
-    // The box is a fixed-px absolutely-positioned div with overflow:hidden, and the
-    // image is width:100% with NO height. Do NOT put height:100% back on the img: the
-    // body has auto height, so on an old engine that either resolves to nothing or
-    // stretches the page. This markup is what a commercial fixed-layout comic uses.
+    // The CSS must stay relative: no pixel sizes (readers that ignore the viewport
+    // meta then lay the page out in a fraction of their screen), max-height as well as
+    // max-width (width alone drops the bottom off a page shorter than the image), and
+    // never a height on the img (auto-height body: an old engine resolves it to
+    // nothing or stretches the page). All three verified on device.
     private static string PageXhtml(string img, int w, int h, int page) =>
-        $"<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\"/><title>Page {page}</title><meta name=\"viewport\" content=\"width={w}, height={h}\"/><style>html,body{{margin:0;padding:0}}div.page{{position:absolute;top:0;left:0;width:{w}px;height:{h}px;overflow:hidden}}img{{position:absolute;top:0;left:0;width:100%;margin:0}}</style></head><body><div class=\"page\"><img src=\"img/{img}\" alt=\"\"/></div></body></html>";
+        $"<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\"/><title>Page {page}</title><meta name=\"viewport\" content=\"width={w}, height={h}\"/><style>html,body{{margin:0;padding:0;height:100%}}div.page{{width:100%;height:100%;overflow:hidden;text-align:center}}img{{max-width:100%;max-height:100%;margin:0}}</style></head><body><div class=\"page\"><img src=\"img/{img}\" alt=\"\"/></div></body></html>";
 
     private static string Nav(int n)
     {

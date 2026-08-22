@@ -425,7 +425,8 @@ public class EndpointTests
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
         var cachedPath = cache.PathFor(itemId, size, mtime, overrideW, overrideH,
-            spread: Inkshelf.Auth.DeviceSettings.Default.Spread, dpr: overrideDpr);
+            spread: Inkshelf.Auth.DeviceSettings.Default.Spread,
+            scale: Inkshelf.Auth.DeviceSettings.Default.Scale, dpr: overrideDpr);
         File.WriteAllText(cachedPath, "cached-epub-bytes");
 
         var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.IO.Compression;
 using Inkshelf.Convert;
 using SixLabors.ImageSharp;
@@ -56,8 +57,15 @@ public class EpubWriterTests
         using var epub = ZipFile.OpenRead(outPath);
         var page = new StreamReader(epub.Entries.First(e => e.FullName.EndsWith("page-0001.xhtml")).Open()).ReadToEnd();
         Assert.Contains("width=213, height=320", page);
-        // The CSS box must agree with the declared viewport or the image overflows it.
-        Assert.Contains("width:213px;height:320px", page);
+        // …and the CSS must not restate them: pixel sizes pinned to the declared box
+        // put the page in a fraction of the screen on readers that ignore the meta.
+        Assert.DoesNotContain("213px", page);
+        Assert.DoesNotContain("320px", page);
+        Assert.Contains("max-width:100%;max-height:100%", page);
+        // Maxima only on the img — an outright width or height there is the trap.
+        var imgRule = Regex.Match(page, @"img\{([^}]*)\}").Groups[1].Value;
+        Assert.NotEqual("", imgRule);
+        Assert.DoesNotMatch(@"(?:^|;)(?:width|height):", imgRule);
         File.Delete(outPath);
     }
 

@@ -145,7 +145,7 @@ public class ListingRenderTests
         const string did = "abc123def4560000";
         // Cached EPUB so the convert action is in its Cached state.
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread), "epub");
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale), "epub");
         factory.Services.GetRequiredService<DownloadMarks>()
             .Add(did, DownloadMarks.RawKey(ItemId, null));
 
@@ -170,7 +170,7 @@ public class ListingRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread), "epub");
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale), "epub");
 
         var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
 
@@ -190,7 +190,7 @@ public class ListingRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread), "epub");
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale), "epub");
 
         const string did = "abc123def4560000";
         var settings = $"retina=0&gray=0&lang=&fav=&did={did}";
@@ -214,7 +214,7 @@ public class ListingRenderTests
 
         var queue = factory.Services.GetRequiredService<ConvertQueue>();
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        var path = cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread);
+        var path = cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale);
         queue.Enqueue(new ConvertJob(ItemId, "tok", path, new EbookMeta("T", "A", null, null, ItemId), new RenderTarget(W, H, 1.0, false)));
 
         var response = await client.SendAsync(LibraryRequest(factory));
@@ -240,7 +240,7 @@ public class ListingRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        var path = cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread);
+        var path = cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale);
         File.WriteAllText(path, "epub");
 
         var response = await client.SendAsync(LibraryRequest(factory));
@@ -269,7 +269,8 @@ public class ListingRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        var path = cache.PathFor(ItemId, Size, Mtime, W, H, grayscale: true, spread: DeviceSettings.Default.Spread);
+        var path = cache.PathFor(ItemId, Size, Mtime, W, H, grayscale: true, spread: DeviceSettings.Default.Spread,
+            scale: DeviceSettings.Default.Scale);
         File.WriteAllText(path, "epub");
 
         // retina=0, grayscale=1 → target matches the pre-seeded "-g" file.
@@ -321,7 +322,7 @@ public class ListingRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
-        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread), "epub");
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, W, H, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale), "epub");
 
         var req = LibraryRequest(factory);
         req.RequestUri = new Uri($"/library/{LibId}?q=comic", UriKind.Relative);
@@ -469,10 +470,10 @@ public class ListingRenderTests
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
         File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, 1000, 2000,
-            spread: DeviceSettings.Default.Spread), "epub");
+            spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale), "epub");
 
         // No scr cookie; the override supplies 1000x2000 at dpr 1.
-        const string overridden = "retina=0&gray=0&lang=&fav=&spread=splitleftfirst&scale=100"
+        var overridden = $"retina=0&gray=0&lang=&fav=&spread=splitleftfirst&scale={DeviceSettings.Default.Scale}"
             + "&ovr=1&ovrw=1000&ovrh=2000&ovrd=1";
         var response = await client.SendAsync(LibraryRequest(factory, overridden, includeScr: false));
         var html = await response.Content.ReadAsStringAsync();
@@ -482,7 +483,7 @@ public class ListingRenderTests
         // Same request with the override switched off: no probe, so no cap, so the
         // 1000x2000 file is not this request's cache path and the row still offers
         // a plain Convert.
-        const string plain = "retina=0&gray=0&lang=&fav=&spread=splitleftfirst&scale=100"
+        var plain = $"retina=0&gray=0&lang=&fav=&spread=splitleftfirst&scale={DeviceSettings.Default.Scale}"
             + "&ovr=0&ovrw=1000&ovrh=2000&ovrd=1";
         var off = await client.SendAsync(LibraryRequest(factory, plain, includeScr: false));
         Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(await off.Content.ReadAsStringAsync()));
