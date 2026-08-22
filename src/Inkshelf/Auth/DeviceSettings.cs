@@ -35,10 +35,11 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // for a reader that cuts a strip off the page: at 98% the page lays out 2% smaller
     // and the cut falls outside it.
     //
-    // Stays 100 by default on purpose. The readers needing less are specific ones — a
-    // tolino beta reader keeps ~2% of the page height for itself — and correcting for
-    // them here would shrink pages on every reader that does not, invisibly. The
-    // per-device recommendations live in docs/DEVICES.md.
+    // Stays 100 by default on purpose. The readers needing less are specific ones —
+    // the tolino BETA reader keeps ~2% of the page height for itself, while the
+    // standard one on the same firmware does not — and correcting for them here would
+    // shrink pages on every reader that does not, invisibly. The per-device
+    // recommendations live in docs/DEVICES.md.
     public int Scale { get; init; } = 100;
 
     // Lowest page scale accepted. The useful values turned out to be a percent or two

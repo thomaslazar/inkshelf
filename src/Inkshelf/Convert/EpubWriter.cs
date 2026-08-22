@@ -92,15 +92,17 @@ public static class EpubWriter
     // readers honour the viewport meta above: the ones that do get 100% == the
     // declared box, and the ones that don't get their own page area instead of a box
     // a fraction of their screen. Pinning the image to {w}px shipped exactly that bug
-    // — a page in the top-left quarter of readers that ignore the meta (epos 2
-    // honours it, vision 5 and shine do not).
+    // — a page in the top-left quarter. Tolino firmware carries two readers and they
+    // differ on this: the BETA reader honours the meta, the STANDARD one ignores it
+    // and renders the image at its own pixel size. The shine's much older reader
+    // (firmware 10.5) honours nothing declared here.
     //
     // It must be max-width AND max-height against a definite-height box, i.e. the
     // pre-object-fit way of saying "contain". Scaling by width alone is what a bare
     // width:100% does, and that overflows vertically whenever the reader's page is
     // proportionally shorter than the image — the bottom of the page simply falls
-    // off. Verified on device, twice: as a cut-off bottom here, and as a blank second
-    // screen back when a fixed-px box was declared taller than the reader's page.
+    // off. Verified on device, twice: as a cut-off bottom on the shine, and as a blank
+    // second screen back when a fixed-px box was declared taller than its page.
     //
     // height:100% on the IMG stays off — that was the original trap, resolving to
     // nothing or stretching the page on an old engine. The height belongs on
