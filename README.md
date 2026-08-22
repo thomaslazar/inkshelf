@@ -246,9 +246,9 @@ All configuration is via environment variables.
 | `MaxCacheBytes`           | `5368709120` (5 GiB) | Soft cap on total EPUB cache size; oldest entries are evicted past it. |
 
 Per-device rendering settings — screen override, page scale, spreads — are not
-environment variables: they live in the app's own Settings page, per reader. For
-the values known to work on specific e-readers, and what to change when comic
-pages come out wrong, see [`docs/DEVICES.md`](docs/DEVICES.md).
+environment variables: they live in the app's own Settings page, per reader. See
+[`docs/DEVICES.md`](docs/DEVICES.md) for the values known to work on specific
+e-readers, and [`docs/FAQ.md`](docs/FAQ.md) when comic pages come out wrong.
 
 ## How it works
 
