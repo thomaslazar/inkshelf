@@ -29,18 +29,22 @@ from looking at pages on hardware.
 Inkshelf targets these built-in browsers, which are old and limited. Design
 CSS/HTML for them, not for a modern browser.
 
-### 16.2.0 — Chrome 30 (from the /diag probe)
+### 16.2.0 — Chrome 30
 
-Tolino epos 2 — `AppleWebKit/537.36 … Chrome/30.0.0.0 … Android 4.4.2`
-(a 2013-era Chromium), `Linux armv7l`. Viewport 769×953 CSS px (browser chrome
-leaves ~541 px tall), devicePixelRatio 1.875. **Treat it as Chrome 30 / ES5.**
+`Android 4.4.2 … AppleWebKit/537.36 … Chrome/30.0.0.0`, a 2013-era Chromium on
+`Linux armv7l`. **Treat it as Chrome 30 / ES5.** Probed on three devices, which
+differ only in screen metrics:
 
-### Confirmed support (epos 2 probe, 2026-07-13)
+| Device | screen | inner | dpr |
+|---|---|---|---|
+| epos 2 (2026-07-13) | 769 × 953 | — | 1.875 |
+| vision 5 (2026-08-21) | 675 × 825 | 675 × 807 | 1.875 |
+| page 2 (2026-08-21) | 573 × 702 | 573 × 684 | 1.325 |
 
-The same profile was confirmed byte for byte on a **vision 5** and a **page 2**
-(2026-08-21): both are the identical engine — `Android 4.4.2 … Chrome/30.0.0.0 …
-AppleWebKit/537.36` — differing only in screen size and pixel ratio. Treat this
-list as covering that whole generation.
+### Confirmed support — identical on all three
+
+The feature results came back byte for byte the same on all three devices, so this
+list covers the whole 16.2.0 generation rather than one model.
 
 Supported: `display:flex` (old flexbox), `calc()`, `overflow-wrap`,
 `XMLHttpRequest`, `localStorage`, `addEventListener`.
