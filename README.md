@@ -245,6 +245,11 @@ All configuration is via environment variables.
 | `MaxArchiveBytes`         | `1073741824` (1 GiB) | Reject ebook archives larger than this before conversion (decompression-bomb guard; spooled to a temp file, so it bounds disk not RAM). Raise for very large comics. |
 | `MaxCacheBytes`           | `5368709120` (5 GiB) | Soft cap on total EPUB cache size; oldest entries are evicted past it. |
 
+Per-device rendering settings — screen override, page scale, spreads — are not
+environment variables: they live in the app's own Settings page, per reader. For
+the values known to work on specific e-readers, and what to change when comic
+pages come out wrong, see [`docs/DEVICES.md`](docs/DEVICES.md).
+
 ## How it works
 
 Inkshelf is an ASP.NET Core Razor Pages app (.NET 10): Razor Pages render the
