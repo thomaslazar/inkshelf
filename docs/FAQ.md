@@ -30,11 +30,6 @@ Some older readers keep no cookies across a browser restart, and the device
 settings go with them. Nothing on the server can prevent that; keep a note of your
 override values.
 
-## A downloaded file will not open
-
-If the file is a few kilobytes and named with random digits, the reader saved an
-error page instead of the book. Check that you are still logged in and try again.
-
 ## Where do I find my device's numbers?
 
 Settings shows a *Detected resolution* line. [`DEVICES.md`](DEVICES.md) lists the
