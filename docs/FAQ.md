@@ -18,11 +18,11 @@ tested reader.
 Some readers ignore the page size a book declares, and page scale only ever
 changes that size. Use the screen override dimensions instead.
 
-## Pages are about half the size they should be
+## Pages are much smaller than the screen
 
-Retina is off, so page images are capped at the screen size divided by the pixel
-ratio. Turn it back on — on a reader that will not enlarge an image, the image has
-to arrive big enough.
+Page images are only ever shrunk to fit, never enlarged, so a reader that draws
+them at their own size shows a small page. Two settings make the images bigger:
+turn retina on, or raise the screen override.
 
 ## I have to log in again whenever I reopen the browser
 
