@@ -126,7 +126,8 @@ answer.
 | A blank screen appears between every page | The page box is slightly taller than the reader's viewport, so one page paginates into two screens | Shrink the override ~2% at a time until it goes away |
 | The right or bottom edge of a page is cut off | The page box is larger than the reader's viewport | Shrink the override, or drop page scale a few percent |
 | The bottom of every page is clipped | The beta reader honours the declared viewport, then keeps ~2% of the page height | Set page scale to 98 |
-| Page scale changes nothing | The legacy reader ignores the declared viewport, and scale only ever multiplies that viewport | Use the override dimensions instead |
+| Page scale changes nothing | The standard reader ignores the declared viewport, and scale only ever multiplies that viewport | Use the override dimensions instead |
+| Pages are about half size on the standard reader | Retina is off, so images are capped at the panel divided by the pixel ratio, and this reader never scales an image up | Turn retina on (the default) |
 | Logged out and settings lost whenever the browser is reopened | The device's cookie store does not persist cookies across a browser restart (seen on the shine) | Nothing yet — log in and re-enter the override; keep the numbers noted off-device |
 
 ## Browser engines
@@ -150,15 +151,19 @@ converted comics look:
   the bottom of every page, so **set page scale to 98 on the beta reader**. It is
   not the default: the readers that need it are specific ones, and correcting for
   them everywhere would shrink pages on readers that do not.
-- The **legacy reader** ignores the declared viewport and lays the page out in
-  its own area. Page scale has no effect there at all — it only ever multiplies
-  the declared viewport — so the override dimensions are the only knob that
-  moves anything.
+- The **standard reader** ignores the declared viewport and sizes the page from
+  the image's own pixels, ~1:1, never scaling one up. Page scale has no effect
+  there at all — it only ever multiplies the declared viewport — so the override
+  dimensions are the only knob that moves anything. **Retina must stay on**: with
+  it off, images are capped at the CSS size, i.e. the panel divided by the pixel
+  ratio, and pages come out at roughly 46% on a 1.875-ratio reader. No CSS can
+  rescue that — nothing enlarges an image this reader declined to enlarge — so it
+  is a limitation of the 16.x firmware to work around, not a setting to tune.
 
 Firmware predicts this better than the model does. Every 16.x reader tested — an
 epos 2, a vision 5 and a page 2 — behaves identically: **the beta reader clips
-the bottom of a page and wants scale 98, the legacy reader shows the full page at
-100.** 16.x is also the last release those devices receive, so the beta reader
+the bottom of a page and wants scale 98, the standard reader shows the full page
+at 100 as long as retina is on.** 16.x is also the last release those devices receive, so the beta reader
 stays permanently "beta" and both engines matter indefinitely.
 
 The shine (10.5.0) has no beta reader, and its old one honours nothing we
