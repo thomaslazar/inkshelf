@@ -6,8 +6,8 @@ themselves and the settings each one needs, see [`DEVICES.md`](DEVICES.md).
 
 ## Reader engines
 
-Firmware 16.2.0 carries two EPUB readers, and which one opens a book decides how
-converted comics look:
+Firmware 16.2.0 offers two EPUB readers, the beta one enabled by a setting on the
+device. Which is active decides how converted comics look:
 
 - **beta** — honours the viewport a fixed-layout page declares, then keeps ~2% of
   the page height for itself. Set page scale to 98 or the bottom is clipped.
@@ -16,10 +16,9 @@ converted comics look:
   stay on**: with it off, images are capped at the panel divided by the pixel
   ratio and pages come out at roughly half size.
 
-A device picks either — a vision 5 used the standard reader while an epos 2 on the
-same firmware used the beta one. 16.2.0 is the last release the epos 2, vision 5
-and page 2 receive, so both engines stay relevant. The shine (10.5.0) has neither,
-only its own older reader, which honours nothing a book declares.
+16.2.0 is the last release the epos 2, vision 5 and page 2 receive, so both
+engines stay relevant. The shine (10.5.0) has neither, only its own older reader,
+which honours nothing a book declares.
 
 The reader is not the browser and cannot be probed: Inkshelf's JavaScript runs in
 the browser, while comic layout happens in the reader app. Everything above comes
