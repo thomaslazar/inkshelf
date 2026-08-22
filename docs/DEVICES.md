@@ -82,7 +82,10 @@ left to right:
   viewport multiplied by its pixel ratio. It falls short of the panel by
   whatever the browser's chrome occupies — on the epos 2, 1787 against a
   1920-px panel, so roughly 133 px of it is browser furniture. The width lines
-  up (769 × 1.875 = 1442 for a 1440-px panel), the height cannot.
+  up (769 × 1.875 = 1442 for a 1440-px panel), the height cannot. Across the
+  four readers above the width lands within 2 px above, or 9 px below, the
+  panel, while the height comes up 94–133 px short. So expect the detected
+  width to be about right and the detected height to be a tenth low.
 - **Working settings** is what actually renders correctly, and on a reader that
   needs an override it may match neither of the first two. The shine's 1021 ×
   1236 is nowhere near its 758 × 1024 panel, because its EPUB app lays pages
