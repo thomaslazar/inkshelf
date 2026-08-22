@@ -1,19 +1,42 @@
-# Tolino e-reader browser — known limitations
+# Tolino readers and browsers
 
-> This file is about the **browser engine's** CSS/JS limits. For per-device
-> rendering settings and which readers are known to work, see
-> [`DEVICES.md`](DEVICES.md).
+Everything device-specific about the Tolino family: which EPUB reader renders a
+converted comic, and what its browser engine can and cannot do. For the devices
+themselves and the settings each one needs, see [`DEVICES.md`](DEVICES.md).
 
-Inkshelf targets the Tolino's built-in web browser, which is an old,
-limited engine. Design CSS/HTML for it, not for a modern browser.
+## Reader engines
 
-## Device (from the /diag probe)
+Firmware 16.2.0 carries two EPUB readers, and which one opens a book decides how
+converted comics look:
+
+- **beta** — honours the viewport a fixed-layout page declares, then keeps ~2% of
+  the page height for itself. Set page scale to 98 or the bottom is clipped.
+- **standard** — ignores the declared viewport and sizes pages from the image
+  itself, never enlarging one. Page scale does nothing here, and **retina must
+  stay on**: with it off, images are capped at the panel divided by the pixel
+  ratio and pages come out at roughly half size.
+
+A device picks either — a vision 5 used the standard reader while an epos 2 on the
+same firmware used the beta one. 16.2.0 is the last release the epos 2, vision 5
+and page 2 receive, so both engines stay relevant. The shine (10.5.0) has neither,
+only its own older reader, which honours nothing a book declares.
+
+The reader is not the browser and cannot be probed: Inkshelf's JavaScript runs in
+the browser, while comic layout happens in the reader app. Everything above comes
+from looking at pages on hardware.
+
+## Browser engine
+
+Inkshelf targets these built-in browsers, which are old and limited. Design
+CSS/HTML for them, not for a modern browser.
+
+### 16.2.0 — Chrome 30 (from the /diag probe)
 
 Tolino epos 2 — `AppleWebKit/537.36 … Chrome/30.0.0.0 … Android 4.4.2`
 (a 2013-era Chromium), `Linux armv7l`. Viewport 769×953 CSS px (browser chrome
 leaves ~541 px tall), devicePixelRatio 1.875. **Treat it as Chrome 30 / ES5.**
 
-## Confirmed support (epos 2 probe, 2026-07-13)
+### Confirmed support (epos 2 probe, 2026-07-13)
 
 The same profile was confirmed byte for byte on a **vision 5** and a **page 2**
 (2026-08-21): both are the identical engine — `Android 4.4.2 … Chrome/30.0.0.0 …
@@ -38,7 +61,7 @@ Practical rules:
   always applies on-device (dark variants are only for GitHub, etc.).
 - **JS:** keep it out of app pages. Any diagnostic JS must be ES5 + `XMLHttpRequest`.
 
-## Older floor: Tolino shine (probe 2026-08-21)
+### 10.5.0 — the shine, and the floor (probe 2026-08-21)
 
 `Android 2.3.4 … AppleWebKit/533.1 … Version/4.0 Mobile Safari/533.1` — the 2011
 Gingerbread stock browser, `Linux armv7l`. Two engine generations behind the
@@ -80,7 +103,6 @@ it runs `CSS.supports()` / `matchMedia` / JS feature checks, renders a table
 on-screen, and best-effort POSTs the results to `/diag` (logged server-side).
 Update the "Confirmed" list above from a real probe run.
 
-The server log is the only practical way to get a probe off an e-reader — those
-browsers cannot select or copy text — so read it there:
-`docker logs inkshelf 2>&1 | grep "Browser probe"`. The page repeats the payload
-as one block for probes run from a desktop or phone.
+The server log is the only practical way to get a probe off one of these readers —
+their browsers cannot select or copy text — so read it there:
+`docker logs inkshelf 2>&1 | grep "Browser probe"`.

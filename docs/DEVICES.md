@@ -62,36 +62,22 @@ values are measured on hardware — a spec sheet does not predict them.
   </tbody>
 </table>
 
-## Tolino reader engines
+Tolino specifics — which reader renders a comic, and what those browsers support —
+are in [`tolino.md`](tolino.md). For what to change when pages come out wrong, see
+[`FAQ.md`](FAQ.md).
 
-16.2.0 carries two EPUB readers, and which one opens a book decides how converted
-comics look:
+## Adding a device
 
-- **beta** — honours the viewport a fixed-layout page declares, then keeps ~2% of
-  the page height for itself. Set page scale to 98 or the bottom is clipped.
-- **standard** — ignores the declared viewport and sizes pages from the image
-  itself, never enlarging one. Page scale does nothing here, and **retina must
-  stay on**: with it off, images are capped at the panel divided by the pixel
-  ratio and pages come out at roughly half size.
+Open a [GitHub issue](https://github.com/thomaslazar/inkshelf/issues) whether your
+reader works or not: both are worth knowing, and a row here saves the next owner
+of that model the measuring.
 
-A device picks either — a vision 5 used the standard reader while an epos 2 on the
-same firmware used the beta one. 16.2.0 is the last release these three receive,
-so both engines stay relevant. The shine has neither, only its own older reader.
+Useful to include:
 
-## Browsers
-
-These four run browsers from 2011–2013 — Chrome 30 on 16.2.0, Android 2.3 /
-WebKit 533.1 on the shine — and that is what Inkshelf's markup targets. Their
-limits are in [`tolino-browser.md`](tolino-browser.md). None of it generalises to
-e-readers at large: a device with a current browser can drive the ABS web UI
-directly and has no need of Inkshelf.
-
-## Reporting a device
-
-Open a [GitHub issue](https://github.com/thomaslazar/inkshelf/issues), working or
-not — a row here saves the next owner of that model the measuring. Useful to
-include: the model and firmware, the *Detected resolution* line from Settings, and
-the override and page scale that work.
+- the model and firmware version
+- the *Detected resolution* line from Settings
+- the override and page scale that work, if any
+- anything that renders wrong, and what you changed to fix it
 
 For a browser capability probe, open `/diag.html` on the device. It reports to the
 server, which is how you get the result off a reader that cannot copy text:
@@ -99,5 +85,3 @@ server, which is how you get the result off a reader that cannot copy text:
 ```bash
 docker logs inkshelf 2>&1 | grep "Browser probe"
 ```
-
-See [`FAQ.md`](FAQ.md) when comics render wrong.

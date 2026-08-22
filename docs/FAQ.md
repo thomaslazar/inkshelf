@@ -35,5 +35,5 @@ error page instead of the book. Check that you are still logged in and try again
 
 ## Where do I find my device's numbers?
 
-Settings shows a *Detected resolution* line. See
-[`DEVICES.md`](DEVICES.md) for the values known to work on specific readers.
+Settings shows a *Detected resolution* line. [`DEVICES.md`](DEVICES.md) lists the
+values known to work on specific readers.
