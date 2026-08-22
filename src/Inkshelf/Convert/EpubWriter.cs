@@ -88,19 +88,25 @@ public static class EpubWriter
     // device. That guarantee comes from PageImageProcessor padding every image to the
     // box, NOT from the CSS below.
     //
-    // The CSS is deliberately RELATIVE — percentages, no pixel sizes, no declared
-    // height. Only some readers honour the viewport meta above: the ones that do get
-    // 100% == the declared box, and the ones that don't get their own page area
-    // instead of a box a fraction of their screen. Pinning the image to {w}px shipped
-    // exactly that bug — a page rendering in the top-left quarter of readers that
-    // ignore the meta (epos 2 honours it, vision 5 and shine do not).
+    // The CSS is deliberately RELATIVE — percentages only, no pixel sizes. Only some
+    // readers honour the viewport meta above: the ones that do get 100% == the
+    // declared box, and the ones that don't get their own page area instead of a box
+    // a fraction of their screen. Pinning the image to {w}px shipped exactly that bug
+    // — a page in the top-left quarter of readers that ignore the meta (epos 2
+    // honours it, vision 5 and shine do not).
     //
-    // No height anywhere is load-bearing twice over: a page can never be taller than
-    // its image, so a reader cannot paginate one page into two screens; and
-    // height:100% on the img must stay off, because the body's height is auto and an
-    // old engine either resolves that to nothing or stretches the page.
+    // It must be max-width AND max-height against a definite-height box, i.e. the
+    // pre-object-fit way of saying "contain". Scaling by width alone is what a bare
+    // width:100% does, and that overflows vertically whenever the reader's page is
+    // proportionally shorter than the image — the bottom of the page simply falls
+    // off. Verified on device, twice: as a cut-off bottom here, and as a blank second
+    // screen back when a fixed-px box was declared taller than the reader's page.
+    //
+    // height:100% on the IMG stays off — that was the original trap, resolving to
+    // nothing or stretching the page on an old engine. The height belongs on
+    // html/body/div, so the percentages have something definite to resolve against.
     private static string PageXhtml(string img, int w, int h, int page) =>
-        $"<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\"/><title>Page {page}</title><meta name=\"viewport\" content=\"width={w}, height={h}\"/><style>html,body{{margin:0;padding:0}}div.page{{width:100%;overflow:hidden}}img{{display:block;width:100%;margin:0}}</style></head><body><div class=\"page\"><img src=\"img/{img}\" alt=\"\"/></div></body></html>";
+        $"<?xml version=\"1.0\" encoding=\"utf-8\"?><!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta charset=\"utf-8\"/><title>Page {page}</title><meta name=\"viewport\" content=\"width={w}, height={h}\"/><style>html,body{{margin:0;padding:0;height:100%}}div.page{{width:100%;height:100%;overflow:hidden;text-align:center}}img{{max-width:100%;max-height:100%;margin:0}}</style></head><body><div class=\"page\"><img src=\"img/{img}\" alt=\"\"/></div></body></html>";
 
     private static string Nav(int n)
     {

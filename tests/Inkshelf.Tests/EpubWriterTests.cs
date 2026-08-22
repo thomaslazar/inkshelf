@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.IO.Compression;
 using Inkshelf.Convert;
 using SixLabors.ImageSharp;
@@ -62,8 +63,16 @@ public class EpubWriterTests
         // declared height at all, so a page can never be taller than its image.
         Assert.DoesNotContain("213px", page);
         Assert.DoesNotContain("320px", page);
-        Assert.Contains("width:100%", page);
-        Assert.DoesNotContain("height:", page);
+        // "contain", the pre-object-fit way: both maxima against a definite-height
+        // box. Scaling by width alone overflows the page bottom on a reader whose
+        // page is proportionally shorter than the image.
+        Assert.Contains("max-width:100%;max-height:100%", page);
+        // The img carries MAXIMA only. An outright width or height on it is the
+        // original trap: on an old engine height:100% there resolves to nothing or
+        // stretches the page.
+        var imgRule = Regex.Match(page, @"img\{([^}]*)\}").Groups[1].Value;
+        Assert.NotEqual("", imgRule);
+        Assert.DoesNotMatch(@"(?:^|;)(?:width|height):", imgRule);
         File.Delete(outPath);
     }
 
