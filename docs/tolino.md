@@ -18,7 +18,8 @@ device. Which is active decides how converted comics look:
 
 16.2.0 is the last release the epos 2, vision 5 and page 2 receive, so both
 engines stay relevant. The shine (10.5.0) has neither, only its own older reader,
-which honours nothing a book declares.
+which supports less of what a fixed-layout book declares: it sizes pages from the
+image, so page scale has no effect and the screen override is the only knob.
 
 The reader is not the browser and cannot be probed: Inkshelf's JavaScript runs in
 the browser, while comic layout happens in the reader app. Everything above comes
