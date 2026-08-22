@@ -9,8 +9,9 @@ comic again after saving.
 
 ## The bottom of every page is clipped
 
-The reader keeps a strip of the page for itself. Drop the page scale a couple of
-percent; 98 is usually enough.
+The reader keeps a strip of the page for itself. Drop the page scale until the
+clipping stops. [`DEVICES.md`](DEVICES.md) lists the value that works on each
+tested reader.
 
 ## Page scale seems to do nothing
 
