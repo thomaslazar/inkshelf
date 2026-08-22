@@ -31,20 +31,15 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // wastes half the screen, and most readers would rather have two pages.
     public SpreadMode Spread { get; init; } = SpreadMode.SplitLeftFirst;
 
-    // Page scale in PERCENT (100 = pages fill the declared viewport). The fix for a
-    // reader that cuts a strip off the page: at 98% the page lays out 2% smaller and
-    // the cut falls outside it.
+    // Page scale in PERCENT (100 = pages fill the declared viewport). The manual fix
+    // for a reader that cuts a strip off the page: at 98% the page lays out 2% smaller
+    // and the cut falls outside it.
     //
-    // Defaults to 98, not 100, because of how the two tolino reader engines differ.
-    // The beta reader honours the declared viewport but keeps ~2% of the page height
-    // for itself, so at 100 the bottom of every page is clipped. The legacy reader
-    // ignores the declared viewport entirely and lays the page out in its own area,
-    // where this knob has no effect at all. So 98 fixes the first and costs the
-    // second nothing — measured on an epos 2 and a vision 5, whose firmware (16.2.0)
-    // is the last they will ever get.
-    //
-    // Still a knob: a reader that honours the viewport exactly wants 100.
-    public int Scale { get; init; } = 98;
+    // Stays 100 by default on purpose. The readers needing less are specific ones — a
+    // tolino beta reader keeps ~2% of the page height for itself — and correcting for
+    // them here would shrink pages on every reader that does not, invisibly. The
+    // per-device recommendations live in docs/DEVICES.md.
+    public int Scale { get; init; } = 100;
 
     // Lowest page scale accepted. The useful values turned out to be a percent or two
     // below 100 — a fixed list of coarse steps could not express them — so this is a

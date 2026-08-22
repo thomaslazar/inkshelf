@@ -93,8 +93,8 @@ public class DeviceSettingsTests
     [Fact]
     public void Serialize_emits_keyed_pairs()
     {
-        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=splitleftfirst&scale=98&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, false, "de").Serialize());
-        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=splitleftfirst&scale=98&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, true, "").Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=splitleftfirst&scale=100&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, false, "de").Serialize());
+        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=splitleftfirst&scale=100&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, true, "").Serialize());
     }
 
     [Fact]
@@ -191,7 +191,7 @@ public class DeviceSettingsTests
     public void Serialize_includes_fav()
     {
         var s = new DeviceSettings(true, false, "de") { Fav = "lib_abc" };
-        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=splitleftfirst&scale=98&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=splitleftfirst&scale=100&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
     }
 
     [Fact]
@@ -240,7 +240,7 @@ public class DeviceSettingsTests
     public void Fav_is_sanitized_on_the_way_into_the_cookie(string raw, string expected)
     {
         var s = new DeviceSettings(true, false, "") { Fav = raw };
-        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=splitleftfirst&scale=98&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
+        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=splitleftfirst&scale=100&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
     }
 
     [Fact]
