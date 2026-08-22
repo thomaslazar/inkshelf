@@ -59,19 +59,18 @@ would expect:
       <td>10.5.0</td>
       <td>758 × 1024</td>
       <td>751 × 909 @ dpr 1.325</td>
-      <td>retina on, grayscale on, <strong>override 1021 × 1236 @ ratio 1.325</strong></td>
+      <td>retina on, grayscale on, <strong>override 1120 × 1355 @ ratio 1.325</strong></td>
       <td>Usable, with caveats</td>
     </tr>
     <tr>
       <td colspan="6">
         <strong>Notes:</strong> Retains no cookies — every browser restart means
         logging in again and re-entering the override, so keep the numbers noted
-        off-device. Page scale has no effect: this reader sizes pages from the
-        image and ignores the box we declare — its reader is old enough to honour
-        nothing we declare. The layout itself is rough here
-        rather than broken — its browser predates unprefixed <code>flex</code>
-        and <code>box-sizing</code>, so rows stack and full-width fields
-        overflow slightly. Everything works; it is not pretty.
+        off-device. Its reader honours nothing we declare and sizes pages from the
+        image, so page scale has no effect and the override is the only knob. The
+        layout is rough rather than broken: its browser predates unprefixed
+        <code>flex</code> and <code>box-sizing</code>, so rows stack and
+        full-width fields overflow slightly.
       </td>
     </tr>
   </tbody>
@@ -114,17 +113,14 @@ answer.
    together: the page box keeps the comic's aspect ratio, so trimming only the
    height shrinks the width with it.
 
-   Expect to land somewhere unrelated to either published figure. On the shine
-   1120 × 1355 filled the screen but paginated every page into two, and 1021 ×
-   1236 was the first step down that cleared it.
+   Expect to land somewhere unrelated to either published figure: the shine wants
+   1120 × 1355 against a 758 × 1024 panel.
 
 ## Symptoms and what to change
 
 | Symptom | Cause | What to do |
 |---|---|---|
-| Comic pages render far too small, complete, with space around them | The reader lays out in a larger pixel space than the browser reports | Raise the override until pages fill the screen |
-| A blank screen appears between every page | The page box is slightly taller than the reader's viewport, so one page paginates into two screens | Shrink the override ~2% at a time until it goes away |
-| The right or bottom edge of a page is cut off | The page box is larger than the reader's viewport | Shrink the override, or drop page scale a few percent |
+| Comic pages render far too small, complete, with space around them | The standard reader sizes pages from the image, and the images are smaller than its page area | Raise the override until pages fill the screen |
 | The bottom of every page is clipped | The beta reader honours the declared viewport, then keeps ~2% of the page height | Set page scale to 98 |
 | Page scale changes nothing | The standard reader ignores the declared viewport, and scale only ever multiplies that viewport | Use the override dimensions instead |
 | Pages are about half size on the standard reader | Retina is off, so images are capped at the panel divided by the pixel ratio, and this reader never scales an image up | Turn retina on (the default) |
