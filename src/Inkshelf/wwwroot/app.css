@@ -68,11 +68,15 @@ nav.pager span { margin-right: 1rem; }
 /* Logo mark beside the page heading. The explicit height is needed because the
    global `img { height:auto }` rule would otherwise blow it up to full width.
    No flex `gap` on the Tolino — the icon is inline with a margin instead. */
-.page-title { margin: 0; }
+.page-title { margin: 0; float: left; }
 .title-icon { height: 1.4em; width: auto; vertical-align: -0.25em; margin-right: .4rem; }
-.page-head { display: flex; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
+/* The float/clear pairs below are the fallback for an engine with no unprefixed
+   `flex` (WebKit 533), where this would otherwise stack every control on its own
+   line. Both properties are ignored on flex items, so a modern engine is
+   unaffected; the overflow contains the floats. */
+.page-head { display: flex; align-items: center; flex-wrap: wrap; margin: 1rem 0; overflow: hidden; }
 .crumb-sep { color: #666; }
-.fav-form { margin: 0 0 0 .6rem; }
+.fav-form { margin: 0 0 0 .6rem; float: left; }
 /* Padding, not a bigger glyph: reaches a ~44px target without the star
    dominating the heading it sits next to. */
 .fav-star { border: none; background: none; cursor: pointer; font-size: 1.8rem; line-height: 1; padding: .35rem .5rem; }
@@ -89,11 +93,11 @@ nav.pager span { margin-right: 1rem; }
    share a line, so the breadcrumb row keeps a fixed shape whatever the library
    name's length. flex-basis AND width because the target engine honours the
    latter more reliably; either alone produces the break. */
-.searchbar { flex: 0 0 100%; width: 100%; -webkit-box-sizing: border-box; box-sizing: border-box; margin: .4rem 0 0; }
+.searchbar { flex: 0 0 100%; clear: both; width: 100%; -webkit-box-sizing: border-box; box-sizing: border-box; margin: .4rem 0 0; }
 .searchbar input { padding: .5rem; font: inherit; }
 /* Auto margin, so logout starts the right-hand control group and the cog sits
    beside it rather than across the header from it. */
-.logout-form { margin: 0 0 0 auto; }
+.logout-form { margin: 0 0 0 auto; float: left; }
 .tabs { margin: .5rem 0; font-weight: bold; }
 .totop { font-weight: normal; font-size: .8em; text-decoration: none; margin-left: .5rem; display: inline-block; padding: .4rem .6rem; }
 /* Exactly ONE auto margin may exist in .page-head — several would split the free
@@ -102,7 +106,7 @@ nav.pager span { margin-right: 1rem; }
    is the only control on every page. On the index, logout precedes the cog and
    takes the auto over (above), so the pair travels right together; the cog then
    needs a plain margin or there would be two. */
-.settings-link { margin-left: auto; flex: 0 0 auto; text-decoration: none; padding: .4rem; }
+.settings-link { margin-left: auto; flex: 0 0 auto; float: left; text-decoration: none; padding: .4rem; }
 .logout-form ~ .settings-link { margin-left: .4rem; }
 .home-link { text-decoration: none; }
 .app-version { margin-top: 1.5rem; color: #666; }
