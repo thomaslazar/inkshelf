@@ -97,7 +97,10 @@ nav.pager span { margin-right: 1rem; }
 .searchbar input { padding: .5rem; font: inherit; }
 /* Auto margin, so logout starts the right-hand control group and the cog sits
    beside it rather than across the header from it. */
-.logout-form { margin: 0 0 0 auto; float: left; }
+/* The gap is PADDING, not a margin: margin-left is the auto that pushes this to
+   the right under flex, and an auto margin resolves to zero on a float, so the
+   old engine would glue the button to the title. */
+.logout-form { margin: 0 0 0 auto; padding-left: .6rem; float: left; }
 .tabs { margin: .5rem 0; font-weight: bold; }
 .totop { font-weight: normal; font-size: .8em; text-decoration: none; margin-left: .5rem; display: inline-block; padding: .4rem .6rem; }
 /* Exactly ONE auto margin may exist in .page-head — several would split the free
