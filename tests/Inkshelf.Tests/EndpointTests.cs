@@ -665,4 +665,39 @@ public class EndpointTests
         var cleared = await client.PostAsync("/settings", new FormUrlEncodedContent(off));
         Assert.Contains("retina%3D0", string.Join(" ", cleared.Headers.GetValues("Set-Cookie")));
     }
+
+    // A bookmarked URL is how a device that loses its cookies every restart gets
+    // its measured override back. Opening it must write the cookie, not just
+    // render the values for one request.
+    [Fact]
+    public async Task Settings_from_the_url_are_applied_and_stored()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var res = await client.GetAsync(
+            "/settings?retina=1&gray=0&lang=&fav=&did=9c2f1a4b8e07d631&spread=rotateleft"
+            + "&scale=98&ovr=1&ovrw=1120&ovrh=1355&ovrd=1.325");
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, res.StatusCode);
+        var setCookie = res.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
+        Assert.Contains("ovrw%3D1120", setCookie);
+        Assert.Contains("ovrh%3D1355", setCookie);
+        Assert.Contains("scale%3D98", setCookie);
+
+        var html = await res.Content.ReadAsStringAsync();
+        Assert.Contains("value=\"1120\"", html);   // prefilled into the override field
+    }
+
+    [Fact]
+    public async Task A_plain_settings_page_load_does_not_write_settings()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var res = await client.GetAsync("/settings?range=1");
+
+        var setCookie = res.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
+        Assert.DoesNotContain("inkshelf_settings", setCookie);
+    }
 }

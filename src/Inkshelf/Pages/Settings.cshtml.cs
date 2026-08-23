@@ -38,7 +38,12 @@ public class SettingsModel : PageModel
 
     public void OnGet()
     {
-        Settings = DeviceSettings.Read(Request);
+        // A bookmarked URL carrying settings IS the restore mechanism for devices
+        // that lose their cookies on a browser restart: apply it and store it, so
+        // the rest of the session behaves as if the values had been typed in.
+        // Only this page honours query settings — see the spec.
+        var restored = DeviceSettings.FromQuery(Request.Query);
+        Settings = restored is { } r ? DeviceSettings.Set(Response, r) : DeviceSettings.Read(Request);
         RangeWarning = Request.Query.ContainsKey("range");
         ScaleWarning = Request.Query.ContainsKey("scalerange");
         var langs = new List<(string, string)> { ("", _loc["Automatic"]), ("en", "English") };
