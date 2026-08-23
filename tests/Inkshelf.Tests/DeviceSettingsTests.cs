@@ -2,6 +2,7 @@ using Inkshelf;
 using Inkshelf.Auth;
 using Inkshelf.Convert;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Inkshelf.Tests;
 
@@ -434,5 +435,68 @@ public class DeviceSettingsTests
 
         var on = numbers with { OverrideScreen = true };
         Assert.Equal(new ScreenOverride(800, 1000, 2), on.ActiveOverride);
+    }
+
+    // The cookie's value and a bookmark's query are the same wire format, so one
+    // parser must serve both — otherwise the two drift and a restored bookmark
+    // means something subtly different from the cookie it came from.
+    [Fact]
+    public void FromQuery_matches_the_cookie_parser_for_the_same_string()
+    {
+        var wire = new DeviceSettings(true, false, "de")
+        {
+            Fav = "lib_abc",
+            Did = "9c2f1a4b8e07d631",
+            Spread = SpreadMode.RotateLeft,
+            Scale = 98,
+            OverrideScreen = true,
+            OverrideW = 1120,
+            OverrideH = 1355,
+            OverrideDpr = 1.325,
+        }.Serialize();
+
+        var fromCookie = DeviceSettings.Read(RequestWithCookie(wire));
+        var fromQuery = DeviceSettings.FromQuery(
+            new QueryCollection(QueryHelpers.ParseQuery(wire)));
+
+        Assert.Equal(fromCookie, fromQuery);
+    }
+
+    [Fact]
+    public void FromQuery_is_null_when_no_settings_key_is_present()
+    {
+        // `range` and `scalerange` are the save page's warning markers. A URL
+        // carrying only those is not a restore and must not overwrite anything.
+        Assert.Null(DeviceSettings.FromQuery(
+            new QueryCollection(QueryHelpers.ParseQuery("range=1&scalerange=1"))));
+        Assert.Null(DeviceSettings.FromQuery(new QueryCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>())));
+    }
+
+    [Fact]
+    public void FromQuery_accepts_a_single_recognised_key_and_defaults_the_rest()
+    {
+        // Wholesale replacement: everything absent lands on the documented
+        // default, NOT on whatever the device had.
+        var s = DeviceSettings.FromQuery(
+            new QueryCollection(QueryHelpers.ParseQuery("ovrw=1120")));
+
+        Assert.NotNull(s);
+        Assert.Equal(1120, s!.OverrideW);
+        Assert.Equal(DeviceSettings.Default.Retina, s.Retina);
+        Assert.Equal(DeviceSettings.Default.Scale, s.Scale);
+        Assert.Equal(DeviceSettings.Default.Spread, s.Spread);
+    }
+
+    [Fact]
+    public void FromQuery_sanitises_hostile_values()
+    {
+        var s = DeviceSettings.FromQuery(new QueryCollection(QueryHelpers.ParseQuery(
+            "ovr=1&ovrw=99999&ovrh=1355&ovrd=abc&did=..%2F..%2Fx&scale=400")));
+
+        Assert.NotNull(s);
+        Assert.Equal(0, s!.OverrideW);          // out of range → inactive
+        Assert.Equal(0, s.OverrideDpr);          // unparseable → 0
+        Assert.Equal("", s.Did);                 // rejected, re-minted by Set
+        Assert.Equal(DeviceSettings.Default.Scale, s.Scale);
     }
 }
