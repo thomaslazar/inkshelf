@@ -73,7 +73,7 @@ Add to `tests/Inkshelf.Tests/DeviceSettingsTests.cs`. `RequestWithCookie` alread
         // carrying only those is not a restore and must not overwrite anything.
         Assert.Null(DeviceSettings.FromQuery(
             new QueryCollection(QueryHelpers.ParseQuery("range=1&scalerange=1"))));
-        Assert.Null(DeviceSettings.FromQuery(new QueryCollection(new())));
+        Assert.Null(DeviceSettings.FromQuery(new QueryCollection(new Dictionary<string, StringValues>())));
     }
 
     [Fact]
