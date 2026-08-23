@@ -93,16 +93,13 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
-- **Bookmarkable settings** — saving Settings now redirects to
-  `/settings?<the same settings as a query string>` instead of a bare
-  `/settings`, and opening a `/settings` URL that carries that query string
-  applies and stores those values before the page renders. Bookmarking the
-  landing page therefore restores every device setting — screen override,
-  page scale, spread mode, retina, grayscale, language, favourite library, and
-  the device id — so downloaded-file marks come back too. It does not restore
-  the login: the session token deliberately never travels in the URL, so a
-  device that loses its cookies still logs in again. Only `/settings` reads
-  settings from a URL; other pages ignore them.
+- **Bookmarkable settings** — a Settings page can be bookmarked to restore
+  every device setting: screen override, page scale, spread mode, retina,
+  grayscale, language, favourite library, and device id — including download
+  marks. Saving redirects to `/settings` with the settings as query parameters;
+  opening that URL applies and stores the settings on load. It does not restore
+  the login: the session token never travels in the URL, so a device that loses
+  its cookies still logs in again.
 - **Resolution override** — width, height and pixel ratio can be set by hand when
   the `scr` probe is missing, wrong, or simply not what the user wants. It takes
   precedence over the probe entirely, including when the probe is absent, which is
