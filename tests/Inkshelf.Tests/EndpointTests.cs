@@ -184,6 +184,58 @@ public class EndpointTests
         Assert.Contains("inkshelf_settings=retina%3D1%26gray%3D0", setCookie); // retina on, grayscale off
     }
 
+    // The language select must reflect what the page is RENDERING in, not what is
+    // stored. With no explicit choice the stored value is "", so without an option
+    // carrying that value nothing is selected, the browser shows the first option —
+    // English — and saving any other setting posts it, pinning the language.
+    [Fact]
+    public async Task Settings_marks_automatic_selected_when_no_language_was_chosen()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var req = new HttpRequestMessage(HttpMethod.Get, "/settings");
+        req.Headers.Add("Accept-Language", "de-DE,de;q=0.9");
+        var html = await (await client.SendAsync(req)).Content.ReadAsStringAsync();
+
+        Assert.Contains("Einstellungen", html);                       // rendered in German
+        Assert.Contains("<option value=\"\" selected", html);          // …and says so
+        Assert.DoesNotContain("<option value=\"en\" selected", html);
+    }
+
+    [Fact]
+    public async Task Settings_post_with_automatic_leaves_the_language_unset()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var token = await GetAntiforgeryTokenAsync(client);
+        var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["retina"] = "on",
+            ["lang"] = "",   // what the Automatic option posts
+        });
+
+        var response = await client.PostAsync("/settings", content);
+
+        var setCookie = response.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
+        Assert.Contains("lang%3D%26", setCookie);   // lang= , i.e. still header-resolved
+    }
+
+    // Two submits, top and bottom: the form is longer than every tested device's
+    // screen, so a one-field change should not cost a scroll to the end.
+    [Fact]
+    public async Task Settings_offers_save_twice()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+
+        var html = await (await client.GetAsync("/settings")).Content.ReadAsStringAsync();
+
+        Assert.Equal(2, Regex.Matches(html, "type=\"submit\"").Count);
+    }
+
     [Fact]
     public async Task Settings_post_without_antiforgery_returns_bad_request()
     {

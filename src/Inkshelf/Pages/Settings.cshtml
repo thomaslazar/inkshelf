@@ -16,6 +16,10 @@
 
 <form class="settings-form" method="post" action="/settings">
     @Html.AntiForgeryToken()
+    @* Two submits, top and bottom: the form is longer than every device's screen,
+       so a one-field change should not cost a scroll to the end. Either button
+       submits the whole form; no sticky bar because these engines lack it. *@
+    <p class="settings-actions"><button type="submit" class="btn">@L["Save"]</button></p>
     <p>
         <label>
             <input type="checkbox" name="retina" value="on" @(Model.Settings.Retina ? "checked" : "") />
@@ -85,6 +89,10 @@
     <p>
         <label>@L["Language"]<br />
             <select name="lang">
+                @* The empty code means "follow Accept-Language" — the state a device is
+                   in until someone picks a language. Without it in the list nothing
+                   matches, the browser shows the first option, and saving any other
+                   setting silently pins that language. *@
                 @foreach (var (code, name) in Model.AvailableLanguages)
                 {
                     <option value="@code" selected="@(code == Model.CurrentLang)">@name</option>

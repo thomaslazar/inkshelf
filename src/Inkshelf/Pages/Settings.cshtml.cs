@@ -7,14 +7,19 @@ namespace Inkshelf.Pages;
 public class SettingsModel : PageModel
 {
     private readonly LocalizationCatalog _catalog;
-    public SettingsModel(LocalizationCatalog catalog) => _catalog = catalog;
+    private readonly Localizer _loc;
+    public SettingsModel(LocalizationCatalog catalog, Localizer loc)
+    { _catalog = catalog; _loc = loc; }
 
     public DeviceSettings Settings { get; private set; } = DeviceSettings.Default;
 
     // The raw device probe, shown as a read-only readout so "retina" has context.
     public string? DetectedScreen { get; private set; }
 
-    // English first (empty catalog = keys), then each loaded language.
+    // "" (follow Accept-Language) first, then English (empty catalog = keys), then
+    // each loaded language. The empty code has to be offered: without it a device
+    // that never chose a language has nothing selected, so the browser shows the
+    // first option and saving any other setting pins that language.
     public IReadOnlyList<(string Code, string Name)> AvailableLanguages { get; private set; } = [];
     public string CurrentLang => Settings.Lang;
 
@@ -36,7 +41,7 @@ public class SettingsModel : PageModel
         Settings = DeviceSettings.Read(Request);
         RangeWarning = Request.Query.ContainsKey("range");
         ScaleWarning = Request.Query.ContainsKey("scalerange");
-        var langs = new List<(string, string)> { ("en", "English") };
+        var langs = new List<(string, string)> { ("", _loc["Automatic"]), ("en", "English") };
         foreach (var code in _catalog.Languages.OrderBy(c => c))
             langs.Add((code, _catalog.DisplayName(code)));
         AvailableLanguages = langs;
