@@ -179,9 +179,48 @@ public class EndpointTests
         var response = await client.PostAsync("/settings", content);
 
         Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/settings", response.Headers.Location?.OriginalString);
+        Assert.StartsWith("/settings?", response.Headers.Location?.OriginalString);
         var setCookie = response.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
         Assert.Contains("inkshelf_settings=retina%3D1%26gray%3D0", setCookie); // retina on, grayscale off
+    }
+
+    // The page you land on after saving is the page to bookmark, so the redirect
+    // has to carry the values — and following it must reproduce them, which is
+    // what makes the bookmark work at all.
+    [Fact]
+    public async Task Saving_redirects_to_a_url_that_restores_the_same_settings()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var token = await GetAntiforgeryTokenAsync(client);
+        var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["retina"] = "on",
+            ["lang"] = "de",
+            ["scale"] = "98",
+            ["ovr"] = "on",
+            ["ovrw"] = "1120",
+            ["ovrh"] = "1355",
+            ["ovrd"] = "1.325",
+        });
+
+        var res = await client.PostAsync("/settings", content);
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
+        var location = res.Headers.Location!.OriginalString;
+        Assert.StartsWith("/settings?", location);
+        Assert.Contains("ovrw=1120", location);
+        Assert.Contains("ovrh=1355", location);
+        Assert.Contains("scale=98", location);
+        Assert.Contains("lang=de", location);
+
+        // Following it restores the same values on a client with no cookies.
+        using var fresh = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var restored = await fresh.GetAsync(location);
+        Assert.Equal(System.Net.HttpStatusCode.OK, restored.StatusCode);
+        Assert.Contains("value=\"1120\"", await restored.Content.ReadAsStringAsync());
     }
 
     // The language select must reflect what the page is RENDERING in, not what is
@@ -522,7 +561,9 @@ public class EndpointTests
         }));
 
         Assert.Equal(System.Net.HttpStatusCode.Redirect, saved.StatusCode);
-        Assert.Equal("/settings?range=1", saved.Headers.Location?.ToString());
+        var location = saved.Headers.Location?.ToString();
+        Assert.StartsWith("/settings?", location);
+        Assert.Contains("&range=1", location);
     }
 
     [Fact]
@@ -542,7 +583,10 @@ public class EndpointTests
             ["ovrd"] = "1.5",
         }));
 
-        Assert.Equal("/settings", saved.Headers.Location?.ToString());
+        var location = saved.Headers.Location?.ToString();
+        Assert.StartsWith("/settings?", location);
+        Assert.DoesNotContain("&range=1", location);
+        Assert.DoesNotContain("&scalerange=1", location);
     }
 
     [Fact]
@@ -561,16 +605,19 @@ public class EndpointTests
             ["lang"] = "en",
         }));
 
-        Assert.Equal("/settings", saved.Headers.Location?.ToString());
+        var location = saved.Headers.Location?.ToString();
+        Assert.StartsWith("/settings?", location);
+        Assert.DoesNotContain("&range=1", location);
+        Assert.DoesNotContain("&scalerange=1", location);
     }
 
     [Theory]
-    [InlineData("98", "/settings")]            // the reason this became a free number
-    [InlineData("50", "/settings")]            // the floor is accepted
-    [InlineData("49", "/settings?scalerange=1")]
-    [InlineData("101", "/settings?scalerange=1")]
-    [InlineData("abc", "/settings?scalerange=1")]
-    public async Task An_out_of_range_page_scale_says_so(string scale, string expected)
+    [InlineData("98", false)]            // the reason this became a free number
+    [InlineData("50", false)]            // the floor is accepted
+    [InlineData("49", true)]
+    [InlineData("101", true)]
+    [InlineData("abc", true)]
+    public async Task An_out_of_range_page_scale_says_so(string scale, bool expectWarning)
     {
         // It used to be a dropdown, so out-of-range was impossible. As a free number it
         // reverts to 100 when rejected, which looks like the field ignoring you.
@@ -585,7 +632,10 @@ public class EndpointTests
             ["scale"] = scale,
         }));
 
-        Assert.Equal(expected, saved.Headers.Location?.ToString());
+        var location = saved.Headers.Location?.ToString();
+        Assert.StartsWith("/settings?", location);
+        if (expectWarning) Assert.Contains("&scalerange=1", location);
+        else Assert.DoesNotContain("&scalerange=1", location);
     }
 
     [Fact]
@@ -624,7 +674,10 @@ public class EndpointTests
             ["ovrd"] = "1.5",
         }));
 
-        Assert.Equal("/settings?range=1&scalerange=1", saved.Headers.Location?.ToString());
+        var location = saved.Headers.Location?.ToString();
+        Assert.StartsWith("/settings?", location);
+        Assert.Contains("&range=1", location);
+        Assert.Contains("&scalerange=1", location);
     }
 
     [Theory]
