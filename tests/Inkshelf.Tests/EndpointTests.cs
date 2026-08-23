@@ -742,6 +742,22 @@ public class EndpointTests
         Assert.Contains("value=\"1120\"", html);   // prefilled into the override field
     }
 
+    // Download marks are keyed to the device id, so a bookmarked URL that omits it
+    // must still land on a real one — an empty id keys this device's marks to
+    // nothing at all.
+    [Fact]
+    public async Task A_restore_without_a_device_id_mints_one()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var res = await client.GetAsync("/settings?ovr=1&ovrw=1120&ovrh=1355&ovrd=1.325");
+
+        var setCookie = res.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
+        var minted = System.Text.RegularExpressions.Regex.Match(setCookie, "did%3D([0-9a-f]{16})").Groups[1].Value;
+        Assert.NotEqual("", minted);
+    }
+
     [Fact]
     public async Task A_plain_settings_page_load_does_not_write_settings()
     {

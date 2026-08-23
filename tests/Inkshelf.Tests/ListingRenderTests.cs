@@ -488,4 +488,24 @@ public class ListingRenderTests
         var off = await client.SendAsync(LibraryRequest(factory, plain, includeScr: false));
         Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(await off.Content.ReadAsStringAsync()));
     }
+
+    // Query settings are honoured on /settings ONLY. A link is allowed to change
+    // settings on the page where changing settings is the point — nowhere else,
+    // or any URL anyone sends becomes a silent settings rewrite.
+    [Fact]
+    public async Task A_listing_url_carrying_settings_keys_ignores_them()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var req = LibraryRequest(factory, settings: null);
+        req.RequestUri = new Uri($"/library/{LibId}?ovr=1&ovrw=1120&ovrh=1355&ovrd=1.325", UriKind.Relative);
+        var res = await client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var setCookie = res.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
+        Assert.DoesNotContain("ovrw%3D1120", setCookie);
+    }
 }
