@@ -40,6 +40,13 @@ The recognised keys are exactly the ones `Serialize` writes — `retina`, `gray`
 nothing else. `range` and `scalerange` are warning markers, not settings, so a URL
 carrying only those is not a restore.
 
+**The restart flow.** `/settings` needs no login — it reads cookies and the
+locale catalog, never ABS — so opening the bookmark lands straight on the settings
+page with the values applied. Logging in happens on the next page that needs the
+library, and it does not disturb the settings cookie just written. Either order
+works: bookmark then login, or login then bookmark. The restart therefore costs a
+login and nothing else.
+
 **Wholesale replacement.** Absent keys fall to their documented defaults rather
 than keeping whatever the device had. Merge semantics would make the same URL
 mean different things on different devices; replacement makes a bookmark a
