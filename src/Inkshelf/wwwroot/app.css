@@ -24,21 +24,26 @@ img { max-width: 100%; height: auto; }
 /* No flex `gap` / `object-fit` — the Tolino's browser ignores both. Use a
    fixed square cover slot (so text always starts at the same left offset) with
    a margin for spacing; the image keeps its natural ratio via max-width/height. */
-.item { display: flex; align-items: flex-start; padding: .5rem 0; border-bottom: 1px solid #ccc; }
+/* float/overflow here are the fallback for an engine with no unprefixed `flex`
+   (WebKit 533): float and clear are ignored on flex items, so a modern engine
+   uses the flex row and an old one floats the cover with .body beside it. The
+   overflow on the container contains that float, keeping the row's border under
+   the taller of the two. */
+.item { display: flex; align-items: flex-start; padding: .5rem 0; border-bottom: 1px solid #ccc; overflow: hidden; }
 /* inline-block, not the default inline: the flex item is the wrapping
    .cover-link anchor, so .cover is an ordinary inline span and width/height are
    ignored on those. Without this the slot collapses to the content width — a
    narrow strip for a placeholder letter, nothing at all for a cover that fails
    to load — and the "text always starts at the same left offset" promise above
    silently doesn't hold. */
-.item .cover-link { flex: 0 0 auto; }
+.item .cover-link { flex: 0 0 auto; float: left; }
 .item .cover { display: inline-block; width: 72px; height: 72px; margin-right: 1rem; text-align: center; }
 .item .cover img { max-width: 72px; max-height: 72px; width: auto; height: auto; }
 /* Placeholder shown when an item has no cover (title initial in a grey box). */
 .item .cover.placeholder { background: #eee; color: #999; font-size: 2rem; line-height: 72px; }
 /* No max-width cap and no fixed side column any more: the actions live on their
    own line inside .body, so nothing sits beside the title to collide with. */
-.item .body { flex: 1 1 auto; min-width: 0; }
+.item .body { flex: 1 1 auto; min-width: 0; overflow: hidden; }
 nav.pager span { margin-right: 1rem; }
 .sortbar { margin: .5rem 0; }
 .sortbar-label { margin-right: .3rem; }
@@ -63,32 +68,39 @@ nav.pager span { margin-right: 1rem; }
 /* Logo mark beside the page heading. The explicit height is needed because the
    global `img { height:auto }` rule would otherwise blow it up to full width.
    No flex `gap` on the Tolino — the icon is inline with a margin instead. */
-.page-title { margin: 0; }
+.page-title { margin: 0; float: left; }
 .title-icon { height: 1.4em; width: auto; vertical-align: -0.25em; margin-right: .4rem; }
-.page-head { display: flex; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
+/* The float/clear pairs below are the fallback for an engine with no unprefixed
+   `flex` (WebKit 533), where this would otherwise stack every control on its own
+   line. Both properties are ignored on flex items, so a modern engine is
+   unaffected; the overflow contains the floats. */
+.page-head { display: flex; align-items: center; flex-wrap: wrap; margin: 1rem 0; overflow: hidden; }
 .crumb-sep { color: #666; }
-.fav-form { margin: 0 0 0 .6rem; }
+.fav-form { margin: 0 0 0 .6rem; float: left; }
 /* Padding, not a bigger glyph: reaches a ~44px target without the star
    dominating the heading it sits next to. */
 .fav-star { border: none; background: none; cursor: pointer; font-size: 1.8rem; line-height: 1; padding: .35rem .5rem; }
 .logo { text-align: center; }
 .logo img { max-width: 320px; width: 60%; height: auto; }
 .login-form { max-width: 320px; margin: 0 auto; text-align: center; }
-.login-form input { width: 100%; box-sizing: border-box; padding: .3rem; }
+.login-form input { width: 100%; -webkit-box-sizing: border-box; box-sizing: border-box; padding: .3rem; }
 /* Log in and the SSO button are the same kind of action, so they get the same
    shape: both full width, which also stops the longer SSO label making them look
    like two different controls. display:block because a <button> still
    shrink-to-fits with width alone on the target engine. */
-.login-form .btn { display: block; width: 100%; box-sizing: border-box; text-align: center; }
+.login-form .btn { display: block; width: 100%; -webkit-box-sizing: border-box; box-sizing: border-box; text-align: center; }
 /* Always its own line, never "it happens to wrap": a full-width flex item can't
    share a line, so the breadcrumb row keeps a fixed shape whatever the library
    name's length. flex-basis AND width because the target engine honours the
    latter more reliably; either alone produces the break. */
-.searchbar { flex: 0 0 100%; width: 100%; box-sizing: border-box; margin: .4rem 0 0; }
+.searchbar { flex: 0 0 100%; clear: both; width: 100%; -webkit-box-sizing: border-box; box-sizing: border-box; margin: .4rem 0 0; }
 .searchbar input { padding: .5rem; font: inherit; }
 /* Auto margin, so logout starts the right-hand control group and the cog sits
    beside it rather than across the header from it. */
-.logout-form { margin: 0 0 0 auto; }
+/* The gap is PADDING, not a margin: margin-left is the auto that pushes this to
+   the right under flex, and an auto margin resolves to zero on a float, so the
+   old engine would glue the button to the title. */
+.logout-form { margin: 0 0 0 auto; padding-left: .6rem; float: left; }
 .tabs { margin: .5rem 0; font-weight: bold; }
 .totop { font-weight: normal; font-size: .8em; text-decoration: none; margin-left: .5rem; display: inline-block; padding: .4rem .6rem; }
 /* Exactly ONE auto margin may exist in .page-head — several would split the free
@@ -97,7 +109,7 @@ nav.pager span { margin-right: 1rem; }
    is the only control on every page. On the index, logout precedes the cog and
    takes the auto over (above), so the pair travels right together; the cog then
    needs a plain margin or there would be two. */
-.settings-link { margin-left: auto; flex: 0 0 auto; text-decoration: none; padding: .4rem; }
+.settings-link { margin-left: auto; flex: 0 0 auto; float: left; text-decoration: none; padding: .4rem; }
 .logout-form ~ .settings-link { margin-left: .4rem; }
 .home-link { text-decoration: none; }
 .app-version { margin-top: 1.5rem; color: #666; }
@@ -140,11 +152,11 @@ nav.pager span { margin-right: 1rem; }
 .read-form .read-btn { text-align: left; }
 
 /* Item detail page — same defensive rules as .item (no flex gap / object-fit). */
-.detail { display: flex; align-items: flex-start; margin: 1rem 0; }
-.detail-cover { flex: 0 0 160px; width: 160px; margin-right: 1rem; text-align: center; }
+.detail { display: flex; align-items: flex-start; margin: 1rem 0; overflow: hidden; }
+.detail-cover { flex: 0 0 160px; float: left; width: 160px; margin-right: 1rem; text-align: center; }
 .detail-cover img { max-width: 160px; max-height: 240px; width: auto; height: auto; }
 .cover-link { text-decoration: none; }
-.detail-meta { flex: 1 1 auto; min-width: 0; }
+.detail-meta { flex: 1 1 auto; min-width: 0; overflow: hidden; }
 .detail-meta h2 { margin: 0 0 .25rem; }
 .detail-meta p { margin: .25rem 0; }
 .subtitle { color: #666; }
@@ -177,7 +189,7 @@ nav.pager span { margin-right: 1rem; }
        the full width keeps neighbours unambiguous. width+border-box because a
        <button> with display:block still shrink-to-fits; only the <a>s would
        stretch otherwise, and Mark read would end up the odd one out. */
-    .item .actions .btn { display: block; width: 100%; box-sizing: border-box; margin-right: 0; }
+    .item .actions .btn { display: block; width: 100%; -webkit-box-sizing: border-box; box-sizing: border-box; margin-right: 0; }
     .item .actions .read-form, .item .actions .convert { display: block; }
     .detail-cover { flex: 0 0 96px; width: 96px; }
     .detail-cover img { max-width: 96px; max-height: 144px; }
