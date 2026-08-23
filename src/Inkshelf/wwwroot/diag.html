@@ -32,7 +32,9 @@ from.</p>
   var rows = [];
   function add(name, ok) { rows.push([name, ok]); }
 
-  var cssOk = (typeof window.CSS !== 'undefined' && CSS.supports);
+  /* Coerced to a boolean: as the bare function it rendered as source in the table
+     and JSON.stringify dropped the key from the reported payload altogether. */
+  var cssOk = !!(typeof window.CSS !== 'undefined' && CSS.supports);
   function css(prop, val) {
     if (!cssOk) return null;
     try { return CSS.supports(prop, val); } catch (e) { return null; }
@@ -59,6 +61,70 @@ from.</p>
   add('gap in flex (prop)', css('gap', '1rem'));
   add('overflow-wrap', css('overflow-wrap', 'break-word'));
   add('media prefers-color-scheme', mq('(prefers-color-scheme: dark)'));
+
+  /* MEASURED, not asked. CSS.supports() is missing on the oldest engines — exactly
+     the ones whose answers matter — so render the declaration and read the geometry
+     back. Each test styles a throwaway element inside an off-screen host and
+     compares what the engine actually did. */
+  var meas = {};
+  function measure(name, fn) {
+    var host = document.createElement('div');
+    host.style.cssText = 'position:absolute;left:-9999px;top:0;width:400px;';
+    document.body.appendChild(host);
+    var r;
+    try { r = fn(host); } catch (e) { r = null; }
+    if (host.parentNode) { host.parentNode.removeChild(host); }
+    meas[name] = r;
+    add('measured ' + name, r);
+  }
+
+  /* Both spellings, because that is what the stylesheet ships: 100 means the
+     padding came out of the width, 120 means it did not. */
+  measure('box-sizing', function (h) {
+    h.innerHTML = '<div id="m-bs" style="width:100px;padding:10px;'
+                + '-webkit-box-sizing:border-box;box-sizing:border-box"></div>';
+    return document.getElementById('m-bs').offsetWidth === 100;
+  });
+
+  /* Two children side by side means flex; stacked means it fell back to block. */
+  measure('display: flex', function (h) {
+    h.innerHTML = '<div style="display:flex">'
+                + '<div id="m-f1" style="width:50px">a</div>'
+                + '<div id="m-f2" style="width:50px">b</div></div>';
+    var a = document.getElementById('m-f1'), b = document.getElementById('m-f2');
+    return a.offsetTop === b.offsetTop && b.offsetLeft > a.offsetLeft;
+  });
+
+  /* The stylesheet relies on this: a float on a flex item must be ignored, so one
+     rule can serve both engines. If this ever reads "no" on a modern browser, the
+     row and header fallbacks are broken. */
+  measure('float ignored inside flex', function (h) {
+    h.innerHTML = '<div style="display:flex">'
+                + '<div id="m-l1" style="float:right;width:50px">a</div>'
+                + '<div id="m-l2" style="width:50px">b</div></div>';
+    return document.getElementById('m-l1').offsetLeft
+         < document.getElementById('m-l2').offsetLeft;
+  });
+
+  /* An unsupported unit makes the declaration invalid, so the box falls back to
+     auto width and fills the 400px host. */
+  measure('rem unit', function (h) {
+    h.innerHTML = '<div id="m-rem" style="width:10rem"></div>';
+    var w = document.getElementById('m-rem').offsetWidth;
+    return w > 0 && w < 400;
+  });
+
+  measure('calc()', function (h) {
+    h.innerHTML = '<div id="m-calc" style="width:calc(50px + 50px)"></div>';
+    return document.getElementById('m-calc').offsetWidth === 100;
+  });
+
+  /* Self-check: where both methods exist they must agree, or the measurements are
+     wrong rather than the device being interesting. */
+  add('measured agrees with CSS.supports()', cssOk
+    ? (meas['display: flex'] === css('display', 'flex')
+       && meas['calc()'] === css('width', 'calc(1px + 1px)'))
+    : null);
 
   add('JS: Promise', typeof Promise !== 'undefined');
   add('JS: fetch', typeof fetch !== 'undefined');

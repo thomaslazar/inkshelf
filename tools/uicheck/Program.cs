@@ -83,6 +83,15 @@ await Check("settings-en", null, "/settings",
                   "Override screen resolution", "Pixel ratio", "Automatic"],
     mustNotContain: []);
 
+// The capability probe. Its measured rows are what an engine with no CSS.supports()
+// gets asked instead, so a headless run is the only place their agreement with
+// CSS.supports() can be checked at all — on a device, one of the two is missing.
+await Check("diag", null, "/diag.html",
+    mustContain: ["measured box-sizing", "measured display: flex",
+                  "measured float ignored inside flex", "measured calc()",
+                  "measured agrees with CSS.supports()"],
+    mustNotContain: []);
+
 // --- Authenticated pages (opt-in; run.sh brings up + seeds the local ABS) ---
 // These are where the real chrome lives — listings, item detail (Kategorien /
 // Schlagwörter / Erzähler), converted — plus a live Convert-button click that

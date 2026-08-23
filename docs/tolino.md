@@ -60,34 +60,38 @@ Practical rules:
 - **Spacing:** use `margin`/`padding`, never flex/grid `gap`.
 - **Layout:** flexbox is fine (old syntax); **no CSS grid**.
 - **Images:** `max-width`/`max-height` + a fixed wrapper box; **no `object-fit`**.
-- **No CSS variables, no `clamp()`/`min()`/`max()`** — use fixed values or `calc()`.
+- **No CSS variables, no `clamp()`/`min()`/`max()`, and no `calc()` either** —
+  `calc()` works on 16.2.0 but is measured absent on 10.5.0, so use fixed values.
 - **Dark mode:** `prefers-color-scheme` never matches, so the light/black theme
   always applies on-device (dark variants are only for GitHub, etc.).
 - **JS:** keep it out of app pages. Any diagnostic JS must be ES5 + `XMLHttpRequest`.
 
-### 10.5.0 — the shine, and the floor (probe 2026-08-21)
+### 10.5.0 — the shine, and the floor (probes 2026-08-21, measured 2026-08-23)
 
 `Android 2.3.4 … AppleWebKit/533.1 … Version/4.0 Mobile Safari/533.1` — the 2011
 Gingerbread stock browser, `Linux armv7l`. Two engine generations behind the
 epos 2, and it is the floor that matters:
 
-- **No `CSS.supports()`**, so CSS capabilities cannot be feature-detected there
-  at all. Every CSS row in its probe came back unknown, not supported. Nothing
-  in the epos 2 list above — flexbox, `calc()`, `overflow-wrap` — can be
-  assumed here.
+- **No `CSS.supports()`**, so nothing here can be feature-detected; the
+  measured probe answers instead (2026-08-23):
+  - **`box-sizing` yes** — with the `-webkit-` prefix alongside, which is what
+    the stylesheet ships.
+  - **`display: flex` no** — rows and the header rely on float fallbacks here.
+  - **`rem` yes** — which the stylesheet leans on heavily.
+  - **`calc()` no.** Supported on 16.2.0, absent here. Use fixed values.
+  Nothing in the epos 2 list above can be assumed on this engine.
 - **JS confirmed absent:** `Promise`, `fetch`, `Array.prototype.includes`,
   `const`/`let`, arrow functions, template literals. So the ES5 rule is a hard
   floor, not a preference.
 - **JS confirmed present:** `XMLHttpRequest`, `localStorage`,
   `addEventListener` — which is exactly what the convert poll script uses.
 
-Its screen metrics are not trustworthy. The probe page reported
-`screen 749×906`, `innerWidth == screenWidth` (no chrome subtracted) and
-`devicePixelRatio 1.325` — multiply those out and you get 992×1200 for a
-758×1024 panel. The app's own probe on the same device yields 567×686 CSS,
-i.e. the 751×909 the settings readout shows. Same viewport meta on both pages,
-so the discrepancy is the engine's, not ours. Treat `screen.*` on this class of
-device as indicative only, and calibrate against what pages actually look like
+Its screen metrics need care. It reports `screen 567×686` with
+`innerWidth == screenWidth` — no chrome subtracted — at `devicePixelRatio 1.325`,
+which is the 751×909 the settings readout shows for a 758×1024 panel. An earlier
+run of the same page reported `screen 749×906` instead and did not reproduce, so
+treat a single reading as indicative and calibrate against what pages actually
+look like
 — see [`DEVICES.md`](DEVICES.md).
 
 ## Guidance
