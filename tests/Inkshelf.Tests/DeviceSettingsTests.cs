@@ -488,6 +488,19 @@ public class DeviceSettingsTests
     }
 
     [Fact]
+    public void FromQuery_lands_on_the_default_for_a_duplicated_flag_key()
+    {
+        // StringValues.ToString() joins a duplicated key with a comma ("1,1"), which
+        // must not compare as anything other than the documented default — every
+        // other garbled value in Parse falls back the same way.
+        var s = DeviceSettings.FromQuery(
+            new QueryCollection(QueryHelpers.ParseQuery("retina=1&retina=1")));
+
+        Assert.NotNull(s);
+        Assert.Equal(DeviceSettings.Default.Retina, s!.Retina);
+    }
+
+    [Fact]
     public void FromQuery_sanitises_hostile_values()
     {
         var s = DeviceSettings.FromQuery(new QueryCollection(QueryHelpers.ParseQuery(

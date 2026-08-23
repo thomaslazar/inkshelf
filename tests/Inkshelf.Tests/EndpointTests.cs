@@ -211,9 +211,12 @@ public class EndpointTests
         Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
         var location = res.Headers.Location!.OriginalString;
         Assert.StartsWith("/settings?", location);
-        Assert.Contains("ovrw=1120", location);
-        Assert.Contains("ovrh=1355", location);
-        Assert.Contains("scale=98", location);
+        // Anchored on both sides: Serialize's fixed key order puts scale right
+        // before ovr=1, and ovrw/ovrh right before the next key, so an unanchored
+        // Contains would prefix-match a differently-valued key (e.g. "scale=980").
+        Assert.Contains("&scale=98&", location);
+        Assert.Contains("&ovrw=1120&", location);
+        Assert.Contains("&ovrh=1355&", location);
         Assert.Contains("lang=de", location);
 
         // Following it restores the same values on a client with no cookies.
@@ -740,6 +743,22 @@ public class EndpointTests
 
         var html = await res.Content.ReadAsStringAsync();
         Assert.Contains("value=\"1120\"", html);   // prefilled into the override field
+    }
+
+    // A restored override can be out of range too (a typo'd digit in a hand-typed
+    // bookmark) — it must warn the same way a POST-time rejection does, not tick the
+    // override and silently show the probe's numbers instead.
+    [Fact]
+    public async Task A_restored_out_of_range_override_still_warns()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var res = await client.GetAsync("/settings?ovr=1&ovrw=99999&ovrh=1355&ovrd=1.325");
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, res.StatusCode);
+        var html = await res.Content.ReadAsStringAsync();
+        Assert.Contains("Not used: width and height must be between 1 and 4096, and the ratio between 1 and 4.", html);
     }
 
     // Download marks are keyed to the device id, so a bookmarked URL that omits it

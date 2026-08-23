@@ -1,8 +1,6 @@
 using Inkshelf.Convert;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Primitives;
 using System.Globalization;
 using System.Security.Cryptography;
 
@@ -137,8 +135,11 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
 
     // An absent key means "not specified", which must land on the DOCUMENTED
     // default — retina defaults ON, so a plain `== "1"` would silently flip it off.
+    // v[0], not v.ToString(): StringValues.ToString() joins a duplicated key
+    // ("retina=1&retina=1") with a comma, so "1,1" would compare false and flip
+    // the flag off instead of landing on the default like every other garbled value.
     private static bool Flag(IQueryCollection q, string key, bool fallback) =>
-        q.TryGetValue(key, out var v) ? v.ToString() == "1" : fallback;
+        q.TryGetValue(key, out var v) && v.Count > 0 ? v[0] == "1" : fallback;
 
     // Two 0/1 flags then an optional language code, e.g. "10de". Anything
     // malformed → Default.

@@ -119,3 +119,16 @@ An incidental benefit on a device that cannot copy text: the measured override
 numbers are legible in the address bar, so they can be read off the screen
 instead of kept on paper. That is the reason for the flat key format over an
 opaque blob.
+
+The restore GET is not CSRF-protected while the POST is. A cross-origin image
+tag can scramble a device's render settings and re-mint its device id.
+Accepted: the only usable defence is a `Sec-Fetch-Dest` header that the old
+e-reader engines this feature exists for do not send, so honouring
+header-less requests would mean protecting everyone except the vulnerable
+client. Impact is annoyance, recoverable with one Save; nothing authorising
+is exposed and no response is read.
+
+After a restore you are sitting on the settings URL, so a Back-button return
+to an older bookmarked URL re-applies those older settings. That follows
+directly from "a URL carrying settings means these are my settings" and is
+intended.
