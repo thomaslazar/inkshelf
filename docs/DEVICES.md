@@ -52,8 +52,8 @@ values are measured on hardware — a spec sheet does not predict them.
     <tr>
       <td colspan="6">
         <strong>Notes on the shine:</strong> it keeps no cookies across a browser
-        restart, so the login and every setting — the override included — are
-        re-entered each session. Its reader supports less of what a fixed-layout
+        restart, so you log in again each session; bookmark the settings page and its
+        values come back with one tap. Its reader supports less of what a fixed-layout
         book declares, so page scale has no effect there and the override does the
         work. Its browser predates unprefixed
         <code>flex</code> and <code>box-sizing</code>, so the layout is rough but
