@@ -122,6 +122,10 @@ foreach (var p in trustedProxies) fho.KnownProxies.Add(p);
 foreach (var net in trustedNetworks) fho.KnownIPNetworks.Add(net);
 app.UseForwardedHeaders(fho);
 
+// FIRST in the pipeline: it must see every request, including the ones a later
+// middleware answers on its own (a 401 from the auth catch-all, a static file).
+app.UseRequestLog();
+
 app.UseStaticFiles();
 
 // Any page/handler that hits an unauthenticated/expired session throws

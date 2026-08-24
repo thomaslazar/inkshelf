@@ -245,6 +245,23 @@ All configuration is via environment variables.
 | `MaxArchiveBytes`         | `1073741824` (1 GiB) | Reject ebook archives larger than this before conversion (decompression-bomb guard; spooled to a temp file, so it bounds disk not RAM). Raise for very large comics. |
 | `MaxCacheBytes`           | `5368709120` (5 GiB) | Soft cap on total EPUB cache size; oldest entries are evicted past it. |
 
+### Logs
+
+Inkshelf writes one line per request to stdout — method, path with query, status,
+bytes written, duration — plus a warning for anything that failed:
+
+```
+GET /library/lib_1?sort=addedAt 200 8431b 96ms
+GET /download/a1b2c3 200 12483204b 4210ms
+GET /download/a1b2c3 401 26b 4ms
+GET /download/a1b2c3 200 3211008b 8102ms INCOMPLETE
+```
+
+`INCOMPLETE` means the response promised more bytes than it delivered — a download
+that did not finish, which the status line alone cannot show. Rotation belongs to
+your container runtime; see the `logging:` block in
+[`docker-compose.example.yml`](docker-compose.example.yml).
+
 Per-device rendering settings — screen override, page scale, spreads — are not
 environment variables: they live in the app's own Settings page, per reader. See
 [`docs/DEVICES.md`](docs/DEVICES.md) for the values known to work on specific
