@@ -266,7 +266,11 @@ public class ListingRenderTests
         using var cacheDir = new TempDir();
         using var keysDir = new TempDir();
         using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        // HandleCookies off: a page render writes the settings cookie back (it mints
+        // the device id a download ticket needs), and a cookie jar would replay the
+        // first request's settings into the second — which asserts on NOT having them.
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        { AllowAutoRedirect = false, HandleCookies = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
         var path = cache.PathFor(ItemId, Size, Mtime, W, H, grayscale: true, spread: DeviceSettings.Default.Spread,
@@ -466,7 +470,10 @@ public class ListingRenderTests
         using var cacheDir = new TempDir();
         using var keysDir = new TempDir();
         using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        // HandleCookies off, same reason as the grayscale test: the second request
+        // must carry only the settings it declares.
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        { AllowAutoRedirect = false, HandleCookies = false });
 
         var cache = factory.Services.GetRequiredService<EpubCache>();
         File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, 1000, 2000,
@@ -528,5 +535,30 @@ public class ListingRenderTests
 
         Assert.Equal(HttpStatusCode.OK, res2.StatusCode);
         Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(html2));
+    }
+
+    [Fact]
+    public async Task Listing_and_search_rows_both_carry_download_tickets()
+    {
+        // The search branch fetches the same batch metadata as the listing, so it
+        // can key the cache and mint an EPUB ticket too. A search row that silently
+        // lost its ticket would be a download that only fails on a cookie-less
+        // reader.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var listing = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        var searchReq = LibraryRequest(factory);
+        searchReq.RequestUri = new Uri($"/library/{LibId}?q=comic", UriKind.Relative);
+        var search = await (await client.SendAsync(searchReq)).Content.ReadAsStringAsync();
+
+        foreach (var html in new[] { listing, search })
+        {
+            Assert.Matches($"href=\"/download/{ItemId}\\?t=[A-Za-z0-9_-]{{22}}\"", html);
+            Assert.Matches($"href=\"/convert/{ItemId}\\?return=[^\"]*&amp;t=[A-Za-z0-9_-]{{22}}\"", html);
+        }
     }
 }

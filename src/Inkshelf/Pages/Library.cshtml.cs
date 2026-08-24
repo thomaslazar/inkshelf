@@ -14,8 +14,11 @@ public class LibraryModel : PageModel
     private readonly EpubCache _cache;
     private readonly ConvertQueue _queue;
     private readonly DownloadMarks _marks;
-    public LibraryModel(AbsApiClient api, EpubCache cache, ConvertQueue queue, DownloadMarks marks)
-    { _api = api; _cache = cache; _queue = queue; _marks = marks; }
+    private readonly TokenStore _tokens;
+    private readonly DownloadTickets _tickets;
+    public LibraryModel(AbsApiClient api, EpubCache cache, ConvertQueue queue, DownloadMarks marks,
+        TokenStore tokens, DownloadTickets tickets)
+    { _api = api; _cache = cache; _queue = queue; _marks = marks; _tokens = tokens; _tickets = tickets; }
 
     [FromRoute] public string Id { get; set; } = "";
     [FromQuery] public string? Q { get; set; }
@@ -58,8 +61,10 @@ public class LibraryModel : PageModel
     public async Task<IActionResult> OnGetAsync([FromQuery] int page = 1, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(Id)) return NotFound();
-        var ds = DeviceSettings.Read(Request);
+        var ds = DeviceSettings.EnsureDid(HttpContext);
         IsFavorite = ds.Fav == Id;
+        _did = ds.Did;
+        _access = _tokens.Read()?.Access;
         _markSet = ds.Did.Length == 0 ? new HashSet<string>() : _marks.Read(ds.Did);
 
         var libraries = await _api.GetLibrariesAsync(ct);
@@ -103,6 +108,8 @@ public class LibraryModel : PageModel
     private Dictionary<string, AbsBatchMedia> _structured = new();
     private HashSet<string> _finished = new();
     private HashSet<string> _markSet = new();
+    private string _did = "";
+    private string? _access;
     // Decoded active facet filter (group + value id), for resolving its label.
     private string? _filterGroup;
     private string? _filterValue;
@@ -129,7 +136,7 @@ public class LibraryModel : PageModel
     public ItemRowModel RowFor(AbsItem item)
     {
         _structured.TryGetValue(item.Id, out var media);
-        var state = _states.TryGetValue(item.Id, out var s) ? s.State : ConvertRowState.NotConvertible;
+        var (state, cachePath) = _states.TryGetValue(item.Id, out var s) ? s : (ConvertRowState.NotConvertible, null);
         if (state == ConvertRowState.NotConvertible)
         {
             // Reached when the resolved state is NotConvertible because this item's
@@ -141,8 +148,19 @@ public class LibraryModel : PageModel
         var ret = Request.Path + Request.QueryString; // exact current listing URL
         var rawDownloaded = _markSet.Contains(DownloadMarks.RawKey(item.Id, null));
         var epubDownloaded = _markSet.Contains(DownloadMarks.EpubKey(item.Id, null));
-        return new ItemRowModel(item, Links, media?.Metadata?.Authors, media?.Metadata?.Series, state, ret,
-            _finished.Contains(item.Id), rawDownloaded, epubDownloaded);
+        // Both hrefs are re-requested by a cookie-less download manager, so each
+        // gets a ticket standing for exactly the file that row offers.
+        var meta = media?.Metadata;
+        var epubTicket = cachePath is { } path
+            ? _tickets.MintEpub(item.Id, null, _did,
+                EpubName.For(meta?.Authors?.FirstOrDefault()?.Name, meta?.Title ?? item.Media?.Metadata?.Title), path)
+            : null;
+        var filename = media?.EbookFile?.Metadata?.Filename ?? item.Media?.EbookFile?.Metadata?.Filename;
+        var rawTicket = filename is not null && _access is { } acc
+            ? _tickets.MintRaw(item.Id, null, _did, filename, acc)
+            : null;
+        return new ItemRowModel(item, Links, meta?.Authors, meta?.Series, state, ret,
+            _finished.Contains(item.Id), rawDownloaded, epubDownloaded, rawTicket, epubTicket);
     }
 
     // Per-row convert state, precomputed so the head (which renders before the

@@ -11,8 +11,11 @@ public class ItemModel : PageModel
     private readonly EpubCache _cache;
     private readonly ConvertQueue _queue;
     private readonly DownloadMarks _marks;
-    public ItemModel(AbsApiClient api, EpubCache cache, ConvertQueue queue, DownloadMarks marks)
-    { _api = api; _cache = cache; _queue = queue; _marks = marks; }
+    private readonly Auth.TokenStore _tokens;
+    private readonly DownloadTickets _tickets;
+    public ItemModel(AbsApiClient api, EpubCache cache, ConvertQueue queue, DownloadMarks marks,
+        Auth.TokenStore tokens, DownloadTickets tickets)
+    { _api = api; _cache = cache; _queue = queue; _marks = marks; _tokens = tokens; _tickets = tickets; }
 
     [FromRoute] public string Id { get; set; } = "";
 
@@ -51,9 +54,10 @@ public class ItemModel : PageModel
         Tags = detail.Media.Tags ?? new();
         HasCover = !string.IsNullOrEmpty(detail.Media.CoverPath);
 
-        var ds = Auth.DeviceSettings.Read(Request);
+        var ds = Auth.DeviceSettings.EnsureDid(HttpContext);
         var target = Auth.DeviceSettingsTargetExtensions.ToRenderTarget(ds, Request.Cookies["scr"]);
         var marks = ds.Did.Length == 0 ? new HashSet<string>() : _marks.Read(ds.Did);
+        var access = _tokens.Read()?.Access;
 
         try { Read = (await _api.GetFinishedItemIdsAsync(ct)).Contains(Id); }
         catch (HttpRequestException) { Read = false; }
@@ -66,16 +70,23 @@ public class ItemModel : PageModel
             var keyIno = isPrimary ? null : f.Ino;
             var fmt = f.Metadata.Ext?.TrimStart('.').ToLowerInvariant() ?? "";
             var name = f.Metadata.Filename ?? f.Ino ?? "file";
-            var dl = isPrimary ? $"/download/{Id}" : $"/download/{Id}?file={Uri.EscapeDataString(f.Ino!)}";
+            // The href a cookie-less download manager takes over has to authorise on
+            // its own, so the ticket goes in at render time.
+            var rawTicket = access is { } acc ? _tickets.MintRaw(Id, keyIno, ds.Did, name, acc) : null;
+            var dl = (isPrimary ? $"/download/{Id}" : $"/download/{Id}?file={Uri.EscapeDataString(f.Ino!)}")
+                + (rawTicket is null ? "" : (isPrimary ? $"?t={rawTicket}" : $"&t={rawTicket}"));
             var rawDownloaded = marks.Contains(DownloadMarks.RawKey(Id, keyIno));
 
             ConvertActionModel? convert = null;
             if (fmt is "cbz" or "cbr")
             {
-                var (state, _) = ConvertRowStateResolver.ResolveFor(
+                var (state, cachePath) = ConvertRowStateResolver.ResolveFor(
                     Id, f.Metadata.Size, f.Metadata.MtimeMs, fmt, target, _cache, _queue);
+                var epubTicket = cachePath is null ? null
+                    : _tickets.MintEpub(Id, keyIno, ds.Did,
+                        EpubName.For(Meta?.AuthorName ?? Meta?.Authors?.FirstOrDefault()?.Name, Meta?.Title), cachePath);
                 convert = new ConvertActionModel(Id, keyIno, state, $"/item/{Id}",
-                    marks.Contains(DownloadMarks.EpubKey(Id, keyIno)), ShowRegen: true);
+                    marks.Contains(DownloadMarks.EpubKey(Id, keyIno)), ShowRegen: true, Ticket: epubTicket);
             }
             Files.Add(new FileRow(name, fmt.ToUpperInvariant(), dl, convert, rawDownloaded));
         }
