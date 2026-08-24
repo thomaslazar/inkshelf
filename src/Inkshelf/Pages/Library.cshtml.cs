@@ -132,8 +132,9 @@ public class LibraryModel : PageModel
         var state = _states.TryGetValue(item.Id, out var s) ? s.State : ConvertRowState.NotConvertible;
         if (state == ConvertRowState.NotConvertible)
         {
-            // _states misses an item when the batch-metadata call failed (both
-            // branches populate it otherwise), so fall back to a plain Convert for cbz/cbr.
+            // Reached when the resolved state is NotConvertible because this item's
+            // batch metadata was unavailable (efm null) — not because _states misses
+            // the key; both OnGetAsync branches store an entry for every item.
             var f = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat;
             if (f is "cbz" or "cbr") state = ConvertRowState.Convert;
         }
