@@ -14,11 +14,10 @@ public class LibraryModel : PageModel
     private readonly EpubCache _cache;
     private readonly ConvertQueue _queue;
     private readonly DownloadMarks _marks;
-    private readonly TokenStore _tokens;
     private readonly DownloadTickets _tickets;
     public LibraryModel(AbsApiClient api, EpubCache cache, ConvertQueue queue, DownloadMarks marks,
         TokenStore tokens, DownloadTickets tickets)
-    { _api = api; _cache = cache; _queue = queue; _marks = marks; _tokens = tokens; _tickets = tickets; }
+    { _api = api; _cache = cache; _queue = queue; _marks = marks; _tickets = tickets; _access = new(() => tokens.Read()?.Access); }
 
     [FromRoute] public string Id { get; set; } = "";
     [FromQuery] public string? Q { get; set; }
@@ -65,7 +64,6 @@ public class LibraryModel : PageModel
         IsFavorite = ds.Fav == Id;
         _did = ds.Did;
         _markSet = _marks.Read(ds.Did);
-        _access = _tokens.Read()?.Access;
 
         var libraries = await _api.GetLibrariesAsync(ct);
         var library = libraries.FirstOrDefault(l => l.Id == Id);
@@ -109,7 +107,14 @@ public class LibraryModel : PageModel
     private HashSet<string> _finished = new();
     private HashSet<string> _markSet = new();
     private string _did = "";
-    private string? _access;
+    // The bearer must be read AFTER every ABS call of this request: AbsAuthHandler
+    // refreshes on a 401 mid-request, so a read taken before those calls is the
+    // token ABS is about to reject, and every raw ticket minted from it is dead —
+    // exactly on the cookie-less download-manager request tickets exist for.
+    // Lazy, so the read happens in RowFor at view-render time (after every await)
+    // and cannot be broken by a later await; cached, so the session cookie is not
+    // decrypted once per row.
+    private readonly Lazy<string?> _access;
     // Decoded active facet filter (group + value id), for resolving its label.
     private string? _filterGroup;
     private string? _filterValue;
@@ -156,7 +161,7 @@ public class LibraryModel : PageModel
                 EpubName.For(meta?.Authors?.FirstOrDefault()?.Name, meta?.Title ?? item.Media?.Metadata?.Title), path)
             : null;
         var filename = media?.EbookFile?.Metadata?.Filename ?? item.Media?.EbookFile?.Metadata?.Filename;
-        var rawTicket = filename is not null && _access is { } acc
+        var rawTicket = filename is not null && _access.Value is { } acc
             ? _tickets.MintRaw(item.Id, null, _did, filename, acc)
             : null;
         return new ItemRowModel(item, Links, meta?.Authors, meta?.Series, state, ret,

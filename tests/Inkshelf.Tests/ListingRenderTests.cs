@@ -53,7 +53,9 @@ public class ListingRenderTests
 
     private const string LibrariesJson = """{"libraries":[{"id":"lib1","name":"Test Library","mediaType":"book"}]}""";
 
-    private static StubHandler MakeStub(string? meJson = null) => new(req =>
+    private static StubHandler MakeStub(string? meJson = null) => new(req => Respond(req, meJson));
+
+    private static HttpResponseMessage Respond(HttpRequestMessage req, string? meJson = null)
     {
         var path = req.RequestUri!.AbsolutePath;
         if (path == "/api/libraries") return StubHandler.Json(LibrariesJson);
@@ -62,9 +64,12 @@ public class ListingRenderTests
         if (path == $"/api/libraries/{LibId}/search") return StubHandler.Json(SearchJson());
         if (path == "/api/me") return StubHandler.Json(meJson ?? """{"mediaProgress":[]}""");
         return new HttpResponseMessage(HttpStatusCode.NotFound);
-    });
+    }
 
-    private static WebApplicationFactory<Program> CreateFactory(StubHandler stub, string cachePath, string keysPath) =>
+    // refresh: primary handler for AbsAuthClient (the handler-free refresh client).
+    // Left unstubbed, a refresh would try the real http://abs.local.
+    private static WebApplicationFactory<Program> CreateFactory(StubHandler stub, string cachePath, string keysPath,
+        StubHandler? refresh = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseSetting("ABS_URL", "http://abs.local");
@@ -74,6 +79,9 @@ public class ListingRenderTests
             {
                 services.Configure<HttpClientFactoryOptions>(nameof(AbsApiClient), o =>
                     o.HttpMessageHandlerBuilderActions.Add(hb => hb.PrimaryHandler = stub));
+                if (refresh is not null)
+                    services.Configure<HttpClientFactoryOptions>(nameof(AbsAuthClient), o =>
+                        o.HttpMessageHandlerBuilderActions.Add(hb => hb.PrimaryHandler = refresh));
                 // Drop the background ConvertWorker: these tests assert the RENDER
                 // of a given queue state (a Queued row shows "Converting…"). The
                 // real worker would drain the enqueued job and — with no stubbed
@@ -591,5 +599,44 @@ public class ListingRenderTests
         var ticket = factory.Services.GetRequiredService<DownloadTickets>().Redeem(ticketMatch.Groups[1].Value);
         Assert.NotNull(ticket);
         Assert.Equal(did, ticket!.Did);
+    }
+
+    // A raw ticket carries the ABS bearer, so it must be minted from the token
+    // read AFTER the page's ABS calls: AbsAuthHandler refreshes on a 401
+    // mid-request, and a bearer read before that first call is the one ABS just
+    // rejected. Tickets minted from it fail on exactly the cookie-less
+    // download-manager request the feature exists for — invisibly, since the
+    // browser render itself still works. This has been got wrong in both
+    // directions (read too early; the deferral "simplified" away), hence the test.
+    [Fact]
+    public async Task A_raw_ticket_carries_the_token_a_mid_request_refresh_produced()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+
+        // First authenticated call 401s; the handler refreshes and retries, and
+        // every later call succeeds.
+        var calls = 0;
+        var abs = new StubHandler(req => Interlocked.Increment(ref calls) == 1
+            ? new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            : Respond(req));
+        var refresh = new StubHandler(_ =>
+            StubHandler.Json("""{"user":{"accessToken":"newacc","refreshToken":"newref"}}"""));
+
+        using var factory = CreateFactory(abs, cacheDir.Path, keysDir.Path, refresh);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        // LibraryRequest's session cookie holds the PRE-refresh token ("access").
+        var response = await client.SendAsync(LibraryRequest(factory, "retina=0&gray=0&lang=&fav=&did=abc123def4560000"));
+        var html = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(calls > 1, "Expected the 401 to be retried, i.e. the refresh path to have run.");
+
+        var handle = Regex.Match(html, $"href=\"/download/{ItemId}\\?t=([A-Za-z0-9_-]{{22}})\"").Groups[1].Value;
+        Assert.NotEqual("", handle);
+
+        var ticket = factory.Services.GetRequiredService<DownloadTickets>().Redeem(handle);
+        Assert.NotNull(ticket);
+        Assert.Equal("newacc", ticket!.Access);
     }
 }

@@ -57,10 +57,15 @@ public class ItemModel : PageModel
         var ds = Auth.DeviceSettings.EnsureDid(HttpContext);
         var target = Auth.DeviceSettingsTargetExtensions.ToRenderTarget(ds, Request.Cookies["scr"]);
         var marks = _marks.Read(ds.Did);
-        var access = _tokens.Read()?.Access;
 
         try { Read = (await _api.GetFinishedItemIdsAsync(ct)).Contains(Id); }
         catch (HttpRequestException) { Read = false; }
+
+        // After every ABS call, never before: AbsAuthHandler refreshes on a 401
+        // mid-request, so a bearer read earlier is the token ABS is about to
+        // reject, and the raw tickets minted from it are dead — exactly on the
+        // cookie-less download-manager request tickets exist for.
+        var access = _tokens.Read()?.Access;
 
         var primaryIno = detail.Media.EbookFile?.Ino;
         foreach (var f in detail.LibraryFiles ?? new())
