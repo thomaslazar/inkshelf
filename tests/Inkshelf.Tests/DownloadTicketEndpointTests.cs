@@ -21,6 +21,13 @@ public class DownloadTicketEndpointTests
 
     private const string Did = "abc123def4560000";
 
+    // TimeProvider is abstract with a virtual GetUtcNow, so a fake needs no package.
+    private sealed class FakeClock : TimeProvider
+    {
+        public DateTimeOffset Utc = new(2026, 8, 24, 12, 0, 0, TimeSpan.Zero);
+        public override DateTimeOffset GetUtcNow() => Utc;
+    }
+
     // ABS_URL points at a dead port on purpose: anything that reaches ABS fails, so
     // a passing test proves the ticket path never needed it.
     private static WebApplicationFactory<Program> CreateFactory(string cachePath, string keysPath,
@@ -119,6 +126,51 @@ public class DownloadTicketEndpointTests
             .MintEpub("item1", null, Did, "Author - Title.epub", CachedEpub(cache.Path));
 
         var res = await client.GetAsync($"/convert/other?t={t}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_convert_poll_re_stamps_the_ticket_so_a_long_conversion_link_survives()
+    {
+        // The poll itself is never authorised (no cookie, and a ticket is bytes-only),
+        // but hitting it must still re-stamp the ticket's idle window (see
+        // ConvertEndpoints: Redeem runs unconditionally, before the bytes-only guard).
+        using var cache = new TempDir();
+        using var keys = new TempDir();
+        var clock = new FakeClock();
+        using var factory = CreateFactory(cache.Path, keys.Path,
+            services => services.AddSingleton(new DownloadTickets(clock)));
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var t = factory.Services.GetRequiredService<DownloadTickets>()
+            .MintEpub("item1", null, Did, "Author - Title.epub", CachedEpub(cache.Path));
+
+        clock.Utc = clock.Utc.AddMinutes(10);   // inside the 15-minute window
+        var poll = await client.GetAsync($"/convert/item1?t={t}&status=1");
+        Assert.Equal(HttpStatusCode.Unauthorized, poll.StatusCode);   // a poll never authorises
+
+        clock.Utc = clock.Utc.AddMinutes(10);   // 20m since mint, only 10m since the poll
+        var res = await client.GetAsync($"/convert/item1?t={t}");
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        Assert.Equal("EPUBBYTES", await res.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task A_ticket_whose_cache_file_was_evicted_falls_through_to_the_cookie_path()
+    {
+        using var cache = new TempDir();
+        using var keys = new TempDir();
+        using var factory = CreateFactory(cache.Path, keys.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var cached = CachedEpub(cache.Path);
+        var t = factory.Services.GetRequiredService<DownloadTickets>()
+            .MintEpub("item1", null, Did, "Author - Title.epub", cached);
+        File.Delete(cached);
+
+        var res = await client.GetAsync($"/convert/item1?t={t}");
 
         Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
     }

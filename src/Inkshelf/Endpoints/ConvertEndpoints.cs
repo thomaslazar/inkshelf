@@ -15,7 +15,9 @@ public static class ConvertEndpoints
             // there is what keeps a long conversion's link alive.
             var tk = tickets.Redeem(t);
             // A ticket serves bytes and nothing else — no kick, no poll, no fresh.
-            if (status is null && warm is null && fresh is not ("1" or "true")
+            // It also ignores the request's render target and file param entirely, so a
+            // still-live link after a screen-settings change replays the pre-change EPUB.
+            if (status is not "1" && warm is not "1" && fresh is not ("1" or "true")
                 && tk is { FilePath: { } cached } && tk.ItemId == id && File.Exists(cached))
             {
                 marks.Add(tk.Did, DownloadMarks.EpubKey(id, tk.FileIno));
