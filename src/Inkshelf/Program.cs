@@ -86,6 +86,7 @@ builder.Services.AddSingleton(new EpubCache(cachePath));
 // extension-scoped (*.epub, *.tmp) and a valid device id can't contain a dot,
 // so eviction never matches a marks file — see EpubCacheTests for the guard.
 builder.Services.AddSingleton(new DownloadMarks(Path.Combine(cachePath, "marks")));
+builder.Services.AddSingleton(new DownloadTickets());
 builder.Services.AddSingleton<EpubConverter>();
 builder.Services.AddSingleton<ConvertLock>();
 builder.Services.AddSingleton<ConvertQueue>();

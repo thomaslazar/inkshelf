@@ -1,0 +1,57 @@
+using System.Buffers.Text;
+using System.Collections.Concurrent;
+using System.Security.Cryptography;
+
+namespace Inkshelf;
+
+// A download ticket: a URL-safe handle standing for one file this server will
+// stream. An e-reader's download manager takes over the transfer WITHOUT the
+// browser's cookies (issue #40), so the URL has to authorise on its own — and a
+// handle, rather than a signed blob, keeps the credential out of the URL, the
+// browser history and the request log.
+//
+// SERVES BYTES ONLY. A ticket never authorises a conversion kick, a status poll
+// or fresh=1; those still need the session cookie.
+public sealed class DownloadTickets
+{
+    // Sliding, not absolute: any request presenting a ticket re-stamps it, so the
+    // 5s convert poll keeps a link alive for as long as its conversion runs.
+    private static readonly TimeSpan IdleWindow = TimeSpan.FromMinutes(15);
+
+    // Exactly one of FilePath / Access is set. FilePath = a converted EPUB in the
+    // cache, servable with no ABS call at all. Access = the ABS bearer a raw
+    // download streams with, which never leaves this process.
+    public sealed record Ticket(string ItemId, string? FileIno, string Did, string DownloadName,
+        string? FilePath = null, string? Access = null);
+
+    private readonly ConcurrentDictionary<string, (Ticket T, long Stamp)> _live = new();
+    private readonly TimeProvider _clock;
+
+    public DownloadTickets(TimeProvider? clock = null) => _clock = clock ?? TimeProvider.System;
+
+    public string MintEpub(string itemId, string? fileIno, string did, string downloadName, string filePath) =>
+        Mint(new Ticket(itemId, fileIno, did, downloadName, FilePath: filePath));
+
+    public string MintRaw(string itemId, string? fileIno, string did, string downloadName, string access) =>
+        Mint(new Ticket(itemId, fileIno, did, downloadName, Access: access));
+
+    // Re-stamps on success. Unknown and expired are indistinguishable: both null.
+    public Ticket? Redeem(string? id)
+    {
+        if (string.IsNullOrEmpty(id) || !_live.TryGetValue(id, out var e)) return null;
+        if (Expired(e.Stamp)) { _live.TryRemove(id, out _); return null; }
+        _live[id] = (e.T, Now);
+        return e.T;
+    }
+
+    private string Mint(Ticket t)
+    {
+        foreach (var (k, v) in _live) if (Expired(v.Stamp)) _live.TryRemove(k, out _);
+        var id = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(16));
+        _live[id] = (t, Now);
+        return id;
+    }
+
+    private long Now => _clock.GetUtcNow().UtcTicks;
+    private bool Expired(long stamp) => Now - stamp > IdleWindow.Ticks;
+}

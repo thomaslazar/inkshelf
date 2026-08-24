@@ -72,4 +72,15 @@ public class RequestLogTests
         Assert.Contains("GET /download/abc123 401", line);
         Assert.DoesNotContain(" 0b ", line);   // the plain-text body was delivered
     }
+
+    [Fact]
+    public void The_logged_query_keeps_everything_but_the_ticket()
+    {
+        Assert.Equal("?file=2&t=…&return=%2F",
+            RequestLog.Redact("?file=2&t=Ab_1Cd-2Ef3Gh4Ij5Kl6&return=%2F"));
+        Assert.Equal("?t=…", RequestLog.Redact("?t=Ab_1Cd-2Ef3Gh4Ij5Kl6"));
+        Assert.Equal("?sort=t", RequestLog.Redact("?sort=t"));   // not a ticket
+        Assert.Equal("", RequestLog.Redact(""));
+        Assert.Null(RequestLog.Redact(null));
+    }
 }
