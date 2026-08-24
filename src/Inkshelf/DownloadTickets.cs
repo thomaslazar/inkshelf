@@ -39,14 +39,19 @@ public sealed class DownloadTickets
     public Ticket? Redeem(string? id)
     {
         if (string.IsNullOrEmpty(id) || !_live.TryGetValue(id, out var e)) return null;
-        if (Expired(e.Stamp)) { _live.TryRemove(id, out _); return null; }
+        // Compare-and-remove: a concurrent Redeem may have re-stamped this id after
+        // the snapshot above, and a blind key-only removal would delete that fresh
+        // stamp instead of the expired one.
+        if (Expired(e.Stamp)) { _live.TryRemove(new(id, e)); return null; }
         _live[id] = (e.T, Now);
         return e.T;
     }
 
     private string Mint(Ticket t)
     {
-        foreach (var (k, v) in _live) if (Expired(v.Stamp)) _live.TryRemove(k, out _);
+        // Same compare-and-remove as Redeem's expired branch, and for the same
+        // reason: the snapshot (k, v) here can go stale mid-sweep.
+        foreach (var (k, v) in _live) if (Expired(v.Stamp)) _live.TryRemove(new(k, v));
         var id = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(16));
         _live[id] = (t, Now);
         return id;
