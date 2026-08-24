@@ -7,7 +7,8 @@ public static class DownloadEndpoints
 {
     public static void MapDownloadEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/download/{id}", async (string id, string? file, AbsApiClient api, HttpContext ctx, DownloadMarks marks, CancellationToken ct) =>
+        app.MapGet("/download/{id}", async (string id, string? file, string? t, AbsApiClient api, DownloadTickets tickets,
+            AbsDownloadClient dl, HttpContext ctx, DownloadMarks marks, CancellationToken ct) =>
         {
             // Mark BEFORE streaming: we can't tell a completed transfer from an
             // aborted one anyway (see the spec), and the marker is advisory.
@@ -15,6 +16,21 @@ public static class DownloadEndpoints
             {
                 var s = Auth.DeviceSettings.Read(ctx.Request);
                 return string.IsNullOrEmpty(s.Did) ? Auth.DeviceSettings.Set(ctx.Response, s).Did : s.Did;
+            }
+
+            // A cookie-less download manager (issue #40): the ticket carries both the
+            // filename and the ABS bearer, so this path needs neither the cookie nor
+            // an item-detail lookup.
+            if (tickets.Redeem(t) is { Access: { } access } tk && tk.ItemId == id)
+            {
+                try
+                {
+                    var (stream, type, len) = await dl.DownloadEbookAsync(id, access, ct, tk.FileIno);
+                    marks.Add(tk.Did, DownloadMarks.RawKey(id, tk.FileIno));
+                    ctx.Response.ContentLength = len;
+                    return Results.File(stream, type, fileDownloadName: tk.DownloadName);
+                }
+                catch (HttpRequestException) { return Results.NotFound(); }
             }
 
             try

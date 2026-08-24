@@ -192,6 +192,80 @@ public class DownloadTicketEndpointTests
         Assert.StartsWith("text/plain", res.Content.Headers.ContentType?.ToString());
     }
 
+    private static StubHandler EbookStub(byte[] body) => new(_ =>
+        new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(body)
+            {
+                Headers = { ContentType = new("application/epub+zip"), ContentLength = body.Length }
+            }
+        });
+
+    [Fact]
+    public async Task A_cookie_less_raw_download_with_a_ticket_streams_on_the_tickets_bearer()
+    {
+        var body = new byte[] { 9, 8, 7 };
+        var stub = EbookStub(body);
+        using var cache = new TempDir();
+        using var keys = new TempDir();
+        using var factory = CreateFactory(cache.Path, keys.Path, services =>
+            services.AddSingleton(new AbsDownloadClient(new HttpClient(stub) { BaseAddress = new Uri("http://abs.local") })));
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var t = factory.Services.GetRequiredService<DownloadTickets>()
+            .MintRaw("item1", null, Did, "My Book.epub", "access-tok");
+
+        var res = await client.GetAsync($"/download/item1?t={t}");
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        Assert.Equal(body, await res.Content.ReadAsByteArrayAsync());
+        Assert.Equal(3, res.Content.Headers.ContentLength);
+        Assert.Equal("My Book.epub", res.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+        Assert.Equal("/api/items/item1/ebook", stub.Last!.RequestUri!.AbsolutePath);
+        Assert.Equal("access-tok", stub.Last.Headers.Authorization?.Parameter);
+        Assert.Contains(DownloadMarks.RawKey("item1", null),
+            factory.Services.GetRequiredService<DownloadMarks>().Read(Did));
+    }
+
+    [Fact]
+    public async Task A_raw_ticket_for_one_ebook_file_asks_abs_for_that_ino()
+    {
+        var stub = EbookStub([1]);
+        using var cache = new TempDir();
+        using var keys = new TempDir();
+        using var factory = CreateFactory(cache.Path, keys.Path, services =>
+            services.AddSingleton(new AbsDownloadClient(new HttpClient(stub) { BaseAddress = new Uri("http://abs.local") })));
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var t = factory.Services.GetRequiredService<DownloadTickets>()
+            .MintRaw("item1", "3", Did, "Second.pdf", "access-tok");
+
+        var res = await client.GetAsync($"/download/item1?t={t}");
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        Assert.Equal("/api/items/item1/ebook/3", stub.Last!.RequestUri!.AbsolutePath);
+        Assert.Contains(DownloadMarks.RawKey("item1", "3"),
+            factory.Services.GetRequiredService<DownloadMarks>().Read(Did));
+    }
+
+    [Fact]
+    public async Task An_epub_ticket_does_not_authorise_a_raw_download()
+    {
+        // Wrong kind: no bearer in it, so /download must fall through to the cookie
+        // path rather than invent one.
+        using var cache = new TempDir();
+        using var keys = new TempDir();
+        using var factory = CreateFactory(cache.Path, keys.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var t = factory.Services.GetRequiredService<DownloadTickets>()
+            .MintEpub("item1", null, Did, "Author - Title.epub", CachedEpub(cache.Path));
+
+        var res = await client.GetAsync($"/download/item1?t={t}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
+    }
+
     [Fact]
     public async Task A_ticket_wins_over_a_session_cookie_so_both_requests_take_one_path()
     {
