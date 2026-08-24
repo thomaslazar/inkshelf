@@ -1,5 +1,6 @@
 using System.Linq;
 using Inkshelf.Abs;
+using Inkshelf.Auth;
 
 namespace Inkshelf.Endpoints;
 
@@ -10,14 +11,6 @@ public static class DownloadEndpoints
         app.MapGet("/download/{id}", async (string id, string? file, string? t, AbsApiClient api, DownloadTickets tickets,
             AbsDownloadClient dl, HttpContext ctx, DownloadMarks marks, CancellationToken ct) =>
         {
-            // Mark BEFORE streaming: we can't tell a completed transfer from an
-            // aborted one anyway (see the spec), and the marker is advisory.
-            static string EnsureDid(HttpContext ctx)
-            {
-                var s = Auth.DeviceSettings.Read(ctx.Request);
-                return string.IsNullOrEmpty(s.Did) ? Auth.DeviceSettings.Set(ctx.Response, s).Did : s.Did;
-            }
-
             // A cookie-less download manager (issue #40): the ticket carries both the
             // filename and the ABS bearer, so this path needs neither the cookie nor
             // an item-detail lookup.
@@ -42,14 +35,14 @@ public static class DownloadEndpoints
                     var fname = lf?.Metadata?.Filename;
                     if (string.IsNullOrEmpty(fname)) return Results.NotFound();
                     var (fs, ftype, flen) = await api.GetEbookFileStreamAsync(id, file, ct);
-                    marks.Add(EnsureDid(ctx), DownloadMarks.RawKey(id, file));
+                    marks.Add(DeviceSettings.EnsureDid(ctx).Did, DownloadMarks.RawKey(id, file));
                     ctx.Response.ContentLength = flen;
                     return Results.File(fs, ftype, fileDownloadName: fname);
                 }
                 var name = detail.Media?.EbookFile?.Metadata?.Filename;
                 if (string.IsNullOrEmpty(name)) return Results.NotFound();
                 var (stream, contentType, length) = await api.GetEbookStreamAsync(id, ct);
-                marks.Add(EnsureDid(ctx), DownloadMarks.RawKey(id, null));
+                marks.Add(DeviceSettings.EnsureDid(ctx).Did, DownloadMarks.RawKey(id, null));
                 // ABS knows the size; the stream is a live network stream, so
                 // Results.File cannot work it out and the response would go out
                 // chunked. Ranges stay unadvertised — we can't serve them.

@@ -231,6 +231,15 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // SanitizeId's allowlist so it survives its own round trip.
     private static string NewDid() => System.Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant();
 
+    // Download marks are keyed to the device id, and a ticket minted on a page
+    // render has to carry a real one. Both file endpoints used to mint it
+    // themselves; one copy, called from wherever a did is first needed.
+    public static DeviceSettings EnsureDid(HttpContext ctx)
+    {
+        var s = Read(ctx.Request);
+        return string.IsNullOrEmpty(s.Did) ? Set(ctx.Response, s) : s;
+    }
+
     // Public so DownloadMarks can gate a cookie-supplied id before it becomes a
     // file name. Reuses the one allowlist rather than restating it.
     public static bool IsValidDid(string? did) => !string.IsNullOrEmpty(did) && SanitizeId(did) == did;

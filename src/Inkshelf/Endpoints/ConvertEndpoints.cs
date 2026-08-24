@@ -25,7 +25,7 @@ public static class ConvertEndpoints
                     fileDownloadName: tk.DownloadName, enableRangeProcessing: true);
             }
 
-            var ds = DeviceSettings.Read(httpContext.Request);
+            var ds = DeviceSettings.EnsureDid(httpContext);
             var target = ds.ToRenderTarget(httpContext.Request.Cookies["scr"]);
 
             if (status is "1")
@@ -45,9 +45,8 @@ public static class ConvertEndpoints
             if (result.Status != ConvertStatus.Done) return Results.Redirect(LocalReturn(@return));
 
             // Mark BEFORE streaming: we can't tell a completed transfer from an
-            // aborted one anyway (see the spec), and the marker is advisory.
-            var did = string.IsNullOrEmpty(ds.Did) ? DeviceSettings.Set(httpContext.Response, ds).Did : ds.Did;
-            marks.Add(did, DownloadMarks.EpubKey(id, file));
+            // aborted one anyway (see the spec). ds's did was ensured at the top.
+            marks.Add(ds.Did, DownloadMarks.EpubKey(id, file));
 
             return Results.File(result.FilePath!, "application/epub+zip", fileDownloadName: result.DownloadName,
                 enableRangeProcessing: true);

@@ -105,13 +105,7 @@ public class ConvertService
 
         var path = _cache.PathFor(id, size, mtime, target.MaxW, target.MaxH, target.Grayscale, target.Spread, target.Scale, target.Dpr);
         var meta = new EbookMeta(title, author, seriesName, seq, id);
-        var downloadName = Sanitize($"{author} - {title}") + ".epub";
+        var downloadName = EpubName.For(author, title);
         return (path, meta, downloadName, size);
-    }
-
-    private static string Sanitize(string s)
-    {
-        foreach (var c in Path.GetInvalidFileNameChars()) s = s.Replace(c, '_');
-        return s.Trim();
     }
 }
