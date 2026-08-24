@@ -133,9 +133,11 @@ public class DownloadTicketEndpointTests
     [Fact]
     public async Task A_raw_ticket_cannot_be_replayed_on_another_item()
     {
+        var stub = EbookStub([1]);
         using var cache = new TempDir();
         using var keys = new TempDir();
-        using var factory = CreateFactory(cache.Path, keys.Path);
+        using var factory = CreateFactory(cache.Path, keys.Path, services =>
+            services.AddSingleton(new AbsDownloadClient(new HttpClient(stub) { BaseAddress = new Uri("http://abs.local") })));
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var t = factory.Services.GetRequiredService<DownloadTickets>()
@@ -144,6 +146,7 @@ public class DownloadTicketEndpointTests
         var res = await client.GetAsync($"/download/other?t={t}");
 
         Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
+        Assert.Null(stub.Last);   // the mismatch never reached AbsDownloadClient
     }
 
     [Fact]
@@ -242,7 +245,9 @@ public class DownloadTicketEndpointTests
 
         // ResponseHeadersRead: GetAsync's default buffers the whole body before
         // returning, which re-derives Content-Length from the buffered bytes and
-        // would hide a deleted assignment just like a seekable stream does.
+        // would hide a deleted assignment just like a seekable stream does. The
+        // length assertion below must also run before the body is read for the
+        // same reason: reading buffers the content, which re-derives the header.
         var res = await client.GetAsync($"/download/item1?t={t}", HttpCompletionOption.ResponseHeadersRead);
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
@@ -280,13 +285,36 @@ public class DownloadTicketEndpointTests
     }
 
     [Fact]
+    public async Task A_ticket_whose_bearer_abs_rejects_maps_to_404()
+    {
+        // Never refreshed (that's this client's contract): a revoked, expired,
+        // or permission-stripped bearer must look like a deleted item, same as
+        // the cookie path, not surface as a raw 401 from ABS.
+        var stub = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        using var cache = new TempDir();
+        using var keys = new TempDir();
+        using var factory = CreateFactory(cache.Path, keys.Path, services =>
+            services.AddSingleton(new AbsDownloadClient(new HttpClient(stub) { BaseAddress = new Uri("http://abs.local") })));
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var t = factory.Services.GetRequiredService<DownloadTickets>()
+            .MintRaw("item1", null, Did, "My Book.epub", "access-tok");
+
+        var res = await client.GetAsync($"/download/item1?t={t}");
+
+        Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+    }
+
+    [Fact]
     public async Task An_epub_ticket_does_not_authorise_a_raw_download()
     {
         // Wrong kind: no bearer in it, so /download must fall through to the cookie
         // path rather than invent one.
+        var stub = EbookStub([1]);
         using var cache = new TempDir();
         using var keys = new TempDir();
-        using var factory = CreateFactory(cache.Path, keys.Path);
+        using var factory = CreateFactory(cache.Path, keys.Path, services =>
+            services.AddSingleton(new AbsDownloadClient(new HttpClient(stub) { BaseAddress = new Uri("http://abs.local") })));
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var t = factory.Services.GetRequiredService<DownloadTickets>()
@@ -295,6 +323,7 @@ public class DownloadTicketEndpointTests
         var res = await client.GetAsync($"/download/item1?t={t}");
 
         Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
+        Assert.Null(stub.Last);   // an epub ticket never reaches AbsDownloadClient
     }
 
     [Fact]

@@ -12,7 +12,11 @@ namespace Inkshelf.Abs;
 //
 // Registered via ConfigureAbs so it inherits the BaseAddress AND the User-Agent
 // the ABS reverse proxy requires (it 403s an empty UA). Never attach
-// AbsAuthHandler to it; never use it from a request path (use AbsApiClient there).
+// AbsAuthHandler to it. The one sanctioned request-path caller is the download-
+// ticket branch in DownloadEndpoints: it's handler-free for the same reason the
+// worker is — the bearer comes from the ticket, not the request's cookie, so
+// there's no session to refresh and no cookie to depend on. Any other
+// request-path use belongs on AbsApiClient instead.
 public sealed class AbsDownloadClient
 {
     private readonly HttpClient _http;

@@ -31,7 +31,8 @@ src/Inkshelf/
     AbsAuthClient.cs      Login + refresh + the two OIDC legs. Handler-FREE typed client.
     AbsApiClient.cs       The data methods. Typed client WITH AbsAuthHandler.
     AbsAuthHandler.cs     DelegatingHandler: injects Bearer, refresh-on-401-retry.
-    AbsDownloadClient.cs  Handler-free authenticated download, for the worker.
+    AbsDownloadClient.cs  Handler-free authenticated download, for callers that
+                          already hold a captured bearer.
     AbsModels.cs          Response DTOs (three separate metadata shapes — see below).
     AbsFilter.cs          Encodes ABS facet filters (authors.<b64>, series.<b64>).
     AbsExceptions.cs      Auth / Unauthorized / LoginFailed.
@@ -69,11 +70,10 @@ from the repo root (inside the devcontainer) must stay green, and
 - **Three ABS clients, not one.** `AbsAuthClient` (login/refresh) has **no** auth
   handler; `AbsApiClient` (data) runs through `AbsAuthHandler`. That split is what
   makes refresh-on-401 impossible to recurse. `AbsDownloadClient` is the third:
-  also handler-free, because the background worker has no `HttpContext` for the
-  handler to resolve a token from — it carries a bearer captured at kick time and
-  does not refresh. Never attach `AbsAuthHandler` to either handler-free client,
-  never put login/refresh on `AbsApiClient`, and never use the download client
-  from a request path.
+  also handler-free: any caller of it carries a bearer captured up front rather
+  than relying on a per-request cookie, so there is no `HttpContext` token to
+  resolve and no session to refresh. Never attach `AbsAuthHandler` to either
+  handler-free client, and never put login/refresh on `AbsApiClient`.
 - **`AbsAuthClient`'s handler must keep `AllowAutoRedirect = false` and
   `UseCookies = false`.** OIDC leg 1 reads the `Location` off ABS's 302, which
   following the redirect destroys; and the handler is pooled process-wide, so a
