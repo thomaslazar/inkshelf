@@ -96,7 +96,7 @@ public class ConvertedModel : PageModel
             var item = new AbsItem(it.Id, new AbsMedia(
                 new AbsMetadata(m.Metadata?.Title, null, null), m.CoverPath, null, m.EbookFile));
             var links = new LibraryLinks(it.LibraryId ?? "", null, null, null, null, false);
-            var state = ConvertRowStateResolver.Resolve(item, m, target, _cache, _queue);
+            var (state, _) = ConvertRowStateResolver.Resolve(item, m, target, _cache, _queue);
             if (state == ConvertRowState.Converting) AnyConverting = true;
             var rawDownloaded = markSet.Contains(DownloadMarks.RawKey(it.Id, null));
             var epubDownloaded = markSet.Contains(DownloadMarks.EpubKey(it.Id, null));

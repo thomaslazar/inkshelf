@@ -129,11 +129,11 @@ public class LibraryModel : PageModel
     public ItemRowModel RowFor(AbsItem item)
     {
         _structured.TryGetValue(item.Id, out var media);
-        var state = _states.TryGetValue(item.Id, out var s) ? s : ConvertRowState.NotConvertible;
+        var state = _states.TryGetValue(item.Id, out var s) ? s.State : ConvertRowState.NotConvertible;
         if (state == ConvertRowState.NotConvertible)
         {
-            // Search rows: _states is empty (ComputeConvertStates runs only for
-            // the listing branch), so fall back to a plain Convert for cbz/cbr.
+            // _states misses an item when the batch-metadata call failed (both
+            // branches populate it otherwise), so fall back to a plain Convert for cbz/cbr.
             var f = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat;
             if (f is "cbz" or "cbr") state = ConvertRowState.Convert;
         }
@@ -147,7 +147,7 @@ public class LibraryModel : PageModel
     // Per-row convert state, precomputed so the head (which renders before the
     // rows) can decide whether to emit the no-JS <noscript> meta-refresh.
     public bool AnyConverting { get; private set; }
-    private readonly Dictionary<string, ConvertRowState> _states = new();
+    private readonly Dictionary<string, (ConvertRowState State, string? Path)> _states = new();
 
     private void ComputeConvertStates(IEnumerable<AbsItem> items)
     {
@@ -158,11 +158,11 @@ public class LibraryModel : PageModel
             _structured.TryGetValue(item.Id, out var media);
             var state = RowState(item, media, t);
             _states[item.Id] = state;
-            if (state == ConvertRowState.Converting) AnyConverting = true;
+            if (state.State == ConvertRowState.Converting) AnyConverting = true;
         }
     }
 
-    private ConvertRowState RowState(AbsItem item, AbsBatchMedia? media, RenderTarget target)
+    private (ConvertRowState State, string? Path) RowState(AbsItem item, AbsBatchMedia? media, RenderTarget target)
         => ConvertRowStateResolver.Resolve(item, media, target, _cache, _queue);
 
     // Turn ?filter / ?author / ?series into an ABS filter string. Author/series

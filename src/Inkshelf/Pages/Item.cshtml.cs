@@ -72,7 +72,7 @@ public class ItemModel : PageModel
             ConvertActionModel? convert = null;
             if (fmt is "cbz" or "cbr")
             {
-                var state = ConvertRowStateResolver.ResolveFor(
+                var (state, _) = ConvertRowStateResolver.ResolveFor(
                     Id, f.Metadata.Size, f.Metadata.MtimeMs, fmt, target, _cache, _queue);
                 convert = new ConvertActionModel(Id, keyIno, state, $"/item/{Id}",
                     marks.Contains(DownloadMarks.EpubKey(Id, keyIno)), ShowRegen: true);
