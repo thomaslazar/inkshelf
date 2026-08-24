@@ -19,7 +19,7 @@ public sealed class AbsDownloadClient
     public AbsDownloadClient(HttpClient http) => _http = http;
 
     // Caller owns (and must dispose) the returned stream.
-    public async Task<Stream> DownloadEbookAsync(string itemId, string accessToken, CancellationToken ct, string? fileIno = null)
+    public async Task<(Stream Content, string ContentType, long? Length)> DownloadEbookAsync(string itemId, string accessToken, CancellationToken ct, string? fileIno = null)
     {
         var url = $"/api/items/{Uri.EscapeDataString(itemId)}/ebook"
             + (string.IsNullOrEmpty(fileIno) ? "" : $"/{Uri.EscapeDataString(fileIno)}");
@@ -31,7 +31,11 @@ public sealed class AbsDownloadClient
             res.Dispose();
             throw new HttpRequestException($"ebook download failed for {itemId}: {(int)res.StatusCode}");
         }
-        return await res.Content.ReadAsStreamAsync(ct);
+        // Content type and length come back too: a ticket-served download has no
+        // second source for them, and AbsApiClient.StreamAsync uses the same fallback.
+        return (await res.Content.ReadAsStreamAsync(ct),
+            res.Content.Headers.ContentType?.MediaType ?? "application/octet-stream",
+            res.Content.Headers.ContentLength);
     }
 
     // The worker's token-less cover fetch. Mirrors DownloadEbookAsync: handler-free,
