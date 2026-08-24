@@ -131,6 +131,22 @@ public class DownloadTicketEndpointTests
     }
 
     [Fact]
+    public async Task A_raw_ticket_cannot_be_replayed_on_another_item()
+    {
+        using var cache = new TempDir();
+        using var keys = new TempDir();
+        using var factory = CreateFactory(cache.Path, keys.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var t = factory.Services.GetRequiredService<DownloadTickets>()
+            .MintRaw("item1", null, Did, "My Book.epub", "access-tok");
+
+        var res = await client.GetAsync($"/download/other?t={t}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
+    }
+
+    [Fact]
     public async Task A_convert_poll_re_stamps_the_ticket_so_a_long_conversion_link_survives()
     {
         // The poll itself is never authorised (no cookie, and a ticket is bytes-only),
@@ -192,10 +208,19 @@ public class DownloadTicketEndpointTests
         Assert.StartsWith("text/plain", res.Content.Headers.ContentType?.ToString());
     }
 
+    // A MemoryStream is seekable, and ASP.NET fills in Content-Length by itself
+    // for a seekable stream even if the endpoint's own assignment is deleted;
+    // ABS's real response stream is a live network stream, not seekable, so the
+    // stub mirrors that to keep the endpoint's explicit assignment load-bearing.
+    private sealed class NonSeekableStream(byte[] buffer) : MemoryStream(buffer)
+    {
+        public override bool CanSeek => false;
+    }
+
     private static StubHandler EbookStub(byte[] body) => new(_ =>
         new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new ByteArrayContent(body)
+            Content = new StreamContent(new NonSeekableStream(body))
             {
                 Headers = { ContentType = new("application/epub+zip"), ContentLength = body.Length }
             }
@@ -215,16 +240,22 @@ public class DownloadTicketEndpointTests
         var t = factory.Services.GetRequiredService<DownloadTickets>()
             .MintRaw("item1", null, Did, "My Book.epub", "access-tok");
 
-        var res = await client.GetAsync($"/download/item1?t={t}");
+        // ResponseHeadersRead: GetAsync's default buffers the whole body before
+        // returning, which re-derives Content-Length from the buffered bytes and
+        // would hide a deleted assignment just like a seekable stream does.
+        var res = await client.GetAsync($"/download/item1?t={t}", HttpCompletionOption.ResponseHeadersRead);
 
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
-        Assert.Equal(body, await res.Content.ReadAsByteArrayAsync());
         Assert.Equal(3, res.Content.Headers.ContentLength);
+        Assert.Equal(body, await res.Content.ReadAsByteArrayAsync());
         Assert.Equal("My Book.epub", res.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
         Assert.Equal("/api/items/item1/ebook", stub.Last!.RequestUri!.AbsolutePath);
         Assert.Equal("access-tok", stub.Last.Headers.Authorization?.Parameter);
         Assert.Contains(DownloadMarks.RawKey("item1", null),
             factory.Services.GetRequiredService<DownloadMarks>().Read(Did));
+        // No new device id minted: the ticket already carried one.
+        res.Headers.TryGetValues("Set-Cookie", out var setCookies);
+        Assert.DoesNotContain("inkshelf_settings", string.Join(";", setCookies ?? []));
     }
 
     [Fact]
