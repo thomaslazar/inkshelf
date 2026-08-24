@@ -561,4 +561,35 @@ public class ListingRenderTests
             Assert.Matches($"href=\"/convert/{ItemId}\\?return=[^\"]*&amp;t=[A-Za-z0-9_-]{{22}}\"", html);
         }
     }
+
+    // A page render with no settings cookie mints a fresh device id and sets it
+    // (Set-Cookie); that same id must be the one stamped into every ticket minted
+    // on the same render. A mismatch would record download marks under an orphan
+    // id and the ↓ "already downloaded" arrow would silently stop appearing.
+    [Fact]
+    public async Task No_settings_cookie_mints_a_did_matching_the_tickets_did()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var response = await client.SendAsync(LibraryRequest(factory, settings: null));
+        var html = await response.Content.ReadAsStringAsync();
+
+        var settingsCookie = response.Headers.TryGetValues("Set-Cookie", out var v)
+            ? v.FirstOrDefault(c => c.StartsWith("inkshelf_settings=")) : null;
+        Assert.NotNull(settingsCookie);
+        var value = Uri.UnescapeDataString(settingsCookie!.Split(';')[0]["inkshelf_settings=".Length..]);
+        var didMatch = Regex.Match(value, "did=([^&]*)");
+        Assert.True(didMatch.Success && didMatch.Groups[1].Value.Length > 0,
+            "Expected a minted did= in the Set-Cookie.");
+        var did = didMatch.Groups[1].Value;
+
+        var ticketMatch = Regex.Match(html, $"href=\"/download/{ItemId}\\?t=([A-Za-z0-9_-]{{22}})\"");
+        Assert.True(ticketMatch.Success, "Expected a raw download ticket in the render.");
+        var ticket = factory.Services.GetRequiredService<DownloadTickets>().Redeem(ticketMatch.Groups[1].Value);
+        Assert.NotNull(ticket);
+        Assert.Equal(did, ticket!.Did);
+    }
 }

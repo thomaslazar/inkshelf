@@ -71,8 +71,11 @@ public class ItemModel : PageModel
             var fmt = f.Metadata.Ext?.TrimStart('.').ToLowerInvariant() ?? "";
             var name = f.Metadata.Filename ?? f.Ino ?? "file";
             // The href a cookie-less download manager takes over has to authorise on
-            // its own, so the ticket goes in at render time.
-            var rawTicket = access is { } acc ? _tickets.MintRaw(Id, keyIno, ds.Did, name, acc) : null;
+            // its own, so the ticket goes in at render time. No real filename → the
+            // cookie path 404s too (it requires one); mint no ticket, so both paths
+            // agree instead of the ticket path silently succeeding with a fake name.
+            var rawTicket = f.Metadata.Filename is not null && access is { } acc
+                ? _tickets.MintRaw(Id, keyIno, ds.Did, name, acc) : null;
             var dl = (isPrimary ? $"/download/{Id}" : $"/download/{Id}?file={Uri.EscapeDataString(f.Ino!)}")
                 + (rawTicket is null ? "" : (isPrimary ? $"?t={rawTicket}" : $"&t={rawTicket}"));
             var rawDownloaded = marks.Contains(DownloadMarks.RawKey(Id, keyIno));
