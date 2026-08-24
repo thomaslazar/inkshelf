@@ -258,8 +258,10 @@ GET /download/a1b2c3 200 3211008b 8102ms INCOMPLETE
 ```
 
 `INCOMPLETE` means the response promised more bytes than it delivered — a download
-that did not finish, which the status line alone cannot show. Rotation belongs to
-your container runtime; see the `logging:` block in
+that did not finish, which the status line alone cannot show.
+
+Nothing is written to disk by Inkshelf. Docker captures stdout to a host file with
+no size cap by default, so bound it — see the `logging:` block in
 [`docker-compose.example.yml`](docker-compose.example.yml).
 
 Per-device rendering settings — screen override, page scale, spreads — are not

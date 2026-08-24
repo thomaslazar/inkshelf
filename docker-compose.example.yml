@@ -32,10 +32,11 @@ services:
     # per-conversion peak; conversions run one at a time (MaxConcurrentConversions=1).
     # Re-tune after measuring on your host.
     mem_limit: 1536m
-    # Inkshelf logs one line per request to stdout — keep it bounded, or the
-    # container log grows until the disk notices.
+    # Inkshelf logs one line per request to stdout. Docker already captures that to
+    # a file on the host, with NO size limit by default — cap and rotate it. No
+    # `driver:` here on purpose: these options fit both json-file and local, so
+    # whichever your daemon uses stays in charge, and `docker logs` keeps working.
     logging:
-      driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
