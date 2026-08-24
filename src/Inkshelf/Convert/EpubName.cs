@@ -5,6 +5,8 @@ namespace Inkshelf.Convert;
 // time; two copies of this would eventually disagree.
 public static class EpubName
 {
+    // Blank/whitespace-only metadata falls back same as missing metadata: a
+    // filename ending in " -" is worse than one saying Untitled.
     public static string For(string? author, string? title) =>
         Sanitize($"{(string.IsNullOrWhiteSpace(author) ? "Unknown" : author)}"
             + $" - {(string.IsNullOrWhiteSpace(title) ? "Untitled" : title)}") + ".epub";

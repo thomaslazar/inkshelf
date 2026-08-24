@@ -14,6 +14,16 @@ public class EpubNameTests
     public void Falls_back_when_metadata_is_missing()
         => Assert.Equal("Unknown - Untitled.epub", EpubName.For(null, ""));
 
+    // Blank/whitespace metadata must fall back too, not just null — the guard
+    // is deliberately wider than a null check.
+    [Fact]
+    public void Falls_back_on_whitespace_only_author()
+        => Assert.Equal("Unknown - Watchmen.epub", EpubName.For("   ", "Watchmen"));
+
+    [Fact]
+    public void Falls_back_on_empty_title()
+        => Assert.Equal("Alan Moore - Untitled.epub", EpubName.For("Alan Moore", ""));
+
     [Fact]
     public void Replaces_characters_a_filename_cannot_hold()
         => Assert.Equal("A_B - C_D.epub", EpubName.For("A/B", "C/D"));

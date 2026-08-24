@@ -45,8 +45,9 @@ public static class ConvertEndpoints
             if (result.Status != ConvertStatus.Done) return Results.Redirect(LocalReturn(@return));
 
             // Mark BEFORE streaming: we can't tell a completed transfer from an
-            // aborted one anyway (see the spec). Mint the did here, not at the
-            // top, so a status/warm poll never writes a settings cookie.
+            // aborted one anyway, and the marker is advisory (see the spec).
+            // Mint the did here, not at the top, so a status/warm poll never
+            // writes a settings cookie.
             marks.Add(DeviceSettings.EnsureDid(httpContext).Did, DownloadMarks.EpubKey(id, file));
 
             return Results.File(result.FilePath!, "application/epub+zip", fileDownloadName: result.DownloadName,
