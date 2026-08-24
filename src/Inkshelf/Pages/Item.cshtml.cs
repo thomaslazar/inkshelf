@@ -56,7 +56,7 @@ public class ItemModel : PageModel
 
         var ds = Auth.DeviceSettings.EnsureDid(HttpContext);
         var target = Auth.DeviceSettingsTargetExtensions.ToRenderTarget(ds, Request.Cookies["scr"]);
-        var marks = ds.Did.Length == 0 ? new HashSet<string>() : _marks.Read(ds.Did);
+        var marks = _marks.Read(ds.Did);
         var access = _tokens.Read()?.Access;
 
         try { Read = (await _api.GetFinishedItemIdsAsync(ct)).Contains(Id); }

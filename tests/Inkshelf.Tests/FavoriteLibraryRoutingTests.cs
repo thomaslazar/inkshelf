@@ -80,7 +80,7 @@ public class FavoriteLibraryRoutingTests
         var model = WithContext(
             new LibraryModel(LibrariesClient("lib-1"), new EpubCache(dir.Path), new ConvertQueue(),
                 new DownloadMarks(System.IO.Path.Combine(dir.Path, "marks")),
-                new TokenStore(DataProtectionProvider.Create("inkshelf-tests"), accessor, new AbsOptions()),
+                new TokenStore(new EphemeralDataProtectionProvider(), accessor, new AbsOptions()),
                 new DownloadTickets()),
             favCookie: null);
         accessor.HttpContext = model.PageContext.HttpContext;

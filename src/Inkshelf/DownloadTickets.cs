@@ -47,11 +47,22 @@ public sealed class DownloadTickets
         return e.T;
     }
 
+    // One page render mints ten to twenty tickets, so sweeping on every call is
+    // that many O(n) passes over the same map. Expiry itself never depends on the
+    // sweep — Redeem checks the stamp — so this only decides when dead entries stop
+    // occupying memory.
+    // ponytail: full sweep above SweepAbove entries; per-shard expiry if the table
+    // ever gets big.
+    private const int SweepAbove = 256;
+
     private string Mint(Ticket t)
     {
-        // Same compare-and-remove as Redeem's expired branch, and for the same
-        // reason: the snapshot (k, v) here can go stale mid-sweep.
-        foreach (var (k, v) in _live) if (Expired(v.Stamp)) _live.TryRemove(new(k, v));
+        if (_live.Count > SweepAbove)
+        {
+            // Same compare-and-remove as Redeem's expired branch, and for the same
+            // reason: the snapshot (k, v) here can go stale mid-sweep.
+            foreach (var (k, v) in _live) if (Expired(v.Stamp)) _live.TryRemove(new(k, v));
+        }
         var id = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(16));
         _live[id] = (t, Now);
         return id;

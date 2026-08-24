@@ -67,7 +67,7 @@ public class ConvertedModel : PageModel
     {
         var settings = DeviceSettings.EnsureDid(HttpContext);
         var target = settings.ToRenderTarget(Request.Cookies["scr"]);
-        var markSet = settings.Did.Length == 0 ? new HashSet<string>() : _marks.Read(settings.Did);
+        var markSet = _marks.Read(settings.Did);
 
         // Cache entries for THIS device. Only the SET of item ids matters for the
         // batch fetch — row state is recomputed below from the current ebook file —

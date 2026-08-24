@@ -64,7 +64,8 @@ public class LibraryModel : PageModel
         var ds = DeviceSettings.EnsureDid(HttpContext);
         IsFavorite = ds.Fav == Id;
         _did = ds.Did;
-        _markSet = ds.Did.Length == 0 ? new HashSet<string>() : _marks.Read(ds.Did);
+        _markSet = _marks.Read(ds.Did);
+        _access = _tokens.Read()?.Access;
 
         var libraries = await _api.GetLibrariesAsync(ct);
         var library = libraries.FirstOrDefault(l => l.Id == Id);
@@ -108,21 +109,7 @@ public class LibraryModel : PageModel
     private HashSet<string> _finished = new();
     private HashSet<string> _markSet = new();
     private string _did = "";
-    // Lazy + cached: must be read after every ABS call (AbsAuthHandler can
-    // refresh mid-request on a 401 and save new tokens), or a ticket minted
-    // from the pre-refresh token is dead. RowFor runs after OnGetAsync's
-    // awaits, so reading here rather than up front can't regress on a later
-    // added await.
     private string? _access;
-    private bool _accessRead;
-    private string? Access
-    {
-        get
-        {
-            if (!_accessRead) { _access = _tokens.Read()?.Access; _accessRead = true; }
-            return _access;
-        }
-    }
     // Decoded active facet filter (group + value id), for resolving its label.
     private string? _filterGroup;
     private string? _filterValue;
@@ -169,7 +156,7 @@ public class LibraryModel : PageModel
                 EpubName.For(meta?.Authors?.FirstOrDefault()?.Name, meta?.Title ?? item.Media?.Metadata?.Title), path)
             : null;
         var filename = media?.EbookFile?.Metadata?.Filename ?? item.Media?.EbookFile?.Metadata?.Filename;
-        var rawTicket = filename is not null && Access is { } acc
+        var rawTicket = filename is not null && _access is { } acc
             ? _tickets.MintRaw(item.Id, null, _did, filename, acc)
             : null;
         return new ItemRowModel(item, Links, meta?.Authors, meta?.Series, state, ret,

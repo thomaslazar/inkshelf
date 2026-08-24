@@ -129,6 +129,10 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await page.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 15000 });
         await Shot("library-de");
         Expect("library-de", await page.InnerTextAsync("body"), "Sortierung:", "Titel", "Herunterladen");
+        // A link with no ticket is a download an e-reader's manager cannot finish —
+        // the listing mints its own, so assert here too, not just on the item page.
+        if (!Regex.IsMatch(await page.ContentAsync(), @"href=""/download/[^""]*(\?|&amp;)t=[A-Za-z0-9_-]{22}"""))
+            failures.Add("library-de: a listing download link carries no ticket");
         var libUrl = page.Url;
 
         // Search results — books + series + author sections, each its own layout
