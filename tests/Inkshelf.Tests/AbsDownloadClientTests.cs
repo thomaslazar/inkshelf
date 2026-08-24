@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using Inkshelf.Abs;
 
 namespace Inkshelf.Tests;
@@ -80,15 +81,22 @@ public class AbsDownloadClientTests
         // two headers have to come from here: a response with no Content-Length is
         // one some e-reader download managers refuse.
         var body = new byte[] { 1, 2, 3, 4 };
+        // Charset parameter present so a production regression to ContentType.ToString()
+        // (which would append "; charset=utf-8") fails this assertion instead of passing it.
         var stub = new StubHandler(_ => new HttpResponseMessage(System.Net.HttpStatusCode.OK)
         {
             Content = new ByteArrayContent(body)
             {
-                Headers = { ContentType = new("application/epub+zip"), ContentLength = body.Length }
+                Headers =
+                {
+                    ContentType = new MediaTypeHeaderValue("application/epub+zip") { CharSet = "utf-8" },
+                    ContentLength = body.Length
+                }
             }
         });
 
         var (content, type, length) = await Client(stub).DownloadEbookAsync("i1", "tok", default);
+        await using var _ = content;
 
         Assert.Equal("application/epub+zip", type);
         Assert.Equal(4, length);
