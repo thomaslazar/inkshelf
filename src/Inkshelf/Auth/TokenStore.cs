@@ -8,6 +8,12 @@ public class TokenStore
     private readonly IDataProtector _protector;
     private readonly IHttpContextAccessor _accessor;
     private readonly AbsOptions _options;
+    // Save writes to the RESPONSE; Request.Cookies is fixed for the life of the
+    // request, so without this a mid-request refresh stays invisible to every later
+    // Read() — and a bearer captured after it (a download ticket, a queued
+    // conversion job) would be the one ABS just rejected. Scoped service: one
+    // instance per request.
+    private Tokens? _saved;
 
     public TokenStore(IDataProtectionProvider dp, IHttpContextAccessor accessor, AbsOptions options)
     {
@@ -21,6 +27,7 @@ public class TokenStore
 
     public void Save(Tokens tokens)
     {
+        _saved = tokens;
         // access \n refresh — neither ABS token contains a newline (JWTs are base64url.compact)
         var payload = _protector.Protect($"{tokens.Access}\n{tokens.Refresh}");
         Ctx.Response.Cookies.Append(CookieName, payload, new CookieOptions
@@ -36,6 +43,7 @@ public class TokenStore
 
     public Tokens? Read()
     {
+        if (_saved is not null) return _saved;
         var raw = Ctx.Request.Cookies[CookieName];
         if (string.IsNullOrEmpty(raw)) return null;
         try
@@ -49,5 +57,9 @@ public class TokenStore
         }
     }
 
-    public void Clear() => Ctx.Response.Cookies.Delete(CookieName);
+    public void Clear()
+    {
+        _saved = null;
+        Ctx.Response.Cookies.Delete(CookieName);
+    }
 }

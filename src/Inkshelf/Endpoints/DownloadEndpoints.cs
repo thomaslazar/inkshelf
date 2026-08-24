@@ -23,7 +23,11 @@ public static class DownloadEndpoints
                     ctx.Response.ContentLength = len;
                     return Results.File(stream, type, fileDownloadName: tk.DownloadName);
                 }
-                catch (HttpRequestException) { return Results.NotFound(); }
+                // A ticket is additive, never a gate: if ABS rejects its bearer, fall
+                // through to the cookie path — which a browser request has and which
+                // refreshes. Nothing is written to the response yet (AbsDownloadClient
+                // disposes and throws before yielding a stream), so this is clean.
+                catch (HttpRequestException) { }
             }
 
             try

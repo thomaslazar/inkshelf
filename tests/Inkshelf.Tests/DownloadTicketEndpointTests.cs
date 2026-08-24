@@ -9,7 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Inkshelf.Tests;
 
 // A download manager on an e-reader re-requests the URL with NO cookies (issue
-// #40). These tests are that request: no cookie header anywhere.
+// #40). These tests are that request: no cookie header, except in the few where
+// the cookie's presence is the point.
 public class DownloadTicketEndpointTests
 {
     private sealed class TempDir : IDisposable
@@ -285,11 +286,12 @@ public class DownloadTicketEndpointTests
     }
 
     [Fact]
-    public async Task A_ticket_whose_bearer_abs_rejects_maps_to_404()
+    public async Task A_ticket_whose_bearer_abs_rejects_falls_through_to_the_cookie_path()
     {
-        // Never refreshed (that's this client's contract): a revoked, expired,
-        // or permission-stripped bearer must look like a deleted item, same as
-        // the cookie path, not surface as a raw 401 from ABS.
+        // A ticket's bearer is never refreshed (this client's contract), so a
+        // revoked or expired one must not become the answer: it falls through.
+        // With no cookie either, that path is today's 401 — never worse than
+        // before tickets existed.
         var stub = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized));
         using var cache = new TempDir();
         using var keys = new TempDir();
@@ -302,7 +304,56 @@ public class DownloadTicketEndpointTests
 
         var res = await client.GetAsync($"/download/item1?t={t}");
 
-        Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
+        Assert.StartsWith("text/plain", res.Content.Headers.ContentType?.ToString());
+        Assert.NotNull(stub.Last);   // the ticket path really was tried first
+    }
+
+    [Fact]
+    public async Task A_rejected_ticket_bearer_still_downloads_when_the_request_has_a_session_cookie()
+    {
+        // The browser's own click: it carries the session cookie, so the ticket
+        // being stale must cost nothing. Before the fall-through this 404'd.
+        var body = new byte[] { 4, 5, 6 };
+        var dead = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        var abs = new StubHandler(req => req.RequestUri!.AbsolutePath.EndsWith("/ebook", StringComparison.Ordinal)
+            ? new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new NonSeekableStream(body))
+                {
+                    Headers = { ContentType = new("application/epub+zip"), ContentLength = body.Length }
+                }
+            }
+            : StubHandler.Json("""
+                {"media":{"metadata":{"title":"T"},"ebookFile":{"ebookFormat":"epub",
+                 "metadata":{"filename":"Cookie Book.epub","size":3,"mtimeMs":1}}}}
+                """));
+        using var cache = new TempDir();
+        using var keys = new TempDir();
+        using var factory = CreateFactory(cache.Path, keys.Path, services =>
+        {
+            services.AddSingleton(new AbsDownloadClient(new HttpClient(dead) { BaseAddress = new Uri("http://abs.local") }));
+            // Primary handler only, so AbsAuthHandler stays in the pipeline: the
+            // cookie is what makes this request work, and a bare HttpClient would
+            // let it pass without one.
+            services.AddHttpClient<AbsApiClient>().ConfigurePrimaryHttpMessageHandler(() => abs);
+        });
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var t = factory.Services.GetRequiredService<DownloadTickets>()
+            .MintRaw("item1", null, Did, "My Book.epub", "access-tok");
+        var protector = factory.Services.GetRequiredService<IDataProtectionProvider>()
+            .CreateProtector("inkshelf.session.v1");
+        var req = new HttpRequestMessage(HttpMethod.Get, $"/download/item1?t={t}");
+        req.Headers.Add("Cookie", $"inkshelf_session={Uri.EscapeDataString(protector.Protect("access\nrefresh"))}");
+
+        var res = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        Assert.Equal(3, res.Content.Headers.ContentLength);
+        Assert.Equal(body, await res.Content.ReadAsByteArrayAsync());
+        // The cookie path's name, not the ticket's: this really was the fall-through.
+        Assert.Equal("Cookie Book.epub", res.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
     }
 
     [Fact]
