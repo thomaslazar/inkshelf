@@ -146,13 +146,19 @@ download never leaves server memory.
 
 A ticket's captured bearer is never refreshed, matching `AbsDownloadClient`'s
 existing contract. ABS access tokens live an hour, and a ticket re-stamped by
-polls could outlive one; the download then fails and reloading the page fixes it.
-Adding a refresh to the ticket path would mean holding a refresh token in the
-table, which buys an edge case and costs the table's blast radius.
+polls could outlive one; ABS then rejects it and the ticket path falls through to
+the cookie path, so a browser click (which carries the session cookie, and
+refreshes it) still downloads. Only a cookie-less manager request is left to fail,
+and reloading the page fixes that. Adding a refresh to the ticket path would mean
+holding a refresh token in the table, which buys an edge case and costs the
+table's blast radius — no refresh token ever enters the table.
 
 In-memory state is right here: we are one sidecar container, tickets are minted
 per page render, and losing the table on restart costs nothing. Growth is bounded
-by authenticated page renders and by the 15-minute window.
+by authenticated page renders and by the 15-minute window. Accepted risk: the
+table has no hard ceiling — a few thousand live tickets is single-digit MB, and a
+cap would trade that for a silent minting failure, so the bound is traffic, not
+code.
 
 **Search rows are covered.** The search branch already fetches the same batch
 metadata as the listing and computes convert states from it

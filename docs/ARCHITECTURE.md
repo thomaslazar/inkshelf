@@ -149,6 +149,9 @@ from the repo root (inside the devcontainer) must stay green, and
   `ServerGarbageCollection=false` (plus non-concurrent GC and `ConserveMemory`).
   A mostly-idle sidecar doing sequential, CPU-bound conversions wants one compact
   heap that hands memory back, not per-core heaps sized for throughput.
+
+**Downloads**
+
 - **A download ticket serves bytes and nothing else.** `?t=` authorises streaming
   one already-identified file — never a conversion kick, a status poll or
   `fresh=1`, and never a second item (both endpoints check the ticket's item id
