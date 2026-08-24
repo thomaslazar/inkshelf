@@ -57,10 +57,11 @@ public static class SettingsEndpoints
             var scaleRejected = !string.IsNullOrWhiteSpace(rawScale)
                 && (!int.TryParse(rawScale, out var typed) || DeviceSettings.SanitizeScale(typed) != typed);
 
-            // PRG: back to the page, showing saved state.
-            var flags = (unusable ? "range=1" : "") + (unusable && scaleRejected ? "&" : "")
-                + (scaleRejected ? "scalerange=1" : "");
-            return Results.Redirect(flags.Length == 0 ? "/settings" : $"/settings?{flags}");
+            // PRG back to the page — carrying the saved settings, so the URL in the
+            // address bar is one a device can bookmark to restore them. Warning
+            // flags ride along as extra params; they are not settings keys.
+            var flags = (unusable ? "&range=1" : "") + (scaleRejected ? "&scalerange=1" : "");
+            return Results.Redirect($"/settings?{settings.Serialize()}{flags}");
         }).DisableAntiforgery();
     }
 }

@@ -488,4 +488,45 @@ public class ListingRenderTests
         var off = await client.SendAsync(LibraryRequest(factory, plain, includeScr: false));
         Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(await off.Content.ReadAsStringAsync()));
     }
+
+    // Query settings are honoured on /settings ONLY. A link is allowed to change
+    // settings on the page where changing settings is the point — nowhere else,
+    // or any URL anyone sends becomes a silent settings rewrite.
+    [Fact]
+    public async Task A_listing_url_carrying_settings_keys_ignores_them()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var req = LibraryRequest(factory, settings: null);
+        req.RequestUri = new Uri($"/library/{LibId}?ovr=1&ovrw=1120&ovrh=1355&ovrd=1.325", UriKind.Relative);
+        var res = await client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var setCookie = res.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
+        Assert.DoesNotContain("ovrw%3D1120", setCookie);
+
+        // The Set-Cookie check above only catches a Read that PERSISTS the query
+        // into the cookie. It says nothing about a Read that honours the query for
+        // THIS render only, writing no cookie at all. Seed the cache at the query's
+        // override geometry (retina defaults on with no settings cookie, so an
+        // honoured override would target the numbers verbatim) and ask again with
+        // no scr cookie either: if the query were consulted, the seeded file would
+        // match this request's render target and the row would show Cached (no
+        // data-warm). Ignoring the query correctly falls back to the no-probe 0x0
+        // target, finds no match, and still offers a plain Convert.
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        File.WriteAllText(cache.PathFor(ItemId, Size, Mtime, 1120, 1355,
+            spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale, dpr: 1.325), "epub");
+
+        var req2 = LibraryRequest(factory, settings: null, includeScr: false);
+        req2.RequestUri = new Uri($"/library/{LibId}?ovr=1&ovrw=1120&ovrh=1355&ovrd=1.325", UriKind.Relative);
+        var res2 = await client.SendAsync(req2);
+        var html2 = await res2.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, res2.StatusCode);
+        Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(html2));
+    }
 }

@@ -1,7 +1,6 @@
 using Inkshelf.Convert;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Primitives;
 using System.Globalization;
 using System.Security.Cryptography;
 
@@ -89,16 +88,36 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
         // the keyed format; parsed here so existing devices keep their settings.
         if (!v.Contains('=')) return ReadLegacy(v) with { Fav = LegacyFav(req) };
 
-        var q = QueryHelpers.ParseQuery(v);
-        return new DeviceSettings(
+        var q = new QueryCollection(QueryHelpers.ParseQuery(v));
+        var s = Parse(q);
+        // PRESENCE, not emptiness. `fav=` present-but-empty means deliberately
+        // un-favorited; falling back to the legacy cookie on empty would
+        // resurrect a favorite the user just cleared.
+        return q.ContainsKey("fav") ? s : s with { Fav = LegacyFav(req) };
+    }
+
+    // The keys Serialize writes, and nothing else. A query carrying none of them
+    // is not a settings payload — `range`/`scalerange` are warning markers.
+    private static readonly string[] Keys =
+        ["retina", "gray", "lang", "fav", "did", "spread", "scale", "ovr", "ovrw", "ovrh", "ovrd"];
+
+    // Settings from a URL query, or null when it carries none of Keys. The cookie
+    // and a bookmarked URL are the same wire format, so both go through Parse and
+    // cannot drift apart.
+    public static DeviceSettings? FromQuery(IQueryCollection q)
+    {
+        foreach (var k in Keys)
+            if (q.ContainsKey(k)) return Parse(q);
+        return null;
+    }
+
+    private static DeviceSettings Parse(IQueryCollection q) =>
+        new DeviceSettings(
             Flag(q, "retina", Default.Retina),
             Flag(q, "gray", Default.Grayscale),
             q.TryGetValue("lang", out var lang) ? SanitizeLang(lang.ToString()) : Default.Lang)
         {
-            // PRESENCE, not emptiness. `fav=` present-but-empty means deliberately
-            // un-favorited; falling back to the legacy cookie on empty would
-            // resurrect a favorite the user just cleared.
-            Fav = q.TryGetValue("fav", out var fav) ? SanitizeId(fav.ToString()) : LegacyFav(req),
+            Fav = q.TryGetValue("fav", out var fav) ? SanitizeId(fav.ToString()) : "",
             Did = q.TryGetValue("did", out var did) ? SanitizeId(did.ToString()) : "",
             // Absent (a cookie written before these settings existed) or unparseable →
             // the documented default, NOT the enum's zero value / a zero scale.
@@ -113,13 +132,13 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
                 ? SanitizeDim(ohv) : 0,
             OverrideDpr = q.TryGetValue("ovrd", out var od) ? SanitizeDpr(ParseDpr(od.ToString())) : 0,
         };
-    }
 
     // An absent key means "not specified", which must land on the DOCUMENTED
     // default — retina defaults ON, so a plain `== "1"` would silently flip it off.
-    // ParseQuery hands back a plain Dictionary whose indexer THROWS on a missing
-    // key, so every lookup goes through TryGetValue.
-    private static bool Flag(Dictionary<string, StringValues> q, string key, bool fallback) =>
+    // v[0], not v.ToString(): StringValues.ToString() joins a duplicated key
+    // ("retina=1&retina=1") with a comma, so "1,1" would compare false and flip
+    // the flag off instead of landing on the default like every other garbled value.
+    private static bool Flag(IQueryCollection q, string key, bool fallback) =>
         q.TryGetValue(key, out var v) && v.Count > 0 ? v[0] == "1" : fallback;
 
     // Two 0/1 flags then an optional language code, e.g. "10de". Anything

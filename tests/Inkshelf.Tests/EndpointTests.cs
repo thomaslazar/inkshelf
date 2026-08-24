@@ -179,9 +179,51 @@ public class EndpointTests
         var response = await client.PostAsync("/settings", content);
 
         Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/settings", response.Headers.Location?.OriginalString);
+        Assert.StartsWith("/settings?", response.Headers.Location?.OriginalString);
         var setCookie = response.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
         Assert.Contains("inkshelf_settings=retina%3D1%26gray%3D0", setCookie); // retina on, grayscale off
+    }
+
+    // The page you land on after saving is the page to bookmark, so the redirect
+    // has to carry the values — and following it must reproduce them, which is
+    // what makes the bookmark work at all.
+    [Fact]
+    public async Task Saving_redirects_to_a_url_that_restores_the_same_settings()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var token = await GetAntiforgeryTokenAsync(client);
+        var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["retina"] = "on",
+            ["lang"] = "de",
+            ["scale"] = "98",
+            ["ovr"] = "on",
+            ["ovrw"] = "1120",
+            ["ovrh"] = "1355",
+            ["ovrd"] = "1.325",
+        });
+
+        var res = await client.PostAsync("/settings", content);
+
+        Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
+        var location = res.Headers.Location!.OriginalString;
+        Assert.StartsWith("/settings?", location);
+        // Anchored on both sides: Serialize's fixed key order puts scale right
+        // before ovr=1, and ovrw/ovrh right before the next key, so an unanchored
+        // Contains would prefix-match a differently-valued key (e.g. "scale=980").
+        Assert.Contains("&scale=98&", location);
+        Assert.Contains("&ovrw=1120&", location);
+        Assert.Contains("&ovrh=1355&", location);
+        Assert.Contains("lang=de", location);
+
+        // Following it restores the same values on a client with no cookies.
+        using var fresh = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var restored = await fresh.GetAsync(location);
+        Assert.Equal(System.Net.HttpStatusCode.OK, restored.StatusCode);
+        Assert.Contains("value=\"1120\"", await restored.Content.ReadAsStringAsync());
     }
 
     // The language select must reflect what the page is RENDERING in, not what is
@@ -522,7 +564,9 @@ public class EndpointTests
         }));
 
         Assert.Equal(System.Net.HttpStatusCode.Redirect, saved.StatusCode);
-        Assert.Equal("/settings?range=1", saved.Headers.Location?.ToString());
+        var location = saved.Headers.Location?.ToString();
+        Assert.StartsWith("/settings?", location);
+        Assert.Contains("&range=1", location);
     }
 
     [Fact]
@@ -542,7 +586,10 @@ public class EndpointTests
             ["ovrd"] = "1.5",
         }));
 
-        Assert.Equal("/settings", saved.Headers.Location?.ToString());
+        var location = saved.Headers.Location?.ToString();
+        Assert.StartsWith("/settings?", location);
+        Assert.DoesNotContain("&range=1", location);
+        Assert.DoesNotContain("&scalerange=1", location);
     }
 
     [Fact]
@@ -561,16 +608,19 @@ public class EndpointTests
             ["lang"] = "en",
         }));
 
-        Assert.Equal("/settings", saved.Headers.Location?.ToString());
+        var location = saved.Headers.Location?.ToString();
+        Assert.StartsWith("/settings?", location);
+        Assert.DoesNotContain("&range=1", location);
+        Assert.DoesNotContain("&scalerange=1", location);
     }
 
     [Theory]
-    [InlineData("98", "/settings")]            // the reason this became a free number
-    [InlineData("50", "/settings")]            // the floor is accepted
-    [InlineData("49", "/settings?scalerange=1")]
-    [InlineData("101", "/settings?scalerange=1")]
-    [InlineData("abc", "/settings?scalerange=1")]
-    public async Task An_out_of_range_page_scale_says_so(string scale, string expected)
+    [InlineData("98", false)]            // the reason this became a free number
+    [InlineData("50", false)]            // the floor is accepted
+    [InlineData("49", true)]
+    [InlineData("101", true)]
+    [InlineData("abc", true)]
+    public async Task An_out_of_range_page_scale_says_so(string scale, bool expectWarning)
     {
         // It used to be a dropdown, so out-of-range was impossible. As a free number it
         // reverts to 100 when rejected, which looks like the field ignoring you.
@@ -585,7 +635,10 @@ public class EndpointTests
             ["scale"] = scale,
         }));
 
-        Assert.Equal(expected, saved.Headers.Location?.ToString());
+        var location = saved.Headers.Location?.ToString();
+        Assert.StartsWith("/settings?", location);
+        if (expectWarning) Assert.Contains("&scalerange=1", location);
+        else Assert.DoesNotContain("&scalerange=1", location);
     }
 
     [Fact]
@@ -624,7 +677,10 @@ public class EndpointTests
             ["ovrd"] = "1.5",
         }));
 
-        Assert.Equal("/settings?range=1&scalerange=1", saved.Headers.Location?.ToString());
+        var location = saved.Headers.Location?.ToString();
+        Assert.StartsWith("/settings?", location);
+        Assert.Contains("&range=1", location);
+        Assert.Contains("&scalerange=1", location);
     }
 
     [Theory]
@@ -664,5 +720,72 @@ public class EndpointTests
 
         var cleared = await client.PostAsync("/settings", new FormUrlEncodedContent(off));
         Assert.Contains("retina%3D0", string.Join(" ", cleared.Headers.GetValues("Set-Cookie")));
+    }
+
+    // A bookmarked URL is how a device that loses its cookies every restart gets
+    // its measured override back. Opening it must write the cookie, not just
+    // render the values for one request.
+    [Fact]
+    public async Task Settings_from_the_url_are_applied_and_stored()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var res = await client.GetAsync(
+            "/settings?retina=1&gray=0&lang=&fav=&did=9c2f1a4b8e07d631&spread=rotateleft"
+            + "&scale=98&ovr=1&ovrw=1120&ovrh=1355&ovrd=1.325");
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, res.StatusCode);
+        var setCookie = res.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
+        Assert.Contains("ovrw%3D1120", setCookie);
+        Assert.Contains("ovrh%3D1355", setCookie);
+        Assert.Contains("scale%3D98", setCookie);
+
+        var html = await res.Content.ReadAsStringAsync();
+        Assert.Contains("value=\"1120\"", html);   // prefilled into the override field
+    }
+
+    // A restored override can be out of range too (a typo'd digit in a hand-typed
+    // bookmark) — it must warn the same way a POST-time rejection does, not tick the
+    // override and silently show the probe's numbers instead.
+    [Fact]
+    public async Task A_restored_out_of_range_override_still_warns()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var res = await client.GetAsync("/settings?ovr=1&ovrw=99999&ovrh=1355&ovrd=1.325");
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, res.StatusCode);
+        var html = await res.Content.ReadAsStringAsync();
+        Assert.Contains("Not used: width and height must be between 1 and 4096, and the ratio between 1 and 4.", html);
+    }
+
+    // Download marks are keyed to the device id, so a bookmarked URL that omits it
+    // must still land on a real one — an empty id keys this device's marks to
+    // nothing at all.
+    [Fact]
+    public async Task A_restore_without_a_device_id_mints_one()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var res = await client.GetAsync("/settings?ovr=1&ovrw=1120&ovrh=1355&ovrd=1.325");
+
+        var setCookie = res.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
+        var minted = System.Text.RegularExpressions.Regex.Match(setCookie, "did%3D([0-9a-f]{16})").Groups[1].Value;
+        Assert.NotEqual("", minted);
+    }
+
+    [Fact]
+    public async Task A_plain_settings_page_load_does_not_write_settings()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var res = await client.GetAsync("/settings?range=1");
+
+        var setCookie = res.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
+        Assert.DoesNotContain("inkshelf_settings", setCookie);
     }
 }

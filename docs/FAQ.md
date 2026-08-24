@@ -27,8 +27,10 @@ turn retina on, or raise the screen override.
 ## I have to log in again whenever I reopen the browser
 
 Some older readers keep no cookies across a browser restart, and the device
-settings go with them. Nothing on the server can prevent that; keep a note of your
-override values.
+settings go with them. Logging in again is unavoidable, but the settings are not:
+save them once and bookmark the settings page you land on. Opening that bookmark
+restores everything, including the screen override and the device's download
+marks.
 
 ## Where do I find my device's numbers?
 
