@@ -1,4 +1,5 @@
 using Microsoft.Playwright;
+using System.Text.RegularExpressions;
 
 // Headless-browser UI pass for Inkshelf. Captures full-page screenshots and
 // asserts key strings on the pages that render without an ABS login, so gross
@@ -164,6 +165,13 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await page.ClickAsync("a[href^='/item/']:has-text('Neon Blade')");
         await Shot("item-comic-de");
         Expect("item-comic-de", await page.InnerTextAsync("body"), "Neu erzeugen", "Herunterladen");
+
+        // A link with no ticket is a download an e-reader's manager cannot finish.
+        var comicHtml = await page.ContentAsync();
+        if (!Regex.IsMatch(comicHtml, @"href=""/download/[^""]*(\?|&amp;)t=[A-Za-z0-9_-]{22}"""))
+            failures.Add("item-comic-de: a raw download link carries no ticket");
+        if (!Regex.IsMatch(comicHtml, @"href=""/convert/[^""]*(\?|&amp;)t=[A-Za-z0-9_-]{22}"""))
+            failures.Add("item-comic-de: the convert link carries no ticket");
 
         // Live Convert-button click: label must flip to German, never a raw entity.
         await page.GotoAsync(libUrl);

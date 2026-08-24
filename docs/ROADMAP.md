@@ -93,6 +93,11 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Download tickets** (#40) — a raw or converted-file download now finishes even
+  when the e-reader's own download manager re-fetches the link with no cookies:
+  each download/convert link carries a one-time ticket (`?t=`) that authorises
+  streaming that one file on its own, falling back to the cookie path if the
+  ticket is missing or expired.
 - **Bookmarkable settings** — a Settings page can be bookmarked to restore
   every device setting: screen override, page scale, spread mode, retina,
   grayscale, language, favourite library, and device id — including download
