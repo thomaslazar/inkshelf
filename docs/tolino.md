@@ -104,10 +104,13 @@ and its bytes are discarded rather than resumed: the manager sends no `Range`
 header even when the response advertises `Accept-Ranges`.
 
 **On the shine that re-request carries no cookies**, which is what made large
-downloads fail outright there. On 16.2.0 it appears to forward them — those
-devices downloaded 50 MB comics successfully before download tickets existed,
-which a cookie-less request could not have done — but that has not been observed
-directly, only inferred. Treat the cookie-less case as the one to design for.
+downloads fail outright there. On 16.2.0 both requests arrive with the session
+cookie (measured on the epos 2 with the request log's `NOCOOKIE` marker), so a
+cookie-less re-request is so far specific to 10.5.0 — which is also why those
+devices downloaded 50 MB comics before download tickets existed. What carries the
+cookie there is not established: the manager may forward it, or the browser may
+be retrying the transfer itself. Design for the cookie-less case regardless; it
+costs nothing where the cookie is present.
 
 This is why every download link carries a short-lived ticket in its URL. A link
 that authorises by cookie alone cannot be completed by the component that
