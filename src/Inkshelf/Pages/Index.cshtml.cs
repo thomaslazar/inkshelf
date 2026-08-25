@@ -8,11 +8,16 @@ namespace Inkshelf.Pages;
 public class IndexModel : PageModel
 {
     private readonly AbsApiClient _api;
-    public IndexModel(AbsApiClient api) { _api = api; }
+    private readonly TokenStore _tokens;
+    public IndexModel(AbsApiClient api, TokenStore tokens) { _api = api; _tokens = tokens; }
 
     public List<AbsLibrary> Libraries { get; private set; } = new();
 
     public string Version => AppVersion.Current;
+
+    // From the session cookie, not ABS: the libraries page already decrypts it, so
+    // this costs no request and still shows when ABS is unreachable.
+    public string Username => _tokens.Read()?.Username ?? "";
 
     public async Task<IActionResult> OnGetAsync([FromQuery] string? all, CancellationToken ct)
     {

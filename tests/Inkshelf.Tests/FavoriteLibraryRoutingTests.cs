@@ -40,10 +40,24 @@ public class FavoriteLibraryRoutingTests
         return model;
     }
 
+    // Builds the HttpContext FIRST so a TokenStore can be handed a working
+    // accessor before the IndexModel exists — these tests never read
+    // Username, so the store just has to be constructible.
+    private static IndexModel MakeIndex(AbsApiClient api, string? favCookie)
+    {
+        var http = new DefaultHttpContext();
+        if (favCookie is not null)
+            http.Request.Headers.Cookie = $"{DeviceSettings.Cookie}=retina=1&gray=0&lang=&fav={favCookie}";
+        var accessor = new HttpContextAccessor { HttpContext = http };
+        var model = new IndexModel(api, new TokenStore(new EphemeralDataProtectionProvider(), accessor, new AbsOptions()));
+        model.PageContext = new PageContext { HttpContext = http };
+        return model;
+    }
+
     [Fact]
     public async Task Index_redirects_to_a_favorite_that_exists_on_this_ABS()
     {
-        var model = WithContext(new IndexModel(LibrariesClient("lib-1", "lib-2")), favCookie: "lib-2");
+        var model = MakeIndex(LibrariesClient("lib-1", "lib-2"), favCookie: "lib-2");
         var result = await model.OnGetAsync(all: null, default);
         var redirect = Assert.IsType<RedirectResult>(result);
         Assert.Equal("/library/lib-2", redirect.Url);
@@ -52,7 +66,7 @@ public class FavoriteLibraryRoutingTests
     [Fact]
     public async Task Index_drops_a_stale_favorite_and_shows_the_list()
     {
-        var model = WithContext(new IndexModel(LibrariesClient("lib-1", "lib-2")), favCookie: "gone-from-other-abs");
+        var model = MakeIndex(LibrariesClient("lib-1", "lib-2"), favCookie: "gone-from-other-abs");
         var result = await model.OnGetAsync(all: null, default);
 
         Assert.IsType<PageResult>(result);                 // no redirect into the missing library
@@ -65,7 +79,7 @@ public class FavoriteLibraryRoutingTests
     [Fact]
     public async Task Index_with_no_favorite_shows_the_list()
     {
-        var model = WithContext(new IndexModel(LibrariesClient("lib-1")), favCookie: null);
+        var model = MakeIndex(LibrariesClient("lib-1"), favCookie: null);
         Assert.IsType<PageResult>(await model.OnGetAsync(all: null, default));
         Assert.Single(model.Libraries);
     }
