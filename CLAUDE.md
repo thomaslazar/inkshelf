@@ -3,10 +3,11 @@
 ## Main rule
 be brief
 
-## Never use em dashes
-No em dashes (`—`), anywhere, ever. Not in code, not in comments, not in
-documentation, not in commit messages, not in PR text, not in chat. Use a plain
-hyphen `-`, a comma, or two sentences. This is absolute and has no exceptions.
+## Never use em or en dashes
+No em dashes (`—`) and no en dashes (`–`), anywhere, ever. Not in code, not in
+comments, not in documentation, not in commit messages, not in PR text, not in
+chat. Use a plain hyphen `-`, a comma, or two sentences. This is absolute and has
+no exceptions, including in German text where `–` would be conventional.
 
 ## What this is
 Inkshelf - thin, server-rendered web client for the Audiobookshelf (ABS) API.
