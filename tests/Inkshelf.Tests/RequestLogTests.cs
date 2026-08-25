@@ -74,6 +74,48 @@ public class RequestLogTests
     }
 
     [Fact]
+    public async Task Logs_NOCOOKIE_for_a_cookie_less_file_request()
+    {
+        var capture = new Capture();
+        using var factory = CreateFactory(capture);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        await client.GetAsync("/download/abc123");
+
+        var line = Assert.Single(capture.Lines, l => l.Contains("/download/abc123"));
+        Assert.Contains("NOCOOKIE", line);
+    }
+
+    [Fact]
+    public async Task Does_not_log_NOCOOKIE_when_a_session_cookie_is_present()
+    {
+        var capture = new Capture();
+        using var factory = CreateFactory(capture);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        client.DefaultRequestHeaders.Add("Cookie", "inkshelf_session=whatever");
+
+        await client.GetAsync("/download/abc123");
+
+        var line = Assert.Single(capture.Lines, l => l.Contains("/download/abc123"));
+        Assert.DoesNotContain("NOCOOKIE", line);
+    }
+
+    [Fact]
+    public async Task Does_not_log_NOCOOKIE_for_a_cookie_less_page_request()
+    {
+        // Pins the scoping to NonHtmlEndpoint: a logged-out page hit is not
+        // interesting and must not carry the marker.
+        var capture = new Capture();
+        using var factory = CreateFactory(capture);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        await client.GetAsync("/settings");
+
+        var line = Assert.Single(capture.Lines, l => l.Contains("/settings"));
+        Assert.DoesNotContain("NOCOOKIE", line);
+    }
+
+    [Fact]
     public void The_logged_query_keeps_everything_but_the_ticket()
     {
         Assert.Equal("?file=2&t=…&return=%2F",

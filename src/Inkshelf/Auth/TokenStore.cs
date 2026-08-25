@@ -25,6 +25,11 @@ public class TokenStore
     private HttpContext Ctx => _accessor.HttpContext
         ?? throw new InvalidOperationException("No HttpContext.");
 
+    // For the request log only: whether a session cookie was PRESENT, never whether
+    // it decrypts. Lets the log tell a browser's own request from a download
+    // manager's cookie-less re-request without leaking the cookie name.
+    public static bool HasSessionCookie(HttpRequest request) => request.Cookies.ContainsKey(CookieName);
+
     public void Save(Tokens tokens)
     {
         _saved = tokens;
