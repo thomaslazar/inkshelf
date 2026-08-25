@@ -144,5 +144,6 @@ public class TokenStoreTests
         Assert.NotNull(read);
         Assert.Equal("acc", read!.Access);
         Assert.Equal("ref", read.Refresh);
+        Assert.Equal("ev\nil", read.Username);
     }
 }
