@@ -60,12 +60,12 @@ CBZ_ID=$(by_title "Neon Blade Vol. 1") || fail "could not find the good cbz fixt
 BAD_ID=$(by_title "Corrupt Archive")   || fail "could not find the corrupt cbz fixture"
 
 # Conversion runs in a BACKGROUND worker, so ?warm=1 answers 202 with the current
-# status until the job settles and only then 200 "done" — it is not the instant
+# status until the job settles and only then 200 "done" - it is not the instant
 # 200 this asserted back when conversion was inline.
 #
 # Poll ?status=1, NOT ?warm=1: every non-status request calls KickAsync, so
 # polling with warm=1 re-queues the job and a deterministic failure is never
-# observable as 'failed' — it reads 'queued' forever. status=1 is the read-only
+# observable as 'failed' - it reads 'queued' forever. status=1 is the read-only
 # probe, and it is what the listing's own row JS polls.
 kick() { curl -sf -o /dev/null -b "$JAR" "$INKSHELF_URL/convert/$1?warm=1" || fail "kick /convert/$1 failed"; }
 status_until() { # id want [timeout-secs]

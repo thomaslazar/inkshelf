@@ -42,7 +42,7 @@ export ASPNETCORE_URLS="http://127.0.0.1:$PORT"
 # path while the small sample.cbz still converts. Shipped default (1 GiB) unchanged.
 export MaxArchiveBytes=102400
 # So the SSO button renders and gets asserted. The seeded ABS has no OIDC
-# provider, so the flow itself is never driven here — that needs a real provider.
+# provider, so the flow itself is never driven here - that needs a real provider.
 export OIDC_ENABLED=true
 dotnet run --project "$REPO/src/Inkshelf" -c Debug --no-launch-profile >"$SCRIPT_DIR/app.log" 2>&1 &
 APP=$!

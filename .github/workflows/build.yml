@@ -30,7 +30,7 @@ jobs:
 
   image:
     needs: test
-    # PRs build an image only when labelled `test-image` — the opt-in loop for
+    # PRs build an image only when labelled `test-image` - the opt-in loop for
     # trying a branch on a real device. Fork PRs get a read-only token and could
     # not push, so they never qualify.
     if: >-

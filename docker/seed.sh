@@ -28,7 +28,7 @@ echo "Library: $LIBRARY_ID"
 
 TMP=$(mktemp -d)
 # Silent MP3 (no embedded metadata, so the upload form's title/author/series
-# stick — an EPUB's OPF metadata would override them). ~1s of valid frames.
+# stick - an EPUB's OPF metadata would override them). ~1s of valid frames.
 python3 -c "open('$TMP/a.mp3','wb').write((bytes([0xFF,0xFB,0x90,0x00])+b'\x00'*413)*38)"
 # A small solid-colour PNG cover (no image libs needed).
 python3 - "$TMP/cover.png" <<'PY'
@@ -63,7 +63,7 @@ PY
 # Minimal PDF.
 printf '%%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>endobj\ntrailer<</Root 1 0 R>>\n%%%%EOF\n' > "$TMP/sample.pdf"
 # CBZ = zip of image(s). (CBR needs the proprietary `rar` tool, unavailable
-# here — drop a real .cbr into the library folder if you need to test cbr.)
+# here - drop a real .cbr into the library folder if you need to test cbr.)
 cp "$TMP/cover.png" "$TMP/page-01.png"
 (cd "$TMP" && zip -jq sample.cbz page-01.png)
 # An oversized CBZ: one ~300 KiB incompressible page, stored (no compression),
@@ -90,7 +90,7 @@ upload() { # title author series
         -F "title=$1" -F "author=$2" ${3:+-F "series=$3"} \
         -F "library=$LIBRARY_ID" -F "folder=$FOLDER_ID" \
         -F "0=@$TMP/a.mp3;filename=audiobook.mp3" >/dev/null
-    echo "  + $2 — $1${3:+ ($3)}"
+    echo "  + $2 - $1${3:+ ($3)}"
 }
 
 echo "Uploading items (silent MP3 media so form metadata sticks)..."
@@ -148,7 +148,7 @@ def req(method, path, data=None):
     return json.load(urllib.request.urlopen(r))
 meta = {
     # The epub carries genres + narrators (and tags below) so the item-detail
-    # Genres/Narrators/Tags labels render — the pages that exercise localisation.
+    # Genres/Narrators/Tags labels render - the pages that exercise localisation.
     'epub': {'title': 'The Silent Sea', 'authors': [{'name': 'Ada Ebook'}], 'series': [{'name': 'Deep Space', 'sequence': '1'}],
              'genres': ['Science Fiction', 'Adventure'], 'narrators': ['Sam Sample']},
     'pdf':  {'title': 'Field Manual', 'authors': [{'name': 'Pete PDF'}]},
@@ -170,7 +170,7 @@ for it in req('GET', '/api/libraries/%s/items?limit=200' % lib)['results']:
         elif title == 'Neon Blade Vol. 1':
             m = meta['cbz']
         else:
-            continue  # corrupt fixtures — leave as uploaded
+            continue  # corrupt fixtures - leave as uploaded
         req('PATCH', '/api/items/%s/media' % it['id'], {'metadata': m})
         print('  patched cbz -> %s' % m['title'])
     elif fmt in meta:
