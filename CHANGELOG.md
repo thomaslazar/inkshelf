@@ -3,6 +3,150 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.6.0 — 2026-08-25
+
+### Highlights
+- Large downloads now finish on e-readers whose download manager re-fetches the
+  link without the browser's cookies — previously they arrived empty or as the
+  login page saved under the book's name.
+- Converted comics fit the reader's page instead of landing in a corner or losing
+  a strip off the bottom.
+- A device whose browser reports the wrong screen size can be calibrated by hand,
+  and a reader that forgets its cookies gets that calibration back from a single
+  bookmark instead of re-measuring.
+- Library listings open newest-first, and the breadcrumb links back to the
+  unfiltered listing so one tap clears a filter or a search.
+- One log line per request, which is what makes a download that failed on a
+  reader diagnosable at all.
+
+### Features
+- feat: add the download ticket table
+- feat: add the screen override controls to the settings page
+- feat: honour the screen override wherever a conversion target is built
+- feat: land on a bookmarkable url after saving settings
+- feat: let a screen override take precedence over the scr probe
+- feat: let the reader pick the split and rotate direction
+- feat: link the library breadcrumb to its own unfiltered listing
+- feat: log NOCOOKIE marker for cookie-less file requests
+- feat: log one line per request
+- feat: make the page scale a number instead of a menu
+- feat: measure CSS support in the probe, not just ask
+- feat: mint a download ticket into every download link
+- feat: restore device settings from a bookmarked url
+- feat: say that the settings page can be bookmarked
+- feat: serve a converted comic from a download ticket
+- feat: serve a raw ebook download from a download ticket
+- feat: sort library listings newest first by default
+- feat: store a hand-entered screen override in the settings cookie
+
+### Fixes
+- fix: address final review findings on resolution override
+- fix: answer file requests with 401 instead of the login page
+- fix: close final-review gaps in bookmarkable settings
+- fix: compare-and-remove expired download tickets
+- fix: correct stale AbsDownloadClient request-path invariant
+- fix: declare the size of an ebook download
+- fix: fit the page inside the reader, not just to its width
+- fix: give every page of a comic one size, with a scale knob
+- fix: handle two-page spreads in CBZ conversion
+- fix: keep the header on one line without unprefixed flex
+- fix: keep the sort cycle intact under the new default
+- fix: lay out rows on an engine without unprefixed flex
+- fix: mint /convert's device id lazily, not on every poll
+- fix: offer Automatic in the language list, and Save twice
+- fix: put the pixel ratio in the epub cache key
+- fix: read bearer after abs calls, guard filename, cover /converted tickets
+- fix: read the bearer after the abs calls, not before
+- fix: report the detected screen in device pixels, fields on one line
+- fix: round the pixel ratio to four decimals
+- fix: say when override numbers are out of range instead of dropping them silently
+- fix: scale the declared viewport to the cap so low-res scans fill the screen
+- fix: see a mid-request token refresh, and fall through on a dead ticket
+- fix: size comic pages relative to the reader, not in pixels
+- fix: space the logout button with padding, not an auto margin
+
+### Internal
+
+**Refactors**
+- refactor: drop the bearer-deferral machinery and three dead guards
+- refactor: make retina apply under an override instead of disabling it
+- refactor: parse settings from a query or the cookie with one parser
+- refactor: report content type and length from the ebook download
+- refactor: return the cache path the row state was keyed on
+- refactor: share the epub download name and the device id mint
+- refactor: trim the comments to the rules
+
+**Tests**
+- test: assert download links carry a ticket
+- test: catch render-only query settings on the listing page
+- test: close two gaps the final review found
+- test: cover ticket re-stamp and cache eviction, tighten guard
+- test: discriminate content-type parsing and dispose stream
+- test: pin query settings to the settings page
+- test: pin raw-download ticket item-id, length, and device-id rules
+- test: pin the epub-name blank guard and convert's lazy did mint
+
+**Docs**
+- docs: add a device support matrix
+- docs: add the vision 5 and page 2 to the matrix
+- docs: bound the container log without pinning the driver
+- docs: bring the matrix in line with the shipped page geometry
+- docs: correct RowFor fallback comment about _states
+- docs: correct how a changed override reconverts
+- docs: cut the matrix back to the matrix, move symptoms to a FAQ
+- docs: describe small pages without diagnosing the cause
+- docs: describe the page scale as the free number it is
+- docs: drop the conjectured download answer
+- docs: drop the guessed page scale from the FAQ
+- docs: file the ticket invariant under downloads, correct the spec
+- docs: fill in the vision 5 and page 2 panel resolutions
+- docs: fix a namespace trap and a contradiction in the plan
+- docs: fix the ambiguous QueryCollection line in the plan
+- docs: fold each device's notes into the matrix as a spanning row
+- docs: give the browser engines their own section
+- docs: keep the roadmap entry to user-facing value
+- docs: key the matrix on firmware and per-reader page scale
+- docs: make the server log the primary way to retrieve a probe
+- docs: mark unpublished panel resolutions rather than guessing
+- docs: measure the cookie on 16.2.0 instead of inferring it
+- docs: name a restart as a cause of stale download links
+- docs: name the two tolino readers standard and beta
+- docs: note that the shine's layout degrades
+- docs: note what the resolution override has to override
+- docs: plan bookmarkable settings implementation
+- docs: plan the download ticket implementation
+- docs: plan the resolution override implementation
+- docs: point device reports at the issue tracker
+- docs: record all three 16.2.0 probes and that they share one profile
+- docs: record bookmarkable settings
+- docs: record retina as required on the standard reader
+- docs: record that the download manager never resumes
+- docs: record that the shine retains no cookies
+- docs: record the resolution override
+- docs: record the shine probe and how to retrieve one
+- docs: record the two tolino reader engines and the 98% recommendation
+- docs: record what the measured probe found on the shine
+- docs: refresh the device screenshots and add the settings page
+- docs: reorder Bookmarkable settings entry to lead with user benefit
+- docs: reword the screen override strings in both languages
+- docs: say when a bookmark is worth making
+- docs: separate panel, detected and working resolutions
+- docs: separate the observed handoff from the inferred cookie behaviour
+- docs: soften the shine's reader to what was observed
+- docs: spec bookmarkable device settings
+- docs: spec download tickets for cookie-less download managers
+- docs: spec the resolution override setting
+- docs: spell out the restart flow in the settings spec
+- docs: split the tolino specifics out of the device matrix
+- docs: state how close the detected numbers run to the panel
+- docs: the beta reader is a device setting, not a per-book choice
+- docs: tighten the resolution override spec
+- docs: trim the matrix notes to what the columns cannot say
+
+**Chore**
+- chore: bump version to 0.6.0
+- chore: drop a duplicate using in DeviceSettings
+
 ## v0.5.0 — 2026-07-30
 
 ### Highlights
