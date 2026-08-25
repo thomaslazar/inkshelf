@@ -97,12 +97,17 @@ look like
 ## Downloads hand off to a separate manager
 
 A large download does not stay in the browser. The firmware passes it to a
-separate download manager, which re-requests the same URL **without the
-browser's cookies** — observed on the shine (10.5.0) and on the vision 5 and
-epos 2 (16.2.0), so it is not a quirk of one generation. The browser's own
-partial transfer is abandoned and its bytes are discarded rather than resumed:
-the manager sends no `Range` header even when the response advertises
-`Accept-Ranges`.
+separate download manager, which re-requests the same URL — observed on the
+shine (10.5.0) and on the vision 5 and epos 2 (16.2.0), so the handoff itself is
+not a quirk of one generation. The browser's own partial transfer is abandoned
+and its bytes are discarded rather than resumed: the manager sends no `Range`
+header even when the response advertises `Accept-Ranges`.
+
+**On the shine that re-request carries no cookies**, which is what made large
+downloads fail outright there. On 16.2.0 it appears to forward them — those
+devices downloaded 50 MB comics successfully before download tickets existed,
+which a cookie-less request could not have done — but that has not been observed
+directly, only inferred. Treat the cookie-less case as the one to design for.
 
 This is why every download link carries a short-lived ticket in its URL. A link
 that authorises by cookie alone cannot be completed by the component that
