@@ -39,6 +39,28 @@ public class AbsAuthClientTests
         Assert.Equal("ref", h.Last!.Headers.GetValues("x-refresh-token").Single());
     }
 
+    [Fact]
+    public async Task LoginAsync_parses_the_username()
+    {
+        var stub = new StubHandler(_ => StubHandler.Json(
+            """{"user":{"username":"alice","accessToken":"acc","refreshToken":"ref"}}"""));
+
+        var tokens = await Client(stub).LoginAsync("alice", "pw");
+
+        Assert.Equal("alice", tokens.Username);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_parses_the_username_so_a_refresh_does_not_blank_it()
+    {
+        var stub = new StubHandler(_ => StubHandler.Json(
+            """{"user":{"username":"alice","accessToken":"acc2","refreshToken":"ref2"}}"""));
+
+        var tokens = await Client(stub).RefreshAsync("ref");
+
+        Assert.Equal("alice", tokens.Username);
+    }
+
     private static HttpResponseMessage Redirect(string location, params string[] cookies)
     {
         var res = new HttpResponseMessage(HttpStatusCode.Found);

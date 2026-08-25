@@ -99,6 +99,6 @@ public class AbsAuthClient
         var u = body.User;
         if (string.IsNullOrEmpty(u.AccessToken) || string.IsNullOrEmpty(u.RefreshToken))
             throw new InvalidOperationException("Auth response missing tokens.");
-        return new Tokens(u.AccessToken, u.RefreshToken!);
+        return new Tokens(u.AccessToken, u.RefreshToken!, u.Username ?? "");
     }
 }

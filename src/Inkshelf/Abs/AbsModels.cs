@@ -6,7 +6,8 @@ namespace Inkshelf.Abs;
 public record AbsAuthResponse([property: JsonPropertyName("user")] AbsAuthUser User);
 public record AbsAuthUser(
     [property: JsonPropertyName("accessToken")] string AccessToken,
-    [property: JsonPropertyName("refreshToken")] string? RefreshToken);
+    [property: JsonPropertyName("refreshToken")] string? RefreshToken,
+    [property: JsonPropertyName("username")] string? Username = null);
 
 // Libraries
 public record AbsLibrariesResponse(
