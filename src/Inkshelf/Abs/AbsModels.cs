@@ -6,7 +6,8 @@ namespace Inkshelf.Abs;
 public record AbsAuthResponse([property: JsonPropertyName("user")] AbsAuthUser User);
 public record AbsAuthUser(
     [property: JsonPropertyName("accessToken")] string AccessToken,
-    [property: JsonPropertyName("refreshToken")] string? RefreshToken);
+    [property: JsonPropertyName("refreshToken")] string? RefreshToken,
+    [property: JsonPropertyName("username")] string? Username = null);
 
 // Libraries
 public record AbsLibrariesResponse(
@@ -117,7 +118,7 @@ public record AbsBookMatch(
 public record AbsSeriesMatch(
     [property: JsonPropertyName("series")] AbsSeriesRef Series);
 
-// Current user (GET /api/me) — only the media-progress read-state is consumed.
+// Current user (GET /api/me) - only the media-progress read-state is consumed.
 public record AbsMe(
     [property: JsonPropertyName("mediaProgress")] List<AbsMediaProgress>? MediaProgress);
 public record AbsMediaProgress(

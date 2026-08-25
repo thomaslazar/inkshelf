@@ -10,7 +10,7 @@ public class TokenStore
     private readonly AbsOptions _options;
     // Save writes to the RESPONSE; Request.Cookies is fixed for the life of the
     // request, so without this a mid-request refresh stays invisible to every later
-    // Read() — and a bearer captured after it (a download ticket, a queued
+    // Read() - and a bearer captured after it (a download ticket, a queued
     // conversion job) would be the one ABS just rejected. Scoped service: one
     // instance per request.
     private Tokens? _saved;
@@ -33,8 +33,10 @@ public class TokenStore
     public void Save(Tokens tokens)
     {
         _saved = tokens;
-        // access \n refresh — neither ABS token contains a newline (JWTs are base64url.compact)
-        var payload = _protector.Protect($"{tokens.Access}\n{tokens.Refresh}");
+        // access \n refresh \n username. Neither token contains a newline (JWTs are
+        // base64url.compact); the username might, so it goes LAST, where a newline
+        // can only add a line break to a display string instead of shifting a token.
+        var payload = _protector.Protect($"{tokens.Access}\n{tokens.Refresh}\n{tokens.Username}");
         Ctx.Response.Cookies.Append(CookieName, payload, new CookieOptions
         {
             HttpOnly = true,
@@ -53,8 +55,15 @@ public class TokenStore
         if (string.IsNullOrEmpty(raw)) return null;
         try
         {
-            var parts = _protector.Unprotect(raw).Split('\n', 2);
-            return parts.Length == 2 ? new Tokens(parts[0], parts[1]) : null;
+            // Two fields is a cookie written before the username was stored. Parse it
+            // rather than rejecting it, or an upgrade signs every device out.
+            var parts = _protector.Unprotect(raw).Split('\n', 3);
+            return parts.Length switch
+            {
+                3 => new Tokens(parts[0], parts[1], parts[2]),
+                2 => new Tokens(parts[0], parts[1]),
+                _ => null,
+            };
         }
         catch (System.Security.Cryptography.CryptographicException)
         {

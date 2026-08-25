@@ -122,7 +122,7 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await page.WaitForSelectorAsync("text=Bibliotheken", new() { Timeout = 15000 });
 
         await Shot("index-de");
-        Expect("index-de", await page.InnerTextAsync("body"), "Bibliotheken", "Abmelden");
+        Expect("index-de", await page.InnerTextAsync("body"), "Bibliotheken", "Abmelden", "Benutzer: root");
 
         // Library listing (open the first library).
         await page.ClickAsync("a[href^='/library/']");

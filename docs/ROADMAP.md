@@ -93,6 +93,13 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Signed-in user on the libraries page** - the version line now names which
+  ABS account a device is actually signed in as, e.g. `Inkshelf v0.6.0 - User:
+  root`, so a reader handed to someone else or pulled out of a drawer says whose
+  it is. Read straight from the already-decrypted session cookie, so it costs no
+  extra ABS call and still shows when ABS is unreachable. The cookie gained a
+  third field for it; a cookie from before this shipped still authenticates, it
+  just shows no name until that device's next login or token refresh.
 - **Download tickets** (#40) — a raw or converted-file download now finishes even
   when the e-reader's own download manager re-fetches the link with no cookies:
   each download/convert link carries a one-time ticket (`?t=`) that authorises

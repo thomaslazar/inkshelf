@@ -40,10 +40,22 @@ public class FavoriteLibraryRoutingTests
         return model;
     }
 
+    // The accessor is filled in after WithContext builds the context, so
+    // WithContext stays the only place that knows the cookie shape. These
+    // tests never read Username, so TokenStore just has to be constructible.
+    private static IndexModel MakeIndex(AbsApiClient api, string? favCookie)
+    {
+        var accessor = new HttpContextAccessor();
+        var model = WithContext(new IndexModel(api,
+            new TokenStore(new EphemeralDataProtectionProvider(), accessor, new AbsOptions())), favCookie);
+        accessor.HttpContext = model.PageContext.HttpContext;
+        return model;
+    }
+
     [Fact]
     public async Task Index_redirects_to_a_favorite_that_exists_on_this_ABS()
     {
-        var model = WithContext(new IndexModel(LibrariesClient("lib-1", "lib-2")), favCookie: "lib-2");
+        var model = MakeIndex(LibrariesClient("lib-1", "lib-2"), favCookie: "lib-2");
         var result = await model.OnGetAsync(all: null, default);
         var redirect = Assert.IsType<RedirectResult>(result);
         Assert.Equal("/library/lib-2", redirect.Url);
@@ -52,7 +64,7 @@ public class FavoriteLibraryRoutingTests
     [Fact]
     public async Task Index_drops_a_stale_favorite_and_shows_the_list()
     {
-        var model = WithContext(new IndexModel(LibrariesClient("lib-1", "lib-2")), favCookie: "gone-from-other-abs");
+        var model = MakeIndex(LibrariesClient("lib-1", "lib-2"), favCookie: "gone-from-other-abs");
         var result = await model.OnGetAsync(all: null, default);
 
         Assert.IsType<PageResult>(result);                 // no redirect into the missing library
@@ -65,7 +77,7 @@ public class FavoriteLibraryRoutingTests
     [Fact]
     public async Task Index_with_no_favorite_shows_the_list()
     {
-        var model = WithContext(new IndexModel(LibrariesClient("lib-1")), favCookie: null);
+        var model = MakeIndex(LibrariesClient("lib-1"), favCookie: null);
         Assert.IsType<PageResult>(await model.OnGetAsync(all: null, default));
         Assert.Single(model.Libraries);
     }
