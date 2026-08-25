@@ -219,7 +219,7 @@ git commit -m "feat: keep the logged-in username in the session cookie"
 **Files:**
 - Modify: `src/Inkshelf/Pages/Index.cshtml.cs`
 - Modify: `src/Inkshelf/Pages/Index.cshtml` (the last line)
-- Modify: `src/Inkshelf/locales/en.json`, `src/Inkshelf/locales/de.json`
+- Modify: `src/Inkshelf/locales/de.json` (English needs no file — the key is the English string)
 - Create: `tests/Inkshelf.Tests/IndexRenderTests.cs`
 - Modify: `tests/Inkshelf.Tests/FavoriteLibraryRoutingTests.cs` (three `new IndexModel(...)` sites)
 - Modify: `tools/uicheck/Program.cs` (~line 125)
@@ -325,7 +325,7 @@ Expected: exit 0. Then **look at** `tools/uicheck/shots/index-de.png` and confir
 ```bash
 dotnet format --verify-no-changes
 git add src/Inkshelf/Pages/Index.cshtml src/Inkshelf/Pages/Index.cshtml.cs \
-        src/Inkshelf/locales/en.json src/Inkshelf/locales/de.json \
+        src/Inkshelf/locales/de.json \
         tests/Inkshelf.Tests/IndexRenderTests.cs tools/uicheck/Program.cs
 git commit -m "feat: name the logged-in user on the libraries page"
 ```
