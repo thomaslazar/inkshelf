@@ -4,7 +4,7 @@
 
 **Goal:** Show which ABS user a device is signed in as, on the libraries page, appended to the version line already there.
 
-**Architecture:** ABS returns the user object on both login and refresh, and `AbsAuthClient` already parses it for the tokens. The username rides along in `Tokens`, gets stored as a third field in the session cookie, and the libraries page reads it from that cookie — no extra ABS call anywhere.
+**Architecture:** ABS returns the user object on both login and refresh, and `AbsAuthClient` already parses it for the tokens. The username rides along in `Tokens`, gets stored as a third field in the session cookie, and the libraries page reads it from that cookie - no extra ABS call anywhere.
 
 **Tech Stack:** ASP.NET Core Razor Pages, .NET 10, xUnit with `WebApplicationFactory<Program>`. No new NuGet packages.
 
@@ -15,10 +15,10 @@
 - **A two-field session cookie must keep working.** `TokenStore.Read` currently requires exactly two `\n`-separated parts. Requiring three would make every existing cookie unparseable and sign the whole household out on upgrade. Accept two *or* three.
 - **The username goes LAST in the cookie.** ABS usernames are not newline-free by contract; after the tokens, a newline inside one can only add a line break to a display string instead of shifting a token field.
 - `Tokens.Username` defaults to `""` so the eight existing `new Tokens("acc", "ref")` call sites keep compiling. Empty string, never null.
-- The name is a **display string only** — nothing branches on it, nothing authorises with it.
+- The name is a **display string only** - nothing branches on it, nothing authorises with it.
 - Localised label: locale keys in this project **are** the English string (`L["Log out"]`), and formatted keys exist (`L["Log in with {0}", …]`).
 - **Comments state rules and reasons, not narration.** A comment restating what the next line does will be rejected in review. Keep them short.
-- **Do not touch `CHANGELOG.md`** — release process only. `docs/ARCHITECTURE.md` is a map: this feature introduces no new invariant, so **do not add anything to it**.
+- **Do not touch `CHANGELOG.md`** - release process only. `docs/ARCHITECTURE.md` is a map: this feature introduces no new invariant, so **do not add anything to it**.
 - Run `dotnet format --verify-no-changes` before each commit; CI fails on formatting.
 - Baseline: 461 tests passing at `main`.
 
@@ -27,18 +27,18 @@
 ## File Structure
 
 **Created:**
-- `tests/Inkshelf.Tests/IndexRenderTests.cs` — renders `/` and asserts the version line, matching the one-file-per-page-render convention (`ItemRenderTests`, `ListingRenderTests`, `ConvertedRenderTests`).
+- `tests/Inkshelf.Tests/IndexRenderTests.cs` - renders `/` and asserts the version line, matching the one-file-per-page-render convention (`ItemRenderTests`, `ListingRenderTests`, `ConvertedRenderTests`).
 
 **Modified:**
-- `src/Inkshelf/Abs/AbsModels.cs` — `AbsAuthUser` gains `username`.
-- `src/Inkshelf/Auth/Tokens.cs` — gains `Username`.
-- `src/Inkshelf/Abs/AbsAuthClient.cs` — pass it through `ReadTokens`.
-- `src/Inkshelf/Auth/TokenStore.cs` — write three fields, parse two or three.
-- `src/Inkshelf/Pages/Index.cshtml.cs` — expose the name.
-- `src/Inkshelf/Pages/Index.cshtml` — render it.
-- `src/Inkshelf/locales/de.json` — one key. English needs no file: `LocalizationCatalog.Get` returns the key itself on a miss, and the key is the English string.
+- `src/Inkshelf/Abs/AbsModels.cs` - `AbsAuthUser` gains `username`.
+- `src/Inkshelf/Auth/Tokens.cs` - gains `Username`.
+- `src/Inkshelf/Abs/AbsAuthClient.cs` - pass it through `ReadTokens`.
+- `src/Inkshelf/Auth/TokenStore.cs` - write three fields, parse two or three.
+- `src/Inkshelf/Pages/Index.cshtml.cs` - expose the name.
+- `src/Inkshelf/Pages/Index.cshtml` - render it.
+- `src/Inkshelf/locales/de.json` - one key. English needs no file: `LocalizationCatalog.Get` returns the key itself on a miss, and the key is the English string.
 - `tests/Inkshelf.Tests/TokenStoreTests.cs`, `AbsAuthClientTests.cs`.
-- `tools/uicheck/Program.cs` — assert it on the authed German pass.
+- `tools/uicheck/Program.cs` - assert it on the authed German pass.
 
 ---
 
@@ -111,7 +111,7 @@ Add to `tests/Inkshelf.Tests/TokenStoreTests.cs`:
     }
 ```
 
-Add to `tests/Inkshelf.Tests/AbsAuthClientTests.cs`, following that file's existing stub style — one for login and one for refresh, since ABS returns the user object on both and a refresh that dropped the name would blank it mid-session:
+Add to `tests/Inkshelf.Tests/AbsAuthClientTests.cs`, following that file's existing stub style - one for login and one for refresh, since ABS returns the user object on both and a refresh that dropped the name would blank it mid-session:
 
 ```csharp
     [Fact]
@@ -142,7 +142,7 @@ Use whatever the file's existing helper for building the client is called; do no
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test tests/Inkshelf.Tests --filter "TokenStoreTests|AbsAuthClientTests"`
-Expected: build failure — `Tokens` has no `Username`, and no third constructor argument.
+Expected: build failure - `Tokens` has no `Username`, and no third constructor argument.
 
 - [ ] **Step 3: Add the field to the model and the record**
 
@@ -168,7 +168,7 @@ public record Tokens(string Access, string Refresh, string Username = "");
 
 - [ ] **Step 4: Pass it through `ReadTokens`**
 
-In `AbsAuthClient.ReadTokens`, return `new Tokens(u.AccessToken, u.RefreshToken!, u.Username ?? "")`. Leave the existing token-presence guard exactly as it is — a missing username is not an error.
+In `AbsAuthClient.ReadTokens`, return `new Tokens(u.AccessToken, u.RefreshToken!, u.Username ?? "")`. Leave the existing token-presence guard exactly as it is - a missing username is not an error.
 
 - [ ] **Step 5: Store and parse it**
 
@@ -218,7 +218,7 @@ git commit -m "feat: keep the logged-in username in the session cookie"
 **Files:**
 - Modify: `src/Inkshelf/Pages/Index.cshtml.cs`
 - Modify: `src/Inkshelf/Pages/Index.cshtml` (the last line)
-- Modify: `src/Inkshelf/locales/de.json` (English needs no file — the key is the English string)
+- Modify: `src/Inkshelf/locales/de.json` (English needs no file - the key is the English string)
 - Create: `tests/Inkshelf.Tests/IndexRenderTests.cs`
 - Modify: `tests/Inkshelf.Tests/FavoriteLibraryRoutingTests.cs` (three `new IndexModel(...)` sites)
 - Modify: `tools/uicheck/Program.cs` (~line 125)
@@ -229,7 +229,7 @@ git commit -m "feat: keep the logged-in username in the session cookie"
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/Inkshelf.Tests/IndexRenderTests.cs`. Follow `ItemRenderTests`' factory pattern — `WebApplicationFactory<Program>` with `ABS_URL`, a `TempDir` cache and keys path, the `ConvertWorker` removed, and a `StubHandler` on `AbsApiClient` answering `GET /api/libraries`. Build the session cookie the way that file does, with the Data Protection protector from `factory.Services`, and protect **three** fields to carry a username:
+Create `tests/Inkshelf.Tests/IndexRenderTests.cs`. Follow `ItemRenderTests`' factory pattern - `WebApplicationFactory<Program>` with `ABS_URL`, a `TempDir` cache and keys path, the `ConvertWorker` removed, and a `StubHandler` on `AbsApiClient` answering `GET /api/libraries`. Build the session cookie the way that file does, with the Data Protection protector from `factory.Services`, and protect **three** fields to carry a username:
 
 ```csharp
     [Fact]
@@ -247,7 +247,7 @@ Create `tests/Inkshelf.Tests/IndexRenderTests.cs`. Follow `ItemRenderTests`' fac
     public async Task The_version_line_stays_bare_when_no_username_is_stored()
     {
         // A cookie from before the username was stored must render exactly today's
-        // line — no separator, no empty label.
+        // line - no separator, no empty label.
         var html = await GetIndexHtml(session: "acc\nref", lang: "");
 
         Assert.Contains($"Inkshelf v{AppVersion.Current}", html);
@@ -270,7 +270,7 @@ Write the `GetIndexHtml(session, lang)` helper in that file: it protects `sessio
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `dotnet test tests/Inkshelf.Tests --filter IndexRenderTests`
-Expected: the first and third tests FAIL (no username rendered); the second passes already, which is correct — it pins the unchanged behaviour.
+Expected: the first and third tests FAIL (no username rendered); the second passes already, which is correct - it pins the unchanged behaviour.
 
 - [ ] **Step 3: Expose the name on the page model**
 
@@ -286,12 +286,12 @@ Expected: the first and third tests FAIL (no username rendered); the second pass
 
 `FavoriteLibraryRoutingTests` builds `new IndexModel(LibrariesClient(...))` at lines
 46, 55 and 68 and will no longer compile. This is a forced mechanical consequence,
-not a regression — **do not work around it by avoiding constructor injection**, and
+not a regression - **do not work around it by avoiding constructor injection**, and
 do not change what any of those tests assert.
 
 The wrinkle: `TokenStore` needs an `IHttpContextAccessor`, and that file's
 `WithContext` helper creates the `HttpContext` *after* the model. Restructure so the
-context is built first, then a `TokenStore` over it, then the model — one helper that
+context is built first, then a `TokenStore` over it, then the model - one helper that
 returns the wired-up model. Those three tests never read `Username` (only the view
 does), so the store just has to exist and be constructible.
 
@@ -305,7 +305,7 @@ does), so the store just has to exist and be constructible.
 
 - [ ] **Step 5: Add the locale key**
 
-`de.json`: `"User: {0}": "Benutzer: {0}"`. Insert it in the file's existing key order and keep the JSON valid. No `en.json` exists or is needed — `LocalizationCatalog.Get` returns the key itself on a miss, and the key `"User: {0}"` already reads as English.
+`de.json`: `"User: {0}": "Benutzer: {0}"`. Insert it in the file's existing key order and keep the JSON valid. No `en.json` exists or is needed - `LocalizationCatalog.Get` returns the key itself on a miss, and the key `"User: {0}"` already reads as English.
 
 - [ ] **Step 6: Run the tests**
 
@@ -314,10 +314,10 @@ Expected: PASS, whole suite green.
 
 - [ ] **Step 7: Assert it in the browser pass**
 
-`tools/uicheck/Program.cs`, at the `index-de` expectation (~line 125): add `"Benutzer: root"` to the needles — the seeded ABS logs in as `root`, and the authed pass runs in German only, so this is the German half; the English string is covered by `IndexRenderTests`.
+`tools/uicheck/Program.cs`, at the `index-de` expectation (~line 125): add `"Benutzer: root"` to the needles - the seeded ABS logs in as `root`, and the authed pass runs in German only, so this is the German half; the English string is covered by `IndexRenderTests`.
 
 Run: `tools/uicheck/run.sh`
-Expected: exit 0. Then **look at** `tools/uicheck/shots/index-de.png` and confirm the line reads `Inkshelf v… — Benutzer: root` and has not wrapped awkwardly.
+Expected: exit 0. Then **look at** `tools/uicheck/shots/index-de.png` and confirm the line reads `Inkshelf v… - Benutzer: root` and has not wrapped awkwardly.
 
 - [ ] **Step 8: Format and commit**
 
@@ -335,4 +335,4 @@ git commit -m "feat: name the logged-in user on the libraries page"
 
 - Do not add an `/api/me` call anywhere. The spec rejects it: it costs a request per page load for a display string and shows nothing when ABS is down.
 - Do not put the name in the header, on `/settings`, or on the login page. The libraries page is the whole scope.
-- Two test files are expected to change mechanically: `FavoriteLibraryRoutingTests` (the new constructor parameter, Step 3b) and the two files Task 1 names. If any *other* pre-existing test fails, stop and report it rather than adapting it — the session cookie format is shared, and a break elsewhere means the two-or-three-field compatibility rule was violated.
+- Two test files are expected to change mechanically: `FavoriteLibraryRoutingTests` (the new constructor parameter, Step 3b) and the two files Task 1 names. If any *other* pre-existing test fails, stop and report it rather than adapting it - the session cookie format is shared, and a break elsewhere means the two-or-three-field compatibility rule was violated.

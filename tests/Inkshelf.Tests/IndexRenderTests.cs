@@ -22,7 +22,7 @@ public class IndexRenderTests
 
     // Rendering the logout form's @Html.AntiForgeryToken() makes the real
     // antiforgery service stamp Cache-Control: no-store on its own, on every
-    // request — which would mask a missing/removed no-store block on the page
+    // request - which would mask a missing/removed no-store block on the page
     // and make the header test below pass regardless. Swap in a fake with no
     // such side effect so that test exercises only the page's own header.
     private sealed class SilentAntiforgery : IAntiforgery
@@ -81,14 +81,14 @@ public class IndexRenderTests
         var html = await GetIndexHtml(session: "acc\nref\nalice", lang: "");
 
         Assert.Contains($"Inkshelf v{AppVersion.Current}", html);
-        Assert.Contains("User: alice", html);
+        Assert.Contains("- User: alice", html);   // plain hyphen, never an em dash
     }
 
     [Fact]
     public async Task The_version_line_stays_bare_when_no_username_is_stored()
     {
         // A cookie from before the username was stored must render exactly today's
-        // line — the version and nothing appended to it.
+        // line - the version and nothing appended to it.
         var html = await GetIndexHtml(session: "acc\nref", lang: "");
 
         Assert.Contains($"Inkshelf v{AppVersion.Current}</small>", html);

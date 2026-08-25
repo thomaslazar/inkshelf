@@ -118,7 +118,7 @@ public record AbsBookMatch(
 public record AbsSeriesMatch(
     [property: JsonPropertyName("series")] AbsSeriesRef Series);
 
-// Current user (GET /api/me) — only the media-progress read-state is consumed.
+// Current user (GET /api/me) - only the media-progress read-state is consumed.
 public record AbsMe(
     [property: JsonPropertyName("mediaProgress")] List<AbsMediaProgress>? MediaProgress);
 public record AbsMediaProgress(

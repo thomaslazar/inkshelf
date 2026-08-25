@@ -35,7 +35,7 @@ public class AbsAuthClient
     }
 
     // OIDC leg 1: ask ABS to start its "mobile" flow on our behalf. We must keep
-    // the Set-Cookie values it hands back — the token exchange in
+    // the Set-Cookie values it hands back - the token exchange in
     // CompleteOidcAsync is refused without them. Requires the client's handler to
     // have AllowAutoRedirect off, or the Location we return here is gone.
     //
@@ -44,7 +44,7 @@ public class AbsAuthClient
     // x-forwarded-proto, and that URL is both where the provider sends the user
     // back and what the provider matches against its registered redirect URIs. On
     // the internal address (a compose service name, say) it would be neither
-    // reachable nor registered, so present the public one — the connection itself
+    // reachable nor registered, so present the public one - the connection itself
     // still goes to BaseAddress.
     public async Task<(string AuthorizeUrl, string Cookies)> StartOidcAsync(
         Uri absPublicBase, string redirectUri, string challenge, string state,

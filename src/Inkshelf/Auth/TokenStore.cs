@@ -10,7 +10,7 @@ public class TokenStore
     private readonly AbsOptions _options;
     // Save writes to the RESPONSE; Request.Cookies is fixed for the life of the
     // request, so without this a mid-request refresh stays invisible to every later
-    // Read() — and a bearer captured after it (a download ticket, a queued
+    // Read() - and a bearer captured after it (a download ticket, a queued
     // conversion job) would be the one ABS just rejected. Scoped service: one
     // instance per request.
     private Tokens? _saved;

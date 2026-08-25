@@ -37,7 +37,7 @@ public class TokenStoreTests
     {
         // AbsAuthHandler refreshes mid-request and Saves; Save writes a RESPONSE
         // cookie, so a Read falling back to the (immutable) request cookies would
-        // hand out the access token ABS just rejected — to a download ticket or a
+        // hand out the access token ABS just rejected - to a download ticket or a
         // queued conversion job.
         var ctx = new DefaultHttpContext();
         ctx.Request.Headers.Cookie = "inkshelf_session=stale-and-unreadable";

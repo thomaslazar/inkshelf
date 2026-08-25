@@ -80,7 +80,7 @@ public class AbsAuthClientTests
             new Uri("https://abs.example"), "https://ink.example/oidc/callback", "chal", "st8");
 
         Assert.Equal("https://idp.example/authorize?x=1", url);
-        // name=value only — we are building a request Cookie header, not storing cookies
+        // name=value only - we are building a request Cookie header, not storing cookies
         Assert.Equal("connect.sid=s%3Aabc; auth_method=openid-mobile", cookies);
 
         Assert.Equal("/auth/openid", h.Last!.RequestUri!.AbsolutePath);
@@ -97,7 +97,7 @@ public class AbsAuthClientTests
     {
         // ABS composes its own /auth/openid/mobile-redirect URL from this
         // request's Host and x-forwarded-proto. Left alone it would use the
-        // internal ABS_URL host — unreachable from the browser and unregistered
+        // internal ABS_URL host - unreachable from the browser and unregistered
         // at the provider.
         var h = new StubHandler(_ => Redirect("https://idp.example/authorize"));
 

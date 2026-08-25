@@ -27,7 +27,7 @@ public class IndexModel : PageModel
         if (!string.IsNullOrEmpty(fav) && string.IsNullOrEmpty(all))
         {
             // Only honor the favorite if it still exists on the ABS we're pointed
-            // at now — a cookie saved against a different ABS would otherwise
+            // at now - a cookie saved against a different ABS would otherwise
             // redirect into a library this one doesn't have. Drop the stale
             // favorite and fall through to the list rather than looping on a dead
             // link.

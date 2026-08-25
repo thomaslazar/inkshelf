@@ -93,8 +93,8 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
-- **Signed-in user on the libraries page** — the version line now names which
-  ABS account a device is actually signed in as, e.g. `Inkshelf v0.6.0 — User:
+- **Signed-in user on the libraries page** - the version line now names which
+  ABS account a device is actually signed in as, e.g. `Inkshelf v0.6.0 - User:
   root`, so a reader handed to someone else or pulled out of a drawer says whose
   it is. Read straight from the already-decrypted session cookie, so it costs no
   extra ABS call and still shows when ABS is unreachable. The cookie gained a
