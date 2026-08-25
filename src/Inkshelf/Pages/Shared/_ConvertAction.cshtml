@@ -2,7 +2,10 @@
 @{
     var ret = Uri.EscapeDataString(Model.ReturnUrl);
     var fileQ = string.IsNullOrEmpty(Model.FileIno) ? "" : $"file={Uri.EscapeDataString(Model.FileIno)}&";
-    var baseHref = $"/convert/{Model.Id}?{fileQ}return={ret}";
+    // Only baseHref gets the ticket: it must not authorise fresh=1 (which deletes
+    // and re-runs a conversion), and `why` is a page that needs the cookie anyway.
+    var tq = string.IsNullOrEmpty(Model.Ticket) ? "" : $"&t={Model.Ticket}";
+    var baseHref = $"/convert/{Model.Id}?{fileQ}return={ret}{tq}";
     var freshHref = $"/convert/{Model.Id}?{fileQ}fresh=1&return={ret}";
     var whyHref = $"/convert/{Model.Id}/why?{fileQ}return={ret}";
 }

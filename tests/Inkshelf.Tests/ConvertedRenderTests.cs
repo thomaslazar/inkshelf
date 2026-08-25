@@ -288,6 +288,11 @@ public class ConvertedRenderTests
         // would also match a raw epub file's format label.
         Assert.Contains("title=\"Already converted", html);      // cached state (current ebook)
         Assert.Contains($"/library/{LibId}?filter=", html);     // series/author link into the item's library
+
+        // Both hrefs are re-requested by a cookie-less download manager (issue #40),
+        // so each must carry a ticket — not just the listing's rows.
+        Assert.Matches($"href=\"/download/{ItemId}\\?t=[A-Za-z0-9_-]{{22}}\"", html);
+        Assert.Matches($"href=\"/convert/{ItemId}\\?return=[^\"]*&amp;t=[A-Za-z0-9_-]{{22}}\"", html);
     }
 
     [Fact]

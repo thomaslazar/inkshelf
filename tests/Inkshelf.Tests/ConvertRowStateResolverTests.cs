@@ -21,7 +21,7 @@ public class ConvertRowStateResolverTests
     public void Non_comic_is_not_convertible()
     {
         var r = ConvertRowStateResolver.Resolve(Item("epub"), Media(), Target, new EpubCache(TempDirPath()), new ConvertQueue());
-        Assert.Equal(ConvertRowState.NotConvertible, r);
+        Assert.Equal(ConvertRowState.NotConvertible, r.State);
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class ConvertRowStateResolverTests
     {
         var media = new AbsBatchMedia(new AbsBatchMetadata(), new AbsEbookFile("cbz", null));
         var r = ConvertRowStateResolver.Resolve(Item("cbz"), media, Target, new EpubCache(TempDirPath()), new ConvertQueue());
-        Assert.Equal(ConvertRowState.NotConvertible, r);
+        Assert.Equal(ConvertRowState.NotConvertible, r.State);
     }
 
     [Fact]
@@ -39,14 +39,14 @@ public class ConvertRowStateResolverTests
         var cache = new EpubCache(dir);
         File.WriteAllText(cache.PathFor("i1", 10, 20, 800, 1000), "e");
         var r = ConvertRowStateResolver.Resolve(Item("cbz"), Media(), Target, cache, new ConvertQueue());
-        Assert.Equal(ConvertRowState.Cached, r);
+        Assert.Equal(ConvertRowState.Cached, r.State);
     }
 
     [Fact]
     public void Comic_with_nothing_cached_is_convert()
     {
         var r = ConvertRowStateResolver.Resolve(Item("cbz"), Media(), Target, new EpubCache(TempDirPath()), new ConvertQueue());
-        Assert.Equal(ConvertRowState.Convert, r);
+        Assert.Equal(ConvertRowState.Convert, r.State);
     }
 
     [Fact]
@@ -56,13 +56,37 @@ public class ConvertRowStateResolverTests
         var cache = new EpubCache(dir);
         File.WriteAllText(cache.PathFor("i1", 99, 88, 800, 1000), "e");
         var r = ConvertRowStateResolver.ResolveFor("i1", 99, 88, "cbz", new RenderTarget(800, 1000, 1.0, false), cache, new ConvertQueue());
-        Assert.Equal(ConvertRowState.Cached, r);
+        Assert.Equal(ConvertRowState.Cached, r.State);
     }
 
     [Fact]
     public void ResolveFor_non_comic_is_not_convertible()
     {
         var r = ConvertRowStateResolver.ResolveFor("i1", 1, 2, "pdf", new RenderTarget(800, 1000, 1.0, false), new EpubCache(TempDirPath()), new ConvertQueue());
-        Assert.Equal(ConvertRowState.NotConvertible, r);
+        Assert.Equal(ConvertRowState.NotConvertible, r.State);
+    }
+
+    [Fact]
+    public void ResolveFor_hands_back_the_cache_path_it_keyed_on()
+    {
+        // The path is what a download ticket holds, so it must be the SAME path the
+        // state was decided from — not one the caller re-derives and gets wrong.
+        var cache = new EpubCache(TempDirPath());
+        var target = new RenderTarget(800, 1000, 1.0, false);
+
+        var r = ConvertRowStateResolver.ResolveFor("i1", 99, 88, "cbz", target, cache, new ConvertQueue());
+
+        Assert.Equal(cache.PathFor("i1", 99, 88, target.MaxW, target.MaxH,
+            target.Grayscale, target.Spread, target.Scale, target.Dpr), r.Path);
+    }
+
+    [Fact]
+    public void ResolveFor_has_no_path_when_the_item_is_not_convertible()
+    {
+        var r = ConvertRowStateResolver.ResolveFor("i1", 1, 2, "pdf",
+            new RenderTarget(800, 1000, 1.0, false), new EpubCache(TempDirPath()), new ConvertQueue());
+
+        Assert.Equal(ConvertRowState.NotConvertible, r.State);
+        Assert.Null(r.Path);
     }
 }

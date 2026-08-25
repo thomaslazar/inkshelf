@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -73,10 +74,16 @@ public class FavoriteLibraryRoutingTests
     public async Task Library_redirects_home_for_an_unknown_id_instead_of_500()
     {
         using var dir = new TempCacheDir();
+        // The accessor is filled in after WithContext builds the context: TokenStore
+        // only dereferences it when the page actually reads the session.
+        var accessor = new HttpContextAccessor();
         var model = WithContext(
             new LibraryModel(LibrariesClient("lib-1"), new EpubCache(dir.Path), new ConvertQueue(),
-                new DownloadMarks(System.IO.Path.Combine(dir.Path, "marks"))),
+                new DownloadMarks(System.IO.Path.Combine(dir.Path, "marks")),
+                new TokenStore(new EphemeralDataProtectionProvider(), accessor, new AbsOptions()),
+                new DownloadTickets()),
             favCookie: null);
+        accessor.HttpContext = model.PageContext.HttpContext;
         model.Id = "not-here"; // e.g. a stale favorite from another ABS, hit directly
         var result = await model.OnGetAsync();
         var redirect = Assert.IsType<RedirectResult>(result);

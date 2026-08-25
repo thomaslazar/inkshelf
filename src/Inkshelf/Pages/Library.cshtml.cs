@@ -14,8 +14,10 @@ public class LibraryModel : PageModel
     private readonly EpubCache _cache;
     private readonly ConvertQueue _queue;
     private readonly DownloadMarks _marks;
-    public LibraryModel(AbsApiClient api, EpubCache cache, ConvertQueue queue, DownloadMarks marks)
-    { _api = api; _cache = cache; _queue = queue; _marks = marks; }
+    private readonly DownloadTickets _tickets;
+    public LibraryModel(AbsApiClient api, EpubCache cache, ConvertQueue queue, DownloadMarks marks,
+        TokenStore tokens, DownloadTickets tickets)
+    { _api = api; _cache = cache; _queue = queue; _marks = marks; _tickets = tickets; _access = new(() => tokens.Read()?.Access); }
 
     [FromRoute] public string Id { get; set; } = "";
     [FromQuery] public string? Q { get; set; }
@@ -58,9 +60,10 @@ public class LibraryModel : PageModel
     public async Task<IActionResult> OnGetAsync([FromQuery] int page = 1, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(Id)) return NotFound();
-        var ds = DeviceSettings.Read(Request);
+        var ds = DeviceSettings.EnsureDid(HttpContext);
         IsFavorite = ds.Fav == Id;
-        _markSet = ds.Did.Length == 0 ? new HashSet<string>() : _marks.Read(ds.Did);
+        _did = ds.Did;
+        _markSet = _marks.Read(ds.Did);
 
         var libraries = await _api.GetLibrariesAsync(ct);
         var library = libraries.FirstOrDefault(l => l.Id == Id);
@@ -103,6 +106,15 @@ public class LibraryModel : PageModel
     private Dictionary<string, AbsBatchMedia> _structured = new();
     private HashSet<string> _finished = new();
     private HashSet<string> _markSet = new();
+    private string _did = "";
+    // The bearer must be read AFTER every ABS call of this request: AbsAuthHandler
+    // refreshes on a 401 mid-request, so a read taken before those calls is the
+    // token ABS is about to reject, and every raw ticket minted from it is dead —
+    // exactly on the cookie-less download-manager request tickets exist for.
+    // Lazy, so the read happens in RowFor at view-render time (after every await)
+    // and cannot be broken by a later await; cached, so the session cookie is not
+    // decrypted once per row.
+    private readonly Lazy<string?> _access;
     // Decoded active facet filter (group + value id), for resolving its label.
     private string? _filterGroup;
     private string? _filterValue;
@@ -129,25 +141,37 @@ public class LibraryModel : PageModel
     public ItemRowModel RowFor(AbsItem item)
     {
         _structured.TryGetValue(item.Id, out var media);
-        var state = _states.TryGetValue(item.Id, out var s) ? s : ConvertRowState.NotConvertible;
+        var (state, cachePath) = _states.TryGetValue(item.Id, out var s) ? s : (ConvertRowState.NotConvertible, null);
         if (state == ConvertRowState.NotConvertible)
         {
-            // Search rows: _states is empty (ComputeConvertStates runs only for
-            // the listing branch), so fall back to a plain Convert for cbz/cbr.
+            // Reached when the resolved state is NotConvertible because this item's
+            // batch metadata was unavailable (efm null) — not because _states misses
+            // the key; both OnGetAsync branches store an entry for every item.
             var f = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat;
             if (f is "cbz" or "cbr") state = ConvertRowState.Convert;
         }
         var ret = Request.Path + Request.QueryString; // exact current listing URL
         var rawDownloaded = _markSet.Contains(DownloadMarks.RawKey(item.Id, null));
         var epubDownloaded = _markSet.Contains(DownloadMarks.EpubKey(item.Id, null));
-        return new ItemRowModel(item, Links, media?.Metadata?.Authors, media?.Metadata?.Series, state, ret,
-            _finished.Contains(item.Id), rawDownloaded, epubDownloaded);
+        // Both hrefs are re-requested by a cookie-less download manager, so each
+        // gets a ticket standing for exactly the file that row offers.
+        var meta = media?.Metadata;
+        var epubTicket = cachePath is { } path
+            ? _tickets.MintEpub(item.Id, null, _did,
+                EpubName.For(meta?.Authors?.FirstOrDefault()?.Name, meta?.Title ?? item.Media?.Metadata?.Title), path)
+            : null;
+        var filename = media?.EbookFile?.Metadata?.Filename ?? item.Media?.EbookFile?.Metadata?.Filename;
+        var rawTicket = filename is not null && _access.Value is { } acc
+            ? _tickets.MintRaw(item.Id, null, _did, filename, acc)
+            : null;
+        return new ItemRowModel(item, Links, meta?.Authors, meta?.Series, state, ret,
+            _finished.Contains(item.Id), rawDownloaded, epubDownloaded, rawTicket, epubTicket);
     }
 
     // Per-row convert state, precomputed so the head (which renders before the
     // rows) can decide whether to emit the no-JS <noscript> meta-refresh.
     public bool AnyConverting { get; private set; }
-    private readonly Dictionary<string, ConvertRowState> _states = new();
+    private readonly Dictionary<string, (ConvertRowState State, string? Path)> _states = new();
 
     private void ComputeConvertStates(IEnumerable<AbsItem> items)
     {
@@ -158,11 +182,11 @@ public class LibraryModel : PageModel
             _structured.TryGetValue(item.Id, out var media);
             var state = RowState(item, media, t);
             _states[item.Id] = state;
-            if (state == ConvertRowState.Converting) AnyConverting = true;
+            if (state.State == ConvertRowState.Converting) AnyConverting = true;
         }
     }
 
-    private ConvertRowState RowState(AbsItem item, AbsBatchMedia? media, RenderTarget target)
+    private (ConvertRowState State, string? Path) RowState(AbsItem item, AbsBatchMedia? media, RenderTarget target)
         => ConvertRowStateResolver.Resolve(item, media, target, _cache, _queue);
 
     // Turn ?filter / ?author / ?series into an ABS filter string. Author/series

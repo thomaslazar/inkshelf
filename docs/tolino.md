@@ -94,6 +94,28 @@ treat a single reading as indicative and calibrate against what pages actually
 look like
 — see [`DEVICES.md`](DEVICES.md).
 
+## Downloads hand off to a separate manager
+
+A large download does not stay in the browser. The firmware passes it to a
+separate download manager, which re-requests the same URL — observed on the
+shine (10.5.0) and on the vision 5 and epos 2 (16.2.0), so the handoff itself is
+not a quirk of one generation. The browser's own partial transfer is abandoned
+and its bytes are discarded rather than resumed: the manager sends no `Range`
+header even when the response advertises `Accept-Ranges`.
+
+**On the shine that re-request carries no cookies**, which is what made large
+downloads fail outright there. On 16.2.0 both requests arrive with the session
+cookie (measured on the epos 2 with the request log's `NOCOOKIE` marker), so a
+cookie-less re-request is so far specific to 10.5.0 — which is also why those
+devices downloaded 50 MB comics before download tickets existed. What carries the
+cookie there is not established: the manager may forward it, or the browser may
+be retrying the transfer itself. Design for the cookie-less case regardless; it
+costs nothing where the cookie is present.
+
+This is why every download link carries a short-lived ticket in its URL. A link
+that authorises by cookie alone cannot be completed by the component that
+actually fetches the file.
+
 ## Guidance
 
 - Prefer margins/padding over `gap`.

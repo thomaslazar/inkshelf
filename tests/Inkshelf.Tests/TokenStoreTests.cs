@@ -20,7 +20,9 @@ public class TokenStoreTests
         var ctx = new DefaultHttpContext();
         Make(ctx).Save(new Tokens("acc", "ref"));
 
-        // move the Set-Cookie value into the request cookies of a fresh context
+        // A FRESH store on a fresh context, on purpose: this pins the COOKIE
+        // round-trip, which the same-instance path would mask. Move the Set-Cookie
+        // value into the request cookies of that context.
         var setCookie = ctx.Response.Headers.SetCookie.ToString();
         var value = setCookie.Split(';')[0].Split('=', 2)[1];
         var ctx2 = new DefaultHttpContext();
@@ -28,6 +30,32 @@ public class TokenStoreTests
 
         var read = Make(ctx2).Read();
         Assert.Equal(new Tokens("acc", "ref"), read);
+    }
+
+    [Fact]
+    public void Read_sees_a_Save_on_the_same_instance()
+    {
+        // AbsAuthHandler refreshes mid-request and Saves; Save writes a RESPONSE
+        // cookie, so a Read falling back to the (immutable) request cookies would
+        // hand out the access token ABS just rejected — to a download ticket or a
+        // queued conversion job.
+        var ctx = new DefaultHttpContext();
+        ctx.Request.Headers.Cookie = "inkshelf_session=stale-and-unreadable";
+        var store = Make(ctx);
+        store.Save(new Tokens("fresh-acc", "fresh-ref"));
+
+        Assert.Equal(new Tokens("fresh-acc", "fresh-ref"), store.Read());
+    }
+
+    [Fact]
+    public void Read_returns_null_after_Clear_on_the_same_instance()
+    {
+        var ctx = new DefaultHttpContext();
+        var store = Make(ctx);
+        store.Save(new Tokens("acc", "ref"));
+        store.Clear();
+
+        Assert.Null(store.Read());
     }
 
     [Fact]

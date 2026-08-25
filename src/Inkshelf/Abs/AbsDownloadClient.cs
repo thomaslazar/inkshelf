@@ -12,14 +12,18 @@ namespace Inkshelf.Abs;
 //
 // Registered via ConfigureAbs so it inherits the BaseAddress AND the User-Agent
 // the ABS reverse proxy requires (it 403s an empty UA). Never attach
-// AbsAuthHandler to it; never use it from a request path (use AbsApiClient there).
+// AbsAuthHandler to it. The one sanctioned request-path caller is the download-
+// ticket branch in DownloadEndpoints: it's handler-free for the same reason the
+// worker is — the bearer comes from the ticket, not the request's cookie, so
+// there's no session to refresh and no cookie to depend on. Any other
+// request-path use belongs on AbsApiClient instead.
 public sealed class AbsDownloadClient
 {
     private readonly HttpClient _http;
     public AbsDownloadClient(HttpClient http) => _http = http;
 
     // Caller owns (and must dispose) the returned stream.
-    public async Task<Stream> DownloadEbookAsync(string itemId, string accessToken, CancellationToken ct, string? fileIno = null)
+    public async Task<(Stream Content, string ContentType, long? Length)> DownloadEbookAsync(string itemId, string accessToken, CancellationToken ct, string? fileIno = null)
     {
         var url = $"/api/items/{Uri.EscapeDataString(itemId)}/ebook"
             + (string.IsNullOrEmpty(fileIno) ? "" : $"/{Uri.EscapeDataString(fileIno)}");
@@ -31,7 +35,11 @@ public sealed class AbsDownloadClient
             res.Dispose();
             throw new HttpRequestException($"ebook download failed for {itemId}: {(int)res.StatusCode}");
         }
-        return await res.Content.ReadAsStreamAsync(ct);
+        // Content type and length come back too: a ticket-served download has no
+        // second source for them, and AbsApiClient.StreamAsync uses the same fallback.
+        return (await res.Content.ReadAsStreamAsync(ct),
+            res.Content.Headers.ContentType?.MediaType ?? "application/octet-stream",
+            res.Content.Headers.ContentLength);
     }
 
     // The worker's token-less cover fetch. Mirrors DownloadEbookAsync: handler-free,

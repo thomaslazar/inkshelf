@@ -52,10 +52,10 @@
                boxes across ~660px put their centres well clear of a fingertip,
                and the long German labels stop wrapping. *@
             <div class="actions">
-                <a class="btn" href="/download/@item.Id">@L["Download"]@if (Model.RawDownloaded) { <text> &#8595;</text> }</a>
+                <a class="btn" href="@Model.DownloadHref">@L["Download"]@if (Model.RawDownloaded) { <text> &#8595;</text> }</a>
                 @if (Model.State != ConvertRowState.NotConvertible)
                 {
-                    <partial name="_ConvertAction" model="new Inkshelf.Pages.ConvertActionModel(item.Id, null, Model.State, Model.ReturnUrl, Model.EpubDownloaded)" />
+                    <partial name="_ConvertAction" model="new Inkshelf.Pages.ConvertActionModel(item.Id, null, Model.State, Model.ReturnUrl, Model.EpubDownloaded, Ticket: Model.EpubTicket)" />
                 }
                 <form class="read-form" method="post" action="/read/@item.Id">
                     @Html.AntiForgeryToken()

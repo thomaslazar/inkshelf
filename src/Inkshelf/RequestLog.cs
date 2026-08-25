@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace Inkshelf;
 
@@ -11,8 +12,8 @@ namespace Inkshelf;
 //
 // The QUERY is included. It is what makes a failure readable after the fact: which
 // geometry a conversion asked for, which item, which settings a bookmark carried.
-// No URL in this app ever carries anything authorising — the session lives in a
-// cookie, deliberately — so there is nothing here to leak that a path alone hides.
+// The one exception is a download ticket (see DownloadTickets): it authorises a
+// file fetch on its own, so its value is redacted before logging.
 //
 // BYTES are what the app WROTE to the response body, which is not always what the
 // client received: Kestrel buffers, so a small response is fully written even if the
@@ -23,6 +24,13 @@ namespace Inkshelf;
 // INCOMPLETE marks the reliable version of that signal: the response declared a
 // Content-Length and fewer bytes than that were written. That is a transfer which
 // certainly did not finish, whatever the status line says.
+//
+// NOCOOKIE marks a file/text request (NonHtmlEndpoint) that arrived with no session
+// cookie at all. A browser's own request and a download manager's re-request of the
+// same URL (issue #40: some managers drop cookies) look identical apart from byte
+// count; this is the only thing in the line that tells them apart, and it also
+// answers whether a given device's manager forwards cookies. It is scoped to
+// NonHtmlEndpoint so a logged-out page hit (every /login) doesn't drown it in noise.
 public static class RequestLog
 {
     public static void UseRequestLog(this WebApplication app)
@@ -46,12 +54,24 @@ public static class RequestLog
                 // download, and the status line alone cannot show it.
                 var short_ = declared is { } n && counter.Written < n ? " INCOMPLETE" : "";
                 var aborted = ctx.RequestAborted.IsCancellationRequested ? " ABORTED" : "";
-                log.LogInformation("{Method} {Path}{Query} {Status} {Bytes}b {Ms:F0}ms{Short}{Aborted}",
-                    ctx.Request.Method, ctx.Request.Path.Value, ctx.Request.QueryString.Value,
-                    ctx.Response.StatusCode, counter.Written, ms, short_, aborted);
+                // The endpoint is only resolved after `next()` returns, so this check must
+                // sit here, not before the call.
+                var noCookie = ctx.GetEndpoint()?.Metadata.GetMetadata<Endpoints.NonHtmlEndpoint>() is not null
+                    && !Auth.TokenStore.HasSessionCookie(ctx.Request) ? " NOCOOKIE" : "";
+                log.LogInformation("{Method} {Path}{Query} {Status} {Bytes}b {Ms:F0}ms{Short}{Aborted}{NoCookie}",
+                    ctx.Request.Method, ctx.Request.Path.Value, Redact(ctx.Request.QueryString.Value),
+                    ctx.Response.StatusCode, counter.Written, ms, short_, aborted, noCookie);
             }
         });
     }
+
+    // A ticket in a URL is a capability for one file (see DownloadTickets). The
+    // query is logged because it is what makes a failure readable; the ticket's
+    // value adds nothing to that and would outlive the log line's usefulness.
+    private static readonly Regex TicketValue = new(@"(?<=[?&]t=)[^&]*", RegexOptions.Compiled);
+
+    internal static string? Redact(string? query) =>
+        string.IsNullOrEmpty(query) ? query : TicketValue.Replace(query, "…");
 
     // Counts what reaches the client. Wrapping the body stream is the only way to see
     // a transfer that stops early: Content-Length says what we promised, this says

@@ -223,6 +223,32 @@ public class DownloadMarkEndpointTests
         Assert.DoesNotContain(DownloadMarks.RawKey(ItemId, null), marks);
     }
 
+    // The did must be minted only where it's used (the serve path), not on
+    // every poll — a poll/warm request has no reason to write a settings
+    // cookie. This regressed once inside this branch's own history (EnsureDid
+    // briefly sat at the top of the handler) and the rest of the suite stayed
+    // green, so it's pinned explicitly here.
+    [Theory]
+    [InlineData("status=1")]
+    [InlineData("warm=1")]
+    public async Task A_poll_or_warm_kick_with_no_did_mints_no_settings_cookie(string query)
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
+        var protector = dp.CreateProtector("inkshelf.session.v1");
+        var req = new HttpRequestMessage(HttpMethod.Get, $"/convert/{ComicId}?{query}");
+        req.Headers.Add("Cookie", $"inkshelf_session={Uri.EscapeDataString(protector.Protect("access\nrefresh"))}");
+
+        var res = await client.SendAsync(req);
+
+        var setCookies = res.Headers.TryGetValues("Set-Cookie", out var v) ? v : Array.Empty<string>();
+        Assert.DoesNotContain(setCookies, c => c.StartsWith("inkshelf_settings=", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task Converted_epub_download_records_an_epub_mark_and_not_a_raw_one()
     {

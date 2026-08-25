@@ -98,7 +98,7 @@ public class ItemRenderTests
         Assert.Contains($"/library/{LibId}?filter=", html);          // facet links (author/series/genre)
         Assert.Contains("My Comic.pdf", html);                       // every ebook file listed
         Assert.Contains($"/download/{ItemId}?file=2", html);         // non-primary download by ino
-        Assert.Contains($"/download/{ItemId}\"", html);              // primary download (no file=)
+        Assert.Matches($"/download/{ItemId}\\?t=", html);            // primary download (no file=)
         // The cached state, discriminated by the title only that branch renders —
         // NOT by a bare ">EPUB", which the file-format span also emits for a raw epub.
         Assert.Contains("title=\"Already converted", html);          // primary cbz cached (shared key)
@@ -147,11 +147,11 @@ public class ItemRenderTests
         Assert.DoesNotContain("&#8595;", secondary.Groups[1].Value);
 
         // Raw Download arrow: primary (no file=) shows it, the pdf's (file=2) does not.
-        var primaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\">([^<]*)</a>");
+        var primaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?t=[^\"]*\">([^<]*)</a>");
         Assert.True(primaryDownload.Success, "Expected the primary file's download anchor.");
         Assert.Contains("&#8595;", primaryDownload.Groups[1].Value);
 
-        var secondaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?file=2\">([^<]*)</a>");
+        var secondaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?file=2&amp;t=[^\"]*\">([^<]*)</a>");
         Assert.True(secondaryDownload.Success, "Expected the non-primary file's download anchor.");
         Assert.DoesNotContain("&#8595;", secondaryDownload.Groups[1].Value);
     }
@@ -188,5 +188,32 @@ public class ItemRenderTests
         Assert.True(regen.Success, "Expected a regen anchor on the item page.");
         Assert.Contains("fresh=1", regen.Value);
         Assert.DoesNotContain("data-warm", regen.Value);
+    }
+
+    [Fact]
+    public async Task Every_download_link_carries_a_ticket()
+    {
+        // A reader's download manager re-requests these hrefs with no cookies, so a
+        // link without a ticket is a download that cannot complete (issue #40).
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        File.WriteAllText(cache.PathFor(ItemId, PSize, PMtime, W, H,
+            spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale), "epub");
+
+        var html = await (await client.SendAsync(Request(factory, $"/item/{ItemId}"))).Content.ReadAsStringAsync();
+
+        Assert.Matches($"href=\"/download/{ItemId}\\?t=[A-Za-z0-9_-]{{22}}\"", html);          // primary raw
+        Assert.Matches($"href=\"/download/{ItemId}\\?file=2&amp;t=[A-Za-z0-9_-]{{22}}\"", html); // by ino
+        Assert.Matches($"href=\"/convert/{ItemId}\\?return=[^\"]*&amp;t=[A-Za-z0-9_-]{{22}}\"", html);
+        // Neither regen nor why may carry one: a ticket never authorises fresh=1
+        // (it deletes and re-runs a conversion) and `why` needs the cookie anyway.
+        // [^"&] not [^"]: the return value is escaped, so an appended &t= would
+        // still satisfy the looser class and the rule would go unpinned.
+        Assert.Matches($"href=\"/convert/{ItemId}\\?fresh=1&amp;return=[^\"&]*\"", html);
+        Assert.Matches($"data-why=\"/convert/{ItemId}/why\\?[^\"]*return=[^\"&]*\"", html);
     }
 }

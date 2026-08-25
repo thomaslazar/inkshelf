@@ -32,6 +32,16 @@ save them once and bookmark the settings page you land on. Opening that bookmark
 restores everything, including the screen override and the device's download
 marks.
 
+## I tapped Download and nothing arrived
+
+The page's download links have gone stale, and the part of the device that
+actually fetches the file has nothing to authorise itself with. Two things cause
+it: the reader brought the page back from its own cache (the page you land on
+first after restarting the browser often is one), or Inkshelf itself has been
+restarted or updated since the page was opened.
+
+Either way, go to the book again from the library and download from that page.
+
 ## Where do I find my device's numbers?
 
 Settings shows a *Detected resolution* line. [`DEVICES.md`](DEVICES.md) lists the

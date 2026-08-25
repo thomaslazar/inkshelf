@@ -18,4 +18,12 @@ public record ItemRowModel(
     string ReturnUrl = "/",
     bool Read = false,
     bool RawDownloaded = false,
-    bool EpubDownloaded = false);
+    bool EpubDownloaded = false,
+    string? RawTicket = null,
+    string? EpubTicket = null)
+{
+    // A download manager re-requests this href without cookies, so the ticket has
+    // to be in it, not added later by script.
+    public string DownloadHref =>
+        RawTicket is null ? $"/download/{Item.Id}" : $"/download/{Item.Id}?t={RawTicket}";
+}
