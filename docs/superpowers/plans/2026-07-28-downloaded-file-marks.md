@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Show, on each download action, whether *this device* has already fetched *that file* — and retire the now-redundant `EPUB ✓` checkmark.
+**Goal:** Show, on each download action, whether *this device* has already fetched *that file* - and retire the now-redundant `EPUB ✓` checkmark.
 
 **Architecture:** A random device id (`did`) becomes one more key in the existing `inkshelf_settings` cookie, minted inside `DeviceSettings.Set` so no call site can forget. A new singleton `DownloadMarks` stores one append-only file per device under `{CachePath}/marks/`, holding opaque keys that distinguish raw ebooks from converted EPUBs. Both download endpoints append a key on request; the three render sites load the device's set once and pass per-action booleans into the existing row/action models.
 
@@ -10,14 +10,14 @@
 
 ## Global Constraints
 
-- **Spec:** `docs/superpowers/specs/2026-07-28-downloaded-file-marks-design.md`. Read it before starting — sections A (identity, trust boundary), C (key scheme) and E (the `✓` retirement) are the ones with traps.
+- **Spec:** `docs/superpowers/specs/2026-07-28-downloaded-file-marks-design.md`. Read it before starting - sections A (identity, trust boundary), C (key scheme) and E (the `✓` retirement) are the ones with traps.
 - **No new dependencies. No new configuration keys.**
 - **All work happens inside the devcontainer.** There is no `dotnet` on the host.
 - **Branch:** `feat/downloaded-marks` (already created, spec already committed).
 - **Conventional Commits**, imperative lowercase subject, max ~72 chars.
 - **Do NOT add `Co-Authored-By:` or "Generated with Claude Code" lines to commits.**
 - **Do NOT edit `CHANGELOG.md`.** Shipped work goes to `ROADMAP.md`'s `## Done`.
-- **`docs/ARCHITECTURE.md` is a map, not a diary** — see the rules in `CLAUDE.md`. This feature earns at most two or three lines of *invariant*, not a description of how it works.
+- **`docs/ARCHITECTURE.md` is a map, not a diary** - see the rules in `CLAUDE.md`. This feature earns at most two or three lines of *invariant*, not a description of how it works.
 - **The device id is a trust boundary.** It arrives in a client cookie and ends up in a file path. Always validate through `SanitizeId`; **a blank or invalid id means "no marks", never a fallback filename.**
 - **Keys must distinguish raw from converted** (`d:` vs `e:` prefix). A single `{itemId}` key would make downloading the raw ebook light up the EPUB action as already fetched.
 - Run `dotnet format Inkshelf.sln --verify-no-changes` before the final commit; CI runs it over the whole solution.
@@ -97,7 +97,7 @@ Leave every other test alone. The `Assert.Contains` cookie-prefix assertions and
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --filter "FullyQualifiedName~DeviceSettingsTests"`
-Expected: FAIL to compile — `'DeviceSettings' has no property 'Did'`. A compile error is a legitimate first red.
+Expected: FAIL to compile - `'DeviceSettings' has no property 'Did'`. A compile error is a legitimate first red.
 
 - [ ] **Step 3: Implement**
 
@@ -108,7 +108,7 @@ In `src/Inkshelf/Auth/DeviceSettings.cs`, add `using System.Security.Cryptograph
     // device's downloaded-file marks. An init property for the same reason as Fav:
     // the existing three-argument construction sites keep compiling.
     //
-    // NOT a secret and NOT derived from anything the browser exposes — we mint it,
+    // NOT a secret and NOT derived from anything the browser exposes - we mint it,
     // so no fingerprinting is involved and no privacy countermeasure applies to it.
     public string Did { get; init; } = "";
 ```
@@ -121,7 +121,7 @@ Extend `Serialize()` to emit the key (every key is always written):
         + $"&lang={SanitizeLang(Lang)}&fav={SanitizeId(Fav)}&did={SanitizeId(Did)}";
 ```
 
-In `Read`, resolve it alongside `Fav` in the keyed branch — `SanitizeId` is what makes a hostile value collapse to `""`:
+In `Read`, resolve it alongside `Fav` in the keyed branch - `SanitizeId` is what makes a hostile value collapse to `""`:
 
 ```csharp
             Did = q.TryGetValue("did", out var did) ? SanitizeId(did.ToString()) : "",
@@ -130,7 +130,7 @@ In `Read`, resolve it alongside `Fav` in the keyed branch — `SanitizeId` is wh
 Change `Set` to mint and return. Note the mint happens **before** serializing, and the returned value is what was actually written:
 
 ```csharp
-    // Returns the settings as written, including any id minted here — the download
+    // Returns the settings as written, including any id minted here - the download
     // endpoints need it to record a mark for a device seen for the first time.
     // Minting lives in Set so that no call site can write this cookie without an
     // id; every write path (POST /settings, POST /favorite, Index's stale-favorite
@@ -154,7 +154,7 @@ Run: `dotnet test --filter "FullyQualifiedName~DeviceSettingsTests"`
 Expected: PASS.
 
 Then: `dotnet test`
-Expected: PASS, **261** tests (256 + 5). If anything outside `DeviceSettingsTests` fails, it is asserting on the exact cookie string — fix the assertion, never the source, and report it.
+Expected: PASS, **261** tests (256 + 5). If anything outside `DeviceSettingsTests` fails, it is asserting on the exact cookie string - fix the assertion, never the source, and report it.
 
 - [ ] **Step 5: Commit**
 
@@ -174,7 +174,7 @@ git commit -m "feat: mint a per-device id in the settings cookie"
 
 **Interfaces:**
 - Consumes: nothing (takes the device id as a plain string).
-- Produces: `Inkshelf.DownloadMarks` — a singleton with `static string RawKey(string itemId, string? ino)`, `static string EpubKey(string itemId, string? ino)`, `HashSet<string> Read(string did)`, `void Add(string did, string key)`, `void Prune(TimeSpan maxAge)`.
+- Produces: `Inkshelf.DownloadMarks` - a singleton with `static string RawKey(string itemId, string? ino)`, `static string EpubKey(string itemId, string? ino)`, `HashSet<string> Read(string did)`, `void Add(string did, string key)`, `void Prune(TimeSpan maxAge)`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -294,7 +294,7 @@ public class DownloadMarksTests
     public void Read_refreshes_the_files_timestamp_so_an_active_device_is_not_pruned()
     {
         // "Untouched" must mean "this device hasn't used the app", not "hasn't
-        // downloaded" — otherwise browsing for a month prunes your marks mid-use.
+        // downloaded" - otherwise browsing for a month prunes your marks mid-use.
         using var dir = new TempDir();
         var m = new DownloadMarks(dir.Path);
         m.Add(Did, DownloadMarks.RawKey("item1", null));
@@ -327,7 +327,7 @@ public class DownloadMarksTests
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `dotnet test --filter "FullyQualifiedName~DownloadMarksTests"`
-Expected: FAIL to compile — `DownloadMarks` does not exist.
+Expected: FAIL to compile - `DownloadMarks` does not exist.
 
 - [ ] **Step 3: Implement the store**
 
@@ -398,7 +398,7 @@ public sealed class DownloadMarks
     }
 
     // The device id comes from a client cookie and becomes a FILE NAME, so it is a
-    // trust boundary. A blank or invalid id means "no marks" — never a fallback
+    // trust boundary. A blank or invalid id means "no marks" - never a fallback
     // name, which would pool every malformed device into one shared bucket.
     private string? PathFor(string did) =>
         Auth.DeviceSettings.IsValidDid(did) ? Path.Combine(_dir, did) : null;
@@ -440,7 +440,7 @@ This one belongs with the cache, not the store. Add to `tests/Inkshelf.Tests/Epu
     public void EnforceCap_does_not_touch_a_marks_subdirectory()
     {
         // Marks live under the cache dir. Every cache glob is non-recursive and
-        // extension-scoped, which is the only reason that's safe — this test fails
+        // extension-scoped, which is the only reason that's safe - this test fails
         // if someone "simplifies" one of them to recurse.
         var dir = TempDirPath();
         var cache = new EpubCache(dir);
@@ -477,12 +477,12 @@ git commit -m "feat: add a per-device downloaded-file mark store"
 - Test: `tests/Inkshelf.Tests/EndpointTests.cs`
 
 **Interfaces:**
-- Consumes: `DownloadMarks` and `DeviceSettings.Set`'s return value from Tasks 1–2.
+- Consumes: `DownloadMarks` and `DeviceSettings.Set`'s return value from Tasks 1-2.
 - Produces: no new API.
 
 - [ ] **Step 1: Write the failing tests**
 
-**Do not use `EndpointTests.CreateFactory` for these.** It points `ABS_URL` at `http://localhost:1` with no stub, so `/download/{id}` throws on the item-detail call, is caught, and returns `NotFound` — nothing would ever be marked. It also leaves `CachePath` unset, which defaults under the content root and would write marks into the repo.
+**Do not use `EndpointTests.CreateFactory` for these.** It points `ABS_URL` at `http://localhost:1` with no stub, so `/download/{id}` throws on the item-detail call, is caught, and returns `NotFound` - nothing would ever be marked. It also leaves `CachePath` unset, which defaults under the content root and would write marks into the repo.
 
 Create `tests/Inkshelf.Tests/DownloadMarkEndpointTests.cs` with its own harness, modeled on `ConvertedRenderTests` (which already does both a stub and a temp cache):
 
@@ -618,11 +618,11 @@ public class DownloadMarkEndpointTests
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `dotnet test --filter "FullyQualifiedName~DownloadMarkEndpointTests"`
-Expected: FAIL — the marks come back empty, because nothing writes one yet. (`A_failed_download_records_nothing` will pass from the start; that's fine, it's a guard against marking on the 404 path.)
+Expected: FAIL - the marks come back empty, because nothing writes one yet. (`A_failed_download_records_nothing` will pass from the start; that's fine, it's a guard against marking on the 404 path.)
 
 - [ ] **Step 3: Mark in the raw download endpoint**
 
-`src/Inkshelf/Endpoints/DownloadEndpoints.cs` — add `HttpContext ctx` and `DownloadMarks marks` to the lambda's parameters, and record before streaming. Put the call immediately after the `file`/primary branch has established which file is being served, so the key matches what is actually sent:
+`src/Inkshelf/Endpoints/DownloadEndpoints.cs` - add `HttpContext ctx` and `DownloadMarks marks` to the lambda's parameters, and record before streaming. Put the call immediately after the `file`/primary branch has established which file is being served, so the key matches what is actually sent:
 
 ```csharp
             // Mark BEFORE streaming: we can't tell a completed transfer from an
@@ -634,11 +634,11 @@ Expected: FAIL — the marks come back empty, because nothing writes one yet. (`
             }
 ```
 
-For the per-file branch use `DownloadMarks.RawKey(id, file)`; for the primary branch use `DownloadMarks.RawKey(id, null)`. Record only on the paths that actually return a file — not on the `NotFound` paths.
+For the per-file branch use `DownloadMarks.RawKey(id, file)`; for the primary branch use `DownloadMarks.RawKey(id, null)`. Record only on the paths that actually return a file - not on the `NotFound` paths.
 
 - [ ] **Step 4: Mark in the convert endpoint**
 
-`src/Inkshelf/Endpoints/ConvertEndpoints.cs` already receives `HttpContext httpContext`. Inject `DownloadMarks marks` and record **only where the cached EPUB is actually served** — the branch that returns `Results.File(...)`. Do not mark on `?warm=1`, `?status=1`, `?fresh=1`, the 202, or the redirect-when-not-ready: none of those hand the user a file. Use `DownloadMarks.EpubKey(id, file)`.
+`src/Inkshelf/Endpoints/ConvertEndpoints.cs` already receives `HttpContext httpContext`. Inject `DownloadMarks marks` and record **only where the cached EPUB is actually served** - the branch that returns `Results.File(...)`. Do not mark on `?warm=1`, `?status=1`, `?fresh=1`, the 202, or the redirect-when-not-ready: none of those hand the user a file. Use `DownloadMarks.EpubKey(id, file)`.
 
 - [ ] **Step 5: Run the tests**
 
@@ -673,7 +673,7 @@ The largest task: three partials, three page models, and six existing assertions
 
 Add to `tests/Inkshelf.Tests/ListingRenderTests.cs`, reusing its existing `TempDir`, `MakeStub`, `CreateFactory` and `LibraryRequest` helpers.
 
-**Note on glyph encoding — this trips people up.** A literal `&#8595;` written in a `.cshtml` passes through as `&#8595;` (like the existing `&#10003;`), whereas a glyph returned from C# as a string gets HTML-encoded to `&#x2193;` (which is what `SortLinks.Arrow` produces in the sort bar). The arrow here is literal markup, so assert on `&#8595;`.
+**Note on glyph encoding - this trips people up.** A literal `&#8595;` written in a `.cshtml` passes through as `&#8595;` (like the existing `&#10003;`), whereas a glyph returned from C# as a string gets HTML-encoded to `&#x2193;` (which is what `SortLinks.Arrow` produces in the sort bar). The arrow here is literal markup, so assert on `&#8595;`.
 
 ```csharp
     [Fact]
@@ -702,7 +702,7 @@ Add to `tests/Inkshelf.Tests/ListingRenderTests.cs`, reusing its existing `TempD
     public async Task A_raw_mark_does_not_mark_the_epub_action()
     {
         // The row offers two different files. Marking one must not light up the
-        // other — the whole reason keys carry a d:/e: discriminator.
+        // other - the whole reason keys carry a d:/e: discriminator.
         using var cacheDir = new TempDir();
         using var keysDir = new TempDir();
         using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
@@ -727,7 +727,7 @@ Add to `tests/Inkshelf.Tests/ListingRenderTests.cs`, reusing its existing `TempD
     public async Task The_cached_epub_action_no_longer_renders_a_checkmark()
     {
         // The label already says EPUB rather than Convert, so the checkmark was
-        // decoration — and dropping it leaves the arrow as the only glyph in that
+        // decoration - and dropping it leaves the arrow as the only glyph in that
         // column. Asserting the exact old string rather than a bare "&#10003;",
         // because the read-state button legitimately renders one for "✓ Read".
         using var cacheDir = new TempDir();
@@ -746,23 +746,23 @@ Add to `tests/Inkshelf.Tests/ListingRenderTests.cs`, reusing its existing `TempD
     }
 ```
 
-Then deal with the six existing `EPUB &#10003;` assertions. **Most are redundant, not in need of replacement** — the tests already discriminate on `data-warm` right beside them via `PrimaryConvertAnchor`:
+Then deal with the six existing `EPUB &#10003;` assertions. **Most are redundant, not in need of replacement** - the tests already discriminate on `data-warm` right beside them via `PrimaryConvertAnchor`:
 
 | File:line | Action |
 |---|---|
-| `ListingRenderTests:162` | **delete the line** — the `DoesNotContain("data-warm", PrimaryConvertAnchor(html))` on the next line already proves the cached state |
-| `ListingRenderTests:190` | **delete** — same, `DoesNotContain("data-warm", …)` follows it |
-| `ListingRenderTests:198` | **replace** with `Assert.Contains(">Convert</a>", PrimaryConvertAnchor(colourHtml))` — except that assertion already exists two lines down, so **delete** |
-| `ListingRenderTests:244` | **replace** with `Assert.Contains(">EPUB", html)` — check whether a `data-warm` assertion already accompanies it; if so, delete instead |
+| `ListingRenderTests:162` | **delete the line** - the `DoesNotContain("data-warm", PrimaryConvertAnchor(html))` on the next line already proves the cached state |
+| `ListingRenderTests:190` | **delete** - same, `DoesNotContain("data-warm", …)` follows it |
+| `ListingRenderTests:198` | **replace** with `Assert.Contains(">Convert</a>", PrimaryConvertAnchor(colourHtml))` - except that assertion already exists two lines down, so **delete** |
+| `ListingRenderTests:244` | **replace** with `Assert.Contains(">EPUB", html)` - check whether a `data-warm` assertion already accompanies it; if so, delete instead |
 | `ItemRenderTests:98` | **replace** with `Assert.Contains(">EPUB", html)` |
 | `ConvertedRenderTests:274` | **replace** with `Assert.Contains(">EPUB", html)` |
 
-Read each site before editing — the point is that the cached-vs-uncached discrimination must survive, not that every line gets mechanically rewritten. If deleting a line would leave a test with no cached-state assertion at all, replace it with `>EPUB` instead.
+Read each site before editing - the point is that the cached-vs-uncached discrimination must survive, not that every line gets mechanically rewritten. If deleting a line would leave a test with no cached-state assertion at all, replace it with `>EPUB` instead.
 
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `dotnet test --filter "FullyQualifiedName~ListingRenderTests"`
-Expected: FAIL to compile first (`DownloadMarks` isn't referenced by that file yet — add the `using Inkshelf;`), then FAIL on assertions: the arrow tests find no `&#8595;`, and `The_cached_epub_action_no_longer_renders_a_checkmark` fails on `DoesNotContain("EPUB &#10003;")` because the ✓ is still rendered.
+Expected: FAIL to compile first (`DownloadMarks` isn't referenced by that file yet - add the `using Inkshelf;`), then FAIL on assertions: the arrow tests find no `&#8595;`, and `The_cached_epub_action_no_longer_renders_a_checkmark` fails on `DoesNotContain("EPUB &#10003;")` because the ✓ is still rendered.
 
 - [ ] **Step 3: Add the model fields**
 
@@ -784,15 +784,15 @@ public record ConvertActionModel(string Id, string? FileIno, ConvertRowState Sta
 
 - [ ] **Step 4: Retire the checkmark and render the arrow**
 
-In `_ConvertAction.cshtml`, the `Cached` case drops `&#10003;` and gains the arrow. Write the arrow as **literal markup inside a `<text>` block**, not as a C# string — a returned string gets HTML-encoded to `&#x2193;`, while literal markup stays `&#8595;`, which is what the tests assert and what matches the existing `&#10003;` precedent:
+In `_ConvertAction.cshtml`, the `Cached` case drops `&#10003;` and gains the arrow. Write the arrow as **literal markup inside a `<text>` block**, not as a C# string - a returned string gets HTML-encoded to `&#x2193;`, while literal markup stays `&#8595;`, which is what the tests assert and what matches the existing `&#10003;` precedent:
 
 ```razor
         case ConvertRowState.Cached:
-            <a href="@baseHref" title="@L["Already converted — downloads right away"]">EPUB@if (Model.Downloaded) { <text> &#8595;</text> }</a>
+            <a href="@baseHref" title="@L["Already converted - downloads right away"]">EPUB@if (Model.Downloaded) { <text> &#8595;</text> }</a>
             break;
 ```
 
-**Only the `Cached` state gets an arrow.** You can only have downloaded an EPUB that existed, and after a `?fresh=1` regen the state is Converting/Convert — an arrow on a "Converting…" label would be nonsense. The mark persisting through a regen is a documented, accepted limitation.
+**Only the `Cached` state gets an arrow.** You can only have downloaded an EPUB that existed, and after a `?fresh=1` regen the state is Converting/Convert - an arrow on a "Converting…" label would be nonsense. The mark persisting through a regen is a documented, accepted limitation.
 
 Keep the `title` attribute; it still explains that a cached EPUB downloads immediately.
 
@@ -815,12 +815,12 @@ Each page reads the device id from the settings cookie, loads the set once, and 
 
 Then for each row, `RawDownloaded = marks.Contains(DownloadMarks.RawKey(item.Id, null))` and the convert action's `Downloaded = marks.Contains(DownloadMarks.EpubKey(item.Id, null))`. On the item detail page use each file's ino for both.
 
-Do **not** call `_marks.Read` per row — once per render, as above.
+Do **not** call `_marks.Read` per row - once per render, as above.
 
 - [ ] **Step 6: Run the tests**
 
 Run: `dotnet test`
-Expected: PASS, **281** tests — 278 plus the three added to `ListingRenderTests`. The six edited `EPUB &#10003;` assertions change lines, not test counts.
+Expected: PASS, **281** tests - 278 plus the three added to `ListingRenderTests`. The six edited `EPUB &#10003;` assertions change lines, not test counts.
 
 Then: `dotnet format Inkshelf.sln --verify-no-changes`
 Expected: clean.
@@ -850,11 +850,11 @@ git commit -m "feat: show which files this device already downloaded"
         _marks.Prune(TimeSpan.FromDays(30));   // forget devices that stopped visiting
 ```
 
-`DownloadMarks.Add` already prunes opportunistically if you implemented it that way in Task 2; if not, leave writes alone — startup is sufficient for a container that restarts on deploy, and the roadmap entry should say so.
+`DownloadMarks.Add` already prunes opportunistically if you implemented it that way in Task 2; if not, leave writes alone - startup is sufficient for a container that restarts on deploy, and the roadmap entry should say so.
 
 - [ ] **Step 2: Extend the headless pass**
 
-In `tools/uicheck/Program.cs`, extend the existing `/converted` revisit at the end of the authed block — it already waits for `nav.sortbar`, which means a conversion has landed. Assert the **un-downloaded** state there, which is deterministic:
+In `tools/uicheck/Program.cs`, extend the existing `/converted` revisit at the end of the authed block - it already waits for `nav.sortbar`, which means a conversion has landed. Assert the **un-downloaded** state there, which is deterministic:
 
 ```csharp
         // The retired checkmark must be gone and no download arrow present yet:
@@ -864,21 +864,21 @@ In `tools/uicheck/Program.cs`, extend the existing `/converted` revisit at the e
             failures.Add("converted-sorted-de: the retired EPUB checkmark is still rendered");
 ```
 
-**Do not try to drive an actual file download through Playwright here.** A download navigation in headless Chromium either triggers download handling or replaces the page, both of which would wreck the rest of the authed flow — and the marked state is already covered precisely by the render tests in Task 4. Assert the negative here and rely on those for the positive.
+**Do not try to drive an actual file download through Playwright here.** A download navigation in headless Chromium either triggers download handling or replaces the page, both of which would wreck the rest of the authed flow - and the marked state is already covered precisely by the render tests in Task 4. Assert the negative here and rely on those for the positive.
 
 - [ ] **Step 3: Run the pass and LOOK at the screenshot**
 
 Run: `tools/uicheck/run.sh`
 Expected: PASS. Then open `tools/uicheck/shots/library-de.png` and `converted-sorted-de.png`.
 
-**Check specifically:** the actions column with `Herunterladen ↓` and `EPUB ↓` — does it fit without wrapping at the 758px viewport? Retiring the `✓` shortens that column, so this should be neutral-or-better than today, but confirm rather than assume. If it wraps, **report it and stop** — do not adjust CSS. That is the owner's call.
+**Check specifically:** the actions column with `Herunterladen ↓` and `EPUB ↓` - does it fit without wrapping at the 758px viewport? Retiring the `✓` shortens that column, so this should be neutral-or-better than today, but confirm rather than assume. If it wraps, **report it and stop** - do not adjust CSS. That is the owner's call.
 
 - [ ] **Step 4: Update the docs**
 
-`docs/ROADMAP.md` — delete the **Mark files as already downloaded (per device)** bullet from `## Browsing & reading` and add to the top of `## Done`:
+`docs/ROADMAP.md` - delete the **Mark files as already downloaded (per device)** bullet from `## Browsing & reading` and add to the top of `## Done`:
 
 ```markdown
-- **Downloaded-file marks** — each download action shows whether *this device*
+- **Downloaded-file marks** - each download action shows whether *this device*
   already fetched *that file* (`↓`), so working through a batch doesn't mean
   re-downloading or skipping one. Keyed on a device id minted into the settings
   cookie, with marks in a server-side file per device; deliberately not keyed on
@@ -889,7 +889,7 @@ Expected: PASS. Then open `tools/uicheck/shots/library-de.png` and `converted-so
   pruned after 30 days.
 ```
 
-`docs/ARCHITECTURE.md` — **at most two lines, as invariants, not description.** Add to the "Per-device state" group:
+`docs/ARCHITECTURE.md` - **at most two lines, as invariants, not description.** Add to the "Per-device state" group:
 
 ```markdown
 - **The device id is a trust boundary.** It arrives in a cookie and becomes a
@@ -897,7 +897,7 @@ Expected: PASS. Then open `tools/uicheck/shots/library-de.png` and `converted-so
   never a fallback name that would pool devices into one bucket.
 - **Download marks live in a `marks/` subdirectory of the EPUB cache.** That is
   safe because every cache glob is extension-scoped (`*.epub`, `*.tmp`) and a
-  device id can't contain a dot — don't widen one of those patterns.
+  device id can't contain a dot - don't widen one of those patterns.
 ```
 
 Do not describe the key scheme, the mint paths, or the arrow. Those are code comments and spec material.

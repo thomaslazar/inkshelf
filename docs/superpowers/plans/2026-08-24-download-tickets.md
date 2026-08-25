@@ -2,52 +2,52 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make every download link carry a short-lived server-side ticket, so an e-reader's download manager — which re-requests the URL without the browser's cookies — can complete the transfer.
+**Goal:** Make every download link carry a short-lived server-side ticket, so an e-reader's download manager - which re-requests the URL without the browser's cookies - can complete the transfer.
 
 **Architecture:** A singleton in-memory table maps a 22-character random handle to "one file this server will stream". Download links carry the handle as `?t=…`, minted when the page renders. The two file endpoints redeem it to serve bytes and nothing else; anything a ticket does not cover falls through to today's cookie path unchanged.
 
 **Tech Stack:** ASP.NET Core Razor Pages + minimal-API endpoints, .NET 10, xUnit with `WebApplicationFactory<Program>`. No new NuGet packages.
 
-**Spec:** `docs/superpowers/specs/2026-08-24-download-tickets-design.md` (read it — it carries the hardware evidence and the rejected alternatives).
+**Spec:** `docs/superpowers/specs/2026-08-24-download-tickets-design.md` (read it - it carries the hardware evidence and the rejected alternatives).
 
 ## Global Constraints
 
 - Sliding idle window is exactly **15 minutes**, re-stamped by any request presenting the ticket.
-- A ticket id is **16 random bytes, base64url** — 22 characters, `[A-Za-z0-9_-]`.
+- A ticket id is **16 random bytes, base64url** - 22 characters, `[A-Za-z0-9_-]`.
 - The query parameter is named exactly **`t`**.
 - **A ticket serves bytes only.** It never authorises `fresh=1`, `warm=1`, `status=1`, or a conversion kick.
 - **A ticket is additive.** Missing, unknown or expired → fall through to the existing cookie path. No request that works today may start failing.
-- `enableRangeProcessing: true` goes on the cached-EPUB file result **only**. No range work for raw ABS streams — that is explicitly out of scope (see the spec's Notes).
+- `enableRangeProcessing: true` goes on the cached-EPUB file result **only**. No range work for raw ABS streams - that is explicitly out of scope (see the spec's Notes).
 - **No new NuGet packages.** `TimeProvider` and `System.Buffers.Text.Base64Url` are in the framework.
 - Inside `namespace Inkshelf`, the identifier `Convert` resolves to the **namespace** `Inkshelf.Convert`, not `System.Convert`. Never write bare `Convert.ToBase64String`.
 - **Comments state rules and reasons, not narration.** This codebase's comments explain *why a thing must stay as it is*; a comment restating what the next line does will be rejected in review. Keep them short.
 - **Do not touch `CHANGELOG.md`.** It is written only by the release process.
 - `docs/ARCHITECTURE.md` is a map, not a changelog: it gets the one invariant this feature introduces, and nothing else. No per-feature entry.
-- Run `dotnet format --verify-no-changes` before each commit — CI fails on formatting.
+- Run `dotnet format --verify-no-changes` before each commit - CI fails on formatting.
 
 ---
 
 ## File Structure
 
 **Created:**
-- `src/Inkshelf/DownloadTickets.cs` — the ticket table. Mint, redeem, expire. No HTTP, no ABS.
-- `src/Inkshelf/Convert/EpubName.cs` — the converted-EPUB download filename, shared by the mint sites and `ConvertService`.
-- `tests/Inkshelf.Tests/DownloadTicketsTests.cs` — unit tests for the table.
-- `tests/Inkshelf.Tests/DownloadTicketEndpointTests.cs` — endpoint tests for both ticket paths.
+- `src/Inkshelf/DownloadTickets.cs` - the ticket table. Mint, redeem, expire. No HTTP, no ABS.
+- `src/Inkshelf/Convert/EpubName.cs` - the converted-EPUB download filename, shared by the mint sites and `ConvertService`.
+- `tests/Inkshelf.Tests/DownloadTicketsTests.cs` - unit tests for the table.
+- `tests/Inkshelf.Tests/DownloadTicketEndpointTests.cs` - endpoint tests for both ticket paths.
 
 **Modified:**
-- `src/Inkshelf/Program.cs` — register the singleton.
-- `src/Inkshelf/RequestLog.cs` — redact the ticket from the logged query.
-- `src/Inkshelf/Pages/Support/ConvertRowStateResolver.cs` — return the cache path it already computes.
-- `src/Inkshelf/Abs/AbsDownloadClient.cs` — `DownloadEbookAsync` returns content type and length too.
-- `src/Inkshelf/Convert/ConvertWorker.cs` — the one call site of the above.
-- `src/Inkshelf/Convert/ConvertService.cs` — use `EpubName`.
-- `src/Inkshelf/Auth/DeviceSettings.cs` — one shared `EnsureDid`.
-- `src/Inkshelf/Endpoints/ConvertEndpoints.cs`, `DownloadEndpoints.cs` — redeem tickets.
-- `src/Inkshelf/Pages/Library.cshtml.cs`, `Converted.cshtml.cs`, `Item.cshtml.cs` — mint tickets.
-- `src/Inkshelf/Pages/Support/ItemRowModel.cs`, `ConvertActionModel.cs` — carry them.
-- `src/Inkshelf/Pages/Shared/_ItemRow.cshtml`, `_ConvertAction.cshtml` — put them in hrefs.
-- `tools/uicheck/Program.cs` — assert the links carry one.
+- `src/Inkshelf/Program.cs` - register the singleton.
+- `src/Inkshelf/RequestLog.cs` - redact the ticket from the logged query.
+- `src/Inkshelf/Pages/Support/ConvertRowStateResolver.cs` - return the cache path it already computes.
+- `src/Inkshelf/Abs/AbsDownloadClient.cs` - `DownloadEbookAsync` returns content type and length too.
+- `src/Inkshelf/Convert/ConvertWorker.cs` - the one call site of the above.
+- `src/Inkshelf/Convert/ConvertService.cs` - use `EpubName`.
+- `src/Inkshelf/Auth/DeviceSettings.cs` - one shared `EnsureDid`.
+- `src/Inkshelf/Endpoints/ConvertEndpoints.cs`, `DownloadEndpoints.cs` - redeem tickets.
+- `src/Inkshelf/Pages/Library.cshtml.cs`, `Converted.cshtml.cs`, `Item.cshtml.cs` - mint tickets.
+- `src/Inkshelf/Pages/Support/ItemRowModel.cs`, `ConvertActionModel.cs` - carry them.
+- `src/Inkshelf/Pages/Shared/_ItemRow.cshtml`, `_ConvertAction.cshtml` - put them in hrefs.
+- `tools/uicheck/Program.cs` - assert the links carry one.
 - `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`.
 
 ---
@@ -183,7 +183,7 @@ Add to `tests/Inkshelf.Tests/RequestLogTests.cs`:
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test tests/Inkshelf.Tests --filter "DownloadTicketsTests|RequestLogTests"`
-Expected: build failure — `DownloadTickets` and `RequestLog.Redact` do not exist.
+Expected: build failure - `DownloadTickets` and `RequestLog.Redact` do not exist.
 
 - [ ] **Step 3: Write `DownloadTickets`**
 
@@ -198,7 +198,7 @@ namespace Inkshelf;
 
 // A download ticket: a URL-safe handle standing for one file this server will
 // stream. An e-reader's download manager takes over the transfer WITHOUT the
-// browser's cookies (issue #40), so the URL has to authorise on its own — and a
+// browser's cookies (issue #40), so the URL has to authorise on its own - and a
 // handle, rather than a signed blob, keeps the credential out of the URL, the
 // browser history and the request log.
 //
@@ -320,7 +320,7 @@ Add to `tests/Inkshelf.Tests/ConvertRowStateResolverTests.cs`:
     public void ResolveFor_hands_back_the_cache_path_it_keyed_on()
     {
         // The path is what a download ticket holds, so it must be the SAME path the
-        // state was decided from — not one the caller re-derives and gets wrong.
+        // state was decided from - not one the caller re-derives and gets wrong.
         var cache = new EpubCache(TempDirPath());
         var target = new RenderTarget(800, 1000, 1.0, false);
 
@@ -344,7 +344,7 @@ Add to `tests/Inkshelf.Tests/ConvertRowStateResolverTests.cs`:
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `dotnet test tests/Inkshelf.Tests --filter ConvertRowStateResolverTests`
-Expected: build failure — `ConvertRowState` has no `.Path`.
+Expected: build failure - `ConvertRowState` has no `.Path`.
 
 - [ ] **Step 3: Change the resolver**
 
@@ -361,7 +361,7 @@ Expected: build failure — `ConvertRowState` has no `.Path`.
     }
 
     // Lower-level: state for one specific (itemId, file size+mtime, format), plus the
-    // cache path it was decided from — a download ticket has to hold that exact path.
+    // cache path it was decided from - a download ticket has to hold that exact path.
     public static (ConvertRowState State, string? Path) ResolveFor(string itemId, long size, long mtimeMs,
         string? fmt, RenderTarget target, EpubCache cache, ConvertQueue queue)
     {
@@ -379,13 +379,13 @@ Expected: build failure — `ConvertRowState` has no `.Path`.
 
 - [ ] **Step 4: Update the three call sites**
 
-`Library.cshtml.cs`: `_states` becomes `Dictionary<string, (ConvertRowState State, string? Path)>`; `RowState` returns the tuple; `ComputeConvertStates` tests `.State` for `AnyConverting`; `RowFor` reads `.State` where it read the enum. Keep the tuple in `_states` — Task 7 needs the path.
+`Library.cshtml.cs`: `_states` becomes `Dictionary<string, (ConvertRowState State, string? Path)>`; `RowState` returns the tuple; `ComputeConvertStates` tests `.State` for `AnyConverting`; `RowFor` reads `.State` where it read the enum. Keep the tuple in `_states` - Task 7 needs the path.
 
-`Converted.cshtml.cs` (~line 98): `var (state, cachePath) = ConvertRowStateResolver.Resolve(...);` and the `AnyConverting` check uses `state`. Keep `cachePath` in scope; Task 7 uses it. Until then, silence the unused variable by using `_` and restoring it in Task 7 — do NOT leave a build warning.
+`Converted.cshtml.cs` (~line 98): `var (state, cachePath) = ConvertRowStateResolver.Resolve(...);` and the `AnyConverting` check uses `state`. Keep `cachePath` in scope; Task 7 uses it. Until then, silence the unused variable by using `_` and restoring it in Task 7 - do NOT leave a build warning.
 
 `Item.cshtml.cs` (~line 75): `var (state, cachePath) = ConvertRowStateResolver.ResolveFor(...);` with the same note.
 
-Also fix the stale comment in `Library.cshtml.cs`'s `RowFor`: it claims `ComputeConvertStates` runs only for the listing branch, which stopped being true when the search branch started calling it (`Library.cshtml.cs:78-82`). The fallback it guards is now only reached when the batch-metadata call failed — say that instead.
+Also fix the stale comment in `Library.cshtml.cs`'s `RowFor`: it claims `ComputeConvertStates` runs only for the listing branch, which stopped being true when the search branch started calling it (`Library.cshtml.cs:78-82`). The fallback it guards is now only reached when the batch-metadata call failed - say that instead.
 
 - [ ] **Step 5: Update the existing resolver tests**
 
@@ -394,7 +394,7 @@ The six existing assertions compare the return value to a `ConvertRowState`. Cha
 - [ ] **Step 6: Run the tests**
 
 Run: `dotnet test`
-Expected: PASS — including `ListingRenderTests`, `ConvertedRenderTests` and `ItemRenderTests`, which must be untouched by this task.
+Expected: PASS - including `ListingRenderTests`, `ConvertedRenderTests` and `ItemRenderTests`, which must be untouched by this task.
 
 - [ ] **Step 7: Format and commit**
 
@@ -448,7 +448,7 @@ Add to `tests/Inkshelf.Tests/AbsDownloadClientTests.cs`, following the file's ex
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `dotnet test tests/Inkshelf.Tests --filter AbsDownloadClientTests`
-Expected: build failure — cannot deconstruct a `Stream`.
+Expected: build failure - cannot deconstruct a `Stream`.
 
 - [ ] **Step 3: Widen the return**
 
@@ -575,7 +575,7 @@ public class DownloadTicketEndpointTests
     public async Task A_convert_ticket_marks_the_download_against_its_own_device()
     {
         // The cookie-less request has no settings cookie either, so without the
-        // ticket's did the app would mint a fresh one per download — the trail of
+        // ticket's did the app would mint a fresh one per download - the trail of
         // four device ids in 90 minutes seen on the shine.
         using var cache = new TempDir();
         using var keys = new TempDir();
@@ -633,7 +633,7 @@ public class DownloadTicketEndpointTests
     [Fact]
     public async Task An_expired_or_bogus_ticket_falls_through_to_the_cookie_path()
     {
-        // Additive, never a gate: with no cookie either, that path is today's 401 —
+        // Additive, never a gate: with no cookie either, that path is today's 401 -
         // never a worse outcome than before tickets existed.
         using var cache = new TempDir();
         using var keys = new TempDir();
@@ -675,7 +675,7 @@ public class DownloadTicketEndpointTests
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `dotnet test tests/Inkshelf.Tests --filter DownloadTicketEndpointTests`
-Expected: the download tests FAIL with 401 (no ticket handling yet); the serve-only, replay and fall-through tests may already pass — that is fine, they are guards.
+Expected: the download tests FAIL with 401 (no ticket handling yet); the serve-only, replay and fall-through tests may already pass - that is fine, they are guards.
 
 - [ ] **Step 3: Redeem the ticket in the endpoint**
 
@@ -685,7 +685,7 @@ In `ConvertEndpoints.MapConvertEndpoints`, add `string? t` and `DownloadTickets 
             // Redeem unconditionally: a poll carries the same href, and re-stamping
             // there is what keeps a long conversion's link alive.
             var tk = tickets.Redeem(t);
-            // A ticket serves bytes and nothing else — no kick, no poll, no fresh.
+            // A ticket serves bytes and nothing else - no kick, no poll, no fresh.
             if (status is null && warm is null && fresh is not ("1" or "true")
                 && tk is { FilePath: { } cached } && tk.ItemId == id && File.Exists(cached))
             {
@@ -890,7 +890,7 @@ public class EpubNameTests
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `dotnet test tests/Inkshelf.Tests --filter EpubNameTests`
-Expected: build failure — `EpubName` does not exist.
+Expected: build failure - `EpubName` does not exist.
 
 - [ ] **Step 3: Write `EpubName`**
 
@@ -916,7 +916,7 @@ public static class EpubName
 
 - [ ] **Step 4: Use it in `ConvertService`**
 
-Replace `var downloadName = Sanitize($"{author} - {title}") + ".epub";` with `var downloadName = EpubName.For(author, title);` and delete the now-unused private `Sanitize`. Leave the `title`/`author` fallbacks where they are — `EpubName` only guards against null.
+Replace `var downloadName = Sanitize($"{author} - {title}") + ".epub";` with `var downloadName = EpubName.For(author, title);` and delete the now-unused private `Sanitize`. Leave the `title`/`author` fallbacks where they are - `EpubName` only guards against null.
 
 - [ ] **Step 5: Add `DeviceSettings.EnsureDid`**
 
@@ -938,7 +938,7 @@ Then delete the local `EnsureDid` in `ConvertEndpoints` (it is inline in the han
 - [ ] **Step 6: Run the tests**
 
 Run: `dotnet test`
-Expected: PASS. `DownloadMarkEndpointTests` covers the did-minting behaviour — if any of it fails, `EnsureDid` changed semantics and must be fixed, not the test.
+Expected: PASS. `DownloadMarkEndpointTests` covers the did-minting behaviour - if any of it fails, `EnsureDid` changed semantics and must be fixed, not the test.
 
 - [ ] **Step 7: Format and commit**
 
@@ -1033,7 +1033,7 @@ Expected: the new tests FAIL (no `t=` in any href). The three existing assertion
 
 - [ ] **Step 3: Carry the tickets on the view models**
 
-`ItemRowModel.cs` — append two parameters and one computed property:
+`ItemRowModel.cs` - append two parameters and one computed property:
 
 ```csharp
 public record ItemRowModel(
@@ -1056,7 +1056,7 @@ public record ItemRowModel(
 }
 ```
 
-`ConvertActionModel.cs` — append `string? Ticket = null` after `ShowRegen`.
+`ConvertActionModel.cs` - append `string? Ticket = null` after `ShowRegen`.
 
 - [ ] **Step 4: Put them in the hrefs**
 
@@ -1137,7 +1137,7 @@ and for the convert action, take the path from the resolver tuple:
 - line 150 → `Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?t=[^\"]*\">([^<]*)</a>")`
 - line 154 → `Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?file=2&amp;t=[^\"]*\">([^<]*)</a>")`
 
-Do not loosen any other assertion. If a test outside these three fails, the href shape changed in a way this task did not intend — fix the code, not the test.
+Do not loosen any other assertion. If a test outside these three fails, the href shape changed in a way this task did not intend - fix the code, not the test.
 
 - [ ] **Step 9: Run the tests**
 
@@ -1183,7 +1183,7 @@ Add `using System.Text.RegularExpressions;` if the file lacks it.
 - [ ] **Step 2: Run the browser pass**
 
 Run: `tools/uicheck/run.sh`
-Expected: exit 0. Then **look at** the new screenshots in `tools/uicheck/shots/` — the exit code is not the check.
+Expected: exit 0. Then **look at** the new screenshots in `tools/uicheck/shots/` - the exit code is not the check.
 
 - [ ] **Step 3: Add the invariant to ARCHITECTURE.md**
 
@@ -1191,7 +1191,7 @@ One bullet in `## Invariants (do not "clean these up")`, phrased as the absence 
 
 ```markdown
 - **A download ticket serves bytes and nothing else.** `?t=` authorises streaming
-  one already-identified file — never a conversion kick, a status poll or
+  one already-identified file - never a conversion kick, a status poll or
   `fresh=1`, and never a second item (both endpoints check the ticket's item id
   against the route). It is additive: a missing or expired ticket must fall
   through to the cookie path, so a request that works today cannot start failing.
@@ -1199,7 +1199,7 @@ One bullet in `## Invariants (do not "clean these up")`, phrased as the absence 
   no cookies, so nothing may be moved out of the URL into a cookie.
 ```
 
-Nothing else in this file changes — it is a map, not a changelog.
+Nothing else in this file changes - it is a map, not a changelog.
 
 - [ ] **Step 4: Record it in ROADMAP.md**
 

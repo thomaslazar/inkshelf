@@ -8,18 +8,18 @@ Branch: `feat/touch-design` (stacked on `feat/downloaded-marks`)
 Tap targets across the site are text links at the base font size: roughly 24px
 tall, stacked `.35rem` (5.6px) apart. On a 6" e-ink panel reporting 758 CSS px
 across ~90mm of glass, that is ~8.4 px/mm, so adjacent actions sit **~3.6mm
-apart centre to centre**. A fingertip contact patch is 8–10mm. Download,
+apart centre to centre**. A fingertip contact patch is 8-10mm. Download,
 Convert and Mark read all fall under one finger. This is not a tuning problem;
 the targets are an order of magnitude too small.
 
 The listing row makes it worse. `.item .actions` is a fixed `8.5rem` column, too
-narrow for German — "Als gelesen markieren" and "Konvertieren (erneut)" each
+narrow for German - "Als gelesen markieren" and "Konvertieren (erneut)" each
 wrap to two lines, so a failed row renders as five near-touching links (see
 `tools/uicheck/shots/failed-row-de.png`). The same fixed column forces the
 `max-width: calc(100% - 72px - 1rem - 8.5rem - .75rem)` hack on `.item .body`,
 which exists only to stop the two columns overlapping on the old engine.
 
-Secondary: the item detail page has the most screen room and uses none of it —
+Secondary: the item detail page has the most screen room and uses none of it -
 Download and Mark read are bare underlined text. The "Converted on this device"
 link on the index is a plain `<p><a>` at body size sitting directly above
 `.libraries` entries styled at 1.3rem, so two links to comparable destinations
@@ -39,12 +39,12 @@ Investigated and rejected as the mechanism.
 - User-agent sniffing works but only ever knows the readers we enumerate, and
   this project has external users on hardware we have never seen.
 - The `scr` cookie (`_Layout.cshtml`, parsed by `ScreenTarget.FromCookie`) is
-  the one real signal available — `screen.width × screen.height × DPR`, where
+  the one real signal available - `screen.width × screen.height × DPR`, where
   DPR 1 plus a wide viewport is a decent e-ink fingerprint. But it is absent on
   first paint and would require server-side layout branching.
 
 The reframe: **the e-reader design is the correct design.** Large targets, high
-contrast, no hover, no motion — a phone wants all of the same. The phone
+contrast, no hover, no motion - a phone wants all of the same. The phone
 experience is poor because a fixed 8.5rem sidebar does not fit in 390px, not
 because the layout is e-ink-specific. So the base layout becomes touch-first and
 one width breakpoint handles narrow screens. No JS, no detection, correct on
@@ -66,7 +66,7 @@ One `.btn` class usable on both `<a>` and `<button>`, because the row mixes them
 ```
 
 Padding alone yields ~44px height; no `min-height` needed. The border is
-load-bearing, not decoration — it makes the target boundary visible, which
+load-bearing, not decoration - it makes the target boundary visible, which
 underlined text never did. Spacing via `margin-right`, never flex `gap`.
 `font: inherit` is required or `<button>` reverts to the UA sans-serif.
 
@@ -98,8 +98,8 @@ Consequences:
 - Row height grows from ~90px to ~130px for rows that have actions. Rows with
   no convertible/downloadable file stay short, so the listing keeps its existing
   raggedness rather than uniformly ballooning. ~7 rows per e-reader screen.
-- Horizontally the three targets get ~660px, putting their centres 15–25mm
-  apart — well clear of a fingertip, versus 3.6mm today.
+- Horizontally the three targets get ~660px, putting their centres 15-25mm
+  apart - well clear of a fingertip, versus 3.6mm today.
 
 **Labels are not shortened.** Measured: `Herunterladen` + `Konvertieren` +
 `Als gelesen markieren` is ~375px of text plus padding ≈ 460px, inside the ~660px
@@ -125,10 +125,10 @@ an item-page render.
 ### 4. Item detail page (`Item.cshtml`)
 
 `Mark read`, and each file's `Download` / `Convert` / `Regenerate`, become
-`.btn`. No structural change — `.file-row` stays block layout for the documented
+`.btn`. No structural change - `.file-row` stays block layout for the documented
 reason (the target engine mishandles flex-shrink of a long filename node).
 
-### 5. Index — the Converted link (`Index.cshtml`)
+### 5. Index - the Converted link (`Index.cshtml`)
 
 Gets the same treatment as `.libraries` entries (1.3rem, block, `.7rem` padding,
 `<small>` caption below), and moves **below** the library list. It is a
@@ -140,7 +140,7 @@ the more important one.
 - `_Pager.cshtml`: `← Prev` / `Next →` become `.btn`; the page count stays plain
   text between them.
 - `.sortbar` links become inline-block with `.5rem .6rem` padding. The `·`
-  separators are dropped — the boxes now do the separating. Sort arrows stay
+  separators are dropped - the boxes now do the separating. Sort arrows stay
   inside the box.
 - `.searchbar input`: `padding: .5rem; font: inherit`. Search button → `.btn`.
 - `.settings-link`, `.fav-star`, logout button get padding to reach ~44px.
@@ -170,11 +170,11 @@ target engine could be missing, which is exactly why it is the mechanism and
 
 - `dotnet test`. Expected to need changes in `ListingRenderTests`: the two
   `..._regen_stays_plain` tests and the `RegenAnchor` helper (~line 103) move to
-  item-page renders. Everything else should pass untouched — if a test outside
+  item-page renders. Everything else should pass untouched - if a test outside
   those breaks, the change went further than intended.
 - `tools/uicheck/run.sh`. Existing assertions should hold; no page gains or
   loses a string. Add a second pass at `VIEWPORT_W=390` writing `shots/phone-*.png`
-  — the breakpoint is new and nothing currently exercises it, and `run.sh`
+  - the breakpoint is new and nothing currently exercises it, and `run.sh`
   already reads that env var.
 - Read the screenshots, do not just trust the exit code.
 - Then the user's e-ink pass. The headless run cannot judge whether 44px is
@@ -187,7 +187,7 @@ target engine could be missing, which is exactly why it is the mechanism and
   Deliberate: misclicking a conversion is worse than one extra page turn.
 - Mark read remains inline on listing rows. If the e-ink pass shows the
   three-across run is still mistap-prone under a real thumb, the fallback is to
-  demote Mark read to the item page — but that is a behaviour change and should
+  demote Mark read to the item page - but that is a behaviour change and should
   be driven by device evidence, not guessed at now.
 - This pass is expected to be the first of several. The device pass will
   produce a second round.

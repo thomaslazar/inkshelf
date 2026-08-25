@@ -1,7 +1,7 @@
-# CI pipeline + container release — Design
+# CI pipeline + container release - Design
 
 **Date:** 2026-07-13
-**Status:** Approved — proceeding to plan/implementation on `feat/ci-release`
+**Status:** Approved - proceeding to plan/implementation on `feat/ci-release`
 
 ## Purpose
 
@@ -14,7 +14,7 @@ land.
 ## Image & tags
 
 Image: `ghcr.io/thomaslazar/inkshelf`. Package visibility: **public** (no auth
-to pull; the image carries no secrets — all config is via env). Platforms:
+to pull; the image carries no secrets - all config is via env). Platforms:
 `linux/amd64,linux/arm64`.
 
 Tag convention:
@@ -59,7 +59,7 @@ its defined steps (overrides CLAUDE.md's ask-before-commit rule, as in abs-cli).
    `dotnet format Inkshelf.sln --verify-no-changes`, `dotnet test`. Determine
    version from conventional commits since last tag (any `feat:` → minor; else
    patch). **GATE:** confirm version.
-   *(Deferred vs abs-cli: no AOT self-test, no live smoke — no seeded-ABS
+   *(Deferred vs abs-cli: no AOT self-test, no live smoke - no seeded-ABS
    harness yet. Noted as a future preflight gate.)*
 2. **Branch + bump:** `release/vX.Y.Z`; set `<Version>` in `Inkshelf.csproj` to
    `X.Y.Z`; verify with `grep`. Commit `chore: bump version to X.Y.Z`.
@@ -88,14 +88,14 @@ artifact attach.
   the assembly informational/version at startup instead of the hardcoded
   `Inkshelf/1.0`.
 - **`CHANGELOG.md`:** NOT created here. The changelog is an output of the
-  release skill only — it creates the file (with its header block) on the first
+  release skill only - it creates the file (with its header block) on the first
   release and prepends entries thereafter.
 - **`.editorconfig`:** minimal C# rules so `dotnet format --verify-no-changes`
   is deterministic in CI (avoid churn from default heuristics).
 - **`Program.cs`:** generalize the existing reverse-proxy comment (currently
   names a specific proxy) to "some reverse proxies / WAFs reject requests with
   no User-Agent".
-- **`README.md`:** add a short "Container image" section — image name, tag
+- **`README.md`:** add a short "Container image" section - image name, tag
   meanings (`:main`, `:X.Y.Z`, `:latest`), and a `docker pull` / compose
   example.
 - **`.gitignore`:** ignore `release-notes.md` (generated, per abs-cli).

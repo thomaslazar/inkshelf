@@ -4,17 +4,17 @@
 
 **Goal:** A per-item page at `/item/{id}` showing full metadata, every ebook file (download + per-file convert), genre/tag/narrator filter jump-off, and the read toggle.
 
-**Architecture:** Fetch the expanded ABS item (`?expanded=1`) — it carries full metadata + `libraryFiles[]`. Reuse existing facet links and the convert/read plumbing. Per-file convert threads an optional `file={ino}` through the convert/download pipeline; the cache key is unchanged (keyed by the chosen file's size+mtime), so the **primary** file shares the listing's cache entry. Extract the convert-action markup into a shared partial.
+**Architecture:** Fetch the expanded ABS item (`?expanded=1`) - it carries full metadata + `libraryFiles[]`. Reuse existing facet links and the convert/read plumbing. Per-file convert threads an optional `file={ino}` through the convert/download pipeline; the cache key is unchanged (keyed by the chosen file's size+mtime), so the **primary** file shares the listing's cache entry. Extract the convert-action markup into a shared partial.
 
 **Tech Stack:** ASP.NET Core Razor Pages, .NET 10, xUnit + WebApplicationFactory render tests. Defensive CSS (no flex `gap`, no `object-fit`); near-zero JS.
 
 ## Global Constraints
 
 - **No AOT.** .NET 10, Razor Pages for HTML, minimal APIs for streams/actions.
-- **Cache-key format is unchanged** (`{itemId}-{size}-{mtimeMs}-{maxW}x{maxH}[-g].epub`). The `ino` is NEVER in the key — the primary ebook uses its own size+mtime, identical to what the listing writes, so its cache entry is shared. Only non-primary files use `?file={ino}` (keyed by that file's size+mtime).
-- **`file={ino}` is optional everywhere** — absent = primary, so all existing convert/download links are unchanged.
+- **Cache-key format is unchanged** (`{itemId}-{size}-{mtimeMs}-{maxW}x{maxH}[-g].epub`). The `ino` is NEVER in the key - the primary ebook uses its own size+mtime, identical to what the listing writes, so its cache entry is shared. Only non-primary files use `?file={ino}` (keyed by that file's size+mtime).
+- **`file={ino}` is optional everywhere** - absent = primary, so all existing convert/download links are unchanged.
 - **DTO additions are additive** (trailing optional params); never declare `series` as an array on `AbsMetadata` (only on detail/batch shapes).
-- **Regen (↻) stays a plain link** (no `data-warm`) — guarded by `ListingRenderTests`.
+- **Regen (↻) stays a plain link** (no `data-warm`) - guarded by `ListingRenderTests`.
 - **`LibraryLinks` is the single URL authority** for library/facet links.
 - **Never touch `CHANGELOG.md`** (release-only). Record shipped work in ROADMAP "## Done" + ARCHITECTURE.
 - **Description shown as `descriptionPlain`** (HTML-stripped), never raw HTML.
@@ -89,7 +89,7 @@ Add to `tests/Inkshelf.Tests/AbsApiClientTests.cs`:
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter FullyQualifiedName~AbsApiClientTests`
-Expected: FAIL — new DTO members / `GetEbookFileStreamAsync` don't exist; `expanded` query missing (compile + assertion failures).
+Expected: FAIL - new DTO members / `GetEbookFileStreamAsync` don't exist; `expanded` query missing (compile + assertion failures).
 
 - [ ] **Step 3: Extend the detail DTOs**
 
@@ -165,7 +165,7 @@ And add, next to `GetEbookStreamAsync`:
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `dotnet test --filter FullyQualifiedName~AbsApiClientTests`
-Expected: PASS (new tests + existing — the existing detail test asserts `AbsolutePath`, unaffected by the query).
+Expected: PASS (new tests + existing - the existing detail test asserts `AbsolutePath`, unaffected by the query).
 
 - [ ] **Step 6: Run the full suite**
 
@@ -253,11 +253,11 @@ Add to `tests/Inkshelf.Tests/ConvertServiceTests.cs`, using the file's existing 
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter "FullyQualifiedName~AbsDownloadClientTests|FullyQualifiedName~ConvertServiceTests"`
-Expected: FAIL — `DownloadEbookAsync` has no `fileIno`; `KickAsync` has no `fileIno` (compile errors).
+Expected: FAIL - `DownloadEbookAsync` has no `fileIno`; `KickAsync` has no `fileIno` (compile errors).
 
 - [ ] **Step 3: `AbsDownloadClient` + `ConvertJob` + `ConvertWorker`**
 
-`src/Inkshelf/Abs/AbsDownloadClient.cs` — change the signature and URL:
+`src/Inkshelf/Abs/AbsDownloadClient.cs` - change the signature and URL:
 
 ```csharp
     public async Task<Stream> DownloadEbookAsync(string itemId, string accessToken, CancellationToken ct, string? fileIno = null)
@@ -276,7 +276,7 @@ Expected: FAIL — `DownloadEbookAsync` has no `fileIno`; `KickAsync` has no `fi
     }
 ```
 
-`src/Inkshelf/Convert/ConvertJob.cs` — add the trailing field:
+`src/Inkshelf/Convert/ConvertJob.cs` - add the trailing field:
 
 ```csharp
 public sealed record ConvertJob(
@@ -284,13 +284,13 @@ public sealed record ConvertJob(
     EbookMeta Meta, RenderTarget Target, string? FileIno = null);
 ```
 
-`src/Inkshelf/Convert/ConvertWorker.cs` — pass `job.FileIno` to the download (the only call site):
+`src/Inkshelf/Convert/ConvertWorker.cs` - pass `job.FileIno` to the download (the only call site):
 
 ```csharp
                 await using (var archive = await download.DownloadEbookAsync(job.ItemId, job.AccessToken, ct, job.FileIno))
 ```
 
-- [ ] **Step 4: `ConvertService` — resolve a specific file**
+- [ ] **Step 4: `ConvertService` - resolve a specific file**
 
 In `src/Inkshelf/Convert/ConvertService.cs`, add `fileIno` to `KickAsync`/`StatusAsync`/`ResolveAsync` and select the file. Replace the three methods' relevant parts:
 
@@ -364,9 +364,9 @@ In `src/Inkshelf/Convert/ConvertService.cs`, add `fileIno` to `KickAsync`/`Statu
 
 (Add `using System.Linq;` if not present.)
 
-- [ ] **Step 5: Endpoints — accept `file`**
+- [ ] **Step 5: Endpoints - accept `file`**
 
-`src/Inkshelf/Endpoints/ConvertEndpoints.cs` — add the `file` param and pass it:
+`src/Inkshelf/Endpoints/ConvertEndpoints.cs` - add the `file` param and pass it:
 
 ```csharp
         app.MapGet("/convert/{id}", async (string id, string? fresh, string? warm,
@@ -395,7 +395,7 @@ In `src/Inkshelf/Convert/ConvertService.cs`, add `fileIno` to `KickAsync`/`Statu
         });
 ```
 
-`src/Inkshelf/Endpoints/DownloadEndpoints.cs` — add the `file` param:
+`src/Inkshelf/Endpoints/DownloadEndpoints.cs` - add the `file` param:
 
 ```csharp
         app.MapGet("/download/{id}", async (string id, string? file, AbsApiClient api, CancellationToken ct) =>
@@ -425,7 +425,7 @@ In `src/Inkshelf/Convert/ConvertService.cs`, add `fileIno` to `KickAsync`/`Statu
 - [ ] **Step 6: Run tests to verify they pass**
 
 Run: `dotnet test --filter "FullyQualifiedName~AbsDownloadClientTests|FullyQualifiedName~ConvertServiceTests|FullyQualifiedName~ConvertWorkerTests"`
-Expected: PASS — new tests + existing (existing convert paths pass `fileIno = null`).
+Expected: PASS - new tests + existing (existing convert paths pass `fileIno = null`).
 
 - [ ] **Step 7: Run the full suite**
 
@@ -475,7 +475,7 @@ Add to `tests/Inkshelf.Tests/ListingRenderTests.cs` (uses the existing harness):
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `dotnet test --filter "FullyQualifiedName~ListingRenderTests.Row_title_and_cover_link"`
-Expected: FAIL — no `/item/{id}` link in the row yet.
+Expected: FAIL - no `/item/{id}` link in the row yet.
 
 - [ ] **Step 3: Create the model + partial**
 
@@ -504,7 +504,7 @@ Create `src/Inkshelf/Pages/Shared/_ConvertAction.cshtml`:
     @switch (Model.State)
     {
         case ConvertRowState.Cached:
-            <a href="@baseHref" title="Already converted — downloads right away">EPUB &#10003;</a>
+            <a href="@baseHref" title="Already converted - downloads right away">EPUB &#10003;</a>
             break;
         case ConvertRowState.Converting:
             <a href="@baseHref" data-warm data-poll>Converting&#8230;</a>
@@ -525,7 +525,7 @@ Create `src/Inkshelf/Pages/Shared/_ConvertAction.cshtml`:
 
 In `src/Inkshelf/Pages/Shared/_ItemRow.cshtml`:
 
-(a) Wrap the cover in a link — replace the cover `@if/else` block so both branches are inside an anchor:
+(a) Wrap the cover in a link - replace the cover `@if/else` block so both branches are inside an anchor:
 
 ```cshtml
     <a class="cover-link" href="/item/@item.Id">
@@ -540,7 +540,7 @@ In `src/Inkshelf/Pages/Shared/_ItemRow.cshtml`:
     </a>
 ```
 
-(b) Link the title — replace `<strong>@(m?.Title ?? "(untitled)")</strong><br />` with:
+(b) Link the title - replace `<strong>@(m?.Title ?? "(untitled)")</strong><br />` with:
 
 ```cshtml
         <a href="/item/@item.Id"><strong>@(m?.Title ?? "(untitled)")</strong></a><br />
@@ -560,7 +560,7 @@ The rendered convert markup is unchanged (FileIno=null → `baseHref` = `/conver
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `dotnet test --filter FullyQualifiedName~ListingRenderTests`
-Expected: PASS — the new link test plus ALL existing listing tests (regen stays plain, cached/converting markup identical, read toggle intact).
+Expected: PASS - the new link test plus ALL existing listing tests (regen stays plain, cached/converting markup identical, read toggle intact).
 
 - [ ] **Step 6: Commit**
 
@@ -605,7 +605,7 @@ Add to `tests/Inkshelf.Tests/ListingRenderTests.cs`:
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `dotnet test --filter "FullyQualifiedName~ListingRenderTests.Filter_by_genre"`
-Expected: FAIL — genre facet currently labels as "Genres" (raw `Humanize`) with no resolved name.
+Expected: FAIL - genre facet currently labels as "Genres" (raw `Humanize`) with no resolved name.
 
 - [ ] **Step 3: Implement the label**
 
@@ -618,7 +618,7 @@ In `src/Inkshelf/Pages/Library.cshtml.cs`, in `ResolveFilterAsync`, extend the `
             {
                 _filterGroup = d.Group; _filterValue = d.Value;
                 FilterType = Humanize(d.Group);
-                // genres/tags/narrators filter by NAME — the decoded value IS the label.
+                // genres/tags/narrators filter by NAME - the decoded value IS the label.
                 if (d.Group is "genres" or "tags" or "narrators") FilterName = d.Value;
             }
             else { FilterType = "Filter"; }
@@ -689,7 +689,7 @@ Add to `tests/Inkshelf.Tests/ConvertRowStateResolverTests.cs`:
     }
 ```
 
-Create `tests/Inkshelf.Tests/ItemRenderTests.cs` (mirror `ConvertedRenderTests`' harness — TempDir, CreateFactory dropping ConvertWorker, protected session cookie + `scr` cookie). Stub answers `/api/items/{id}` (expanded detail) and `/api/me`:
+Create `tests/Inkshelf.Tests/ItemRenderTests.cs` (mirror `ConvertedRenderTests`' harness - TempDir, CreateFactory dropping ConvertWorker, protected session cookie + `scr` cookie). Stub answers `/api/items/{id}` (expanded detail) and `/api/me`:
 
 ```csharp
 using System.Net;
@@ -805,7 +805,7 @@ public class ItemRenderTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter "FullyQualifiedName~ItemRenderTests|FullyQualifiedName~ConvertRowStateResolverTests.ResolveFor"`
-Expected: FAIL — `ResolveFor` missing (compile); no `/item/{id}` route (404 → assertion failures).
+Expected: FAIL - `ResolveFor` missing (compile); no `/item/{id}` route (404 → assertion failures).
 
 - [ ] **Step 3: Add `ResolveFor` and delegate `Resolve`**
 
@@ -1065,10 +1065,10 @@ Record the feature in ROADMAP and ARCHITECTURE. **Do not touch `CHANGELOG.md`.**
 In `docs/ROADMAP.md`, under `## Browsing & reading`, delete the entire `- **Item detail page.** …` bullet (through its trailing `*Note:*` sentence). Add as the FIRST bullet under `## Done`:
 
 ```markdown
-- **Item detail page** — a per-item page at `/item/{id}` (reached by the row
+- **Item detail page** - a per-item page at `/item/{id}` (reached by the row
   title/cover) showing the full metadata (larger cover, multiple authors/series/
   narrators as filter links, genres, tags, publisher/year, plain description),
-  every ebook file with its own download, and — for cbz/cbr files — the Convert
+  every ebook file with its own download, and - for cbz/cbr files - the Convert
   action. Convert is per-file: the primary uses the item's existing cache entry
   (no `file=`), non-primary files use `/convert/{id}?file={ino}`; the cache key is
   unchanged. Also carries the read/unread toggle. Genre/tag/narrator links jump to
@@ -1079,10 +1079,10 @@ In `docs/ROADMAP.md`, under `## Browsing & reading`, delete the entire `- **Item
 
 In `docs/ARCHITECTURE.md`:
 
-(a) `Pages/` map line — add `Item`:
+(a) `Pages/` map line - add `Item`:
 `Pages/  Razor Pages: Index, Login, Library, Converted, Item, Settings (+ models); Shared/ partials.`
 
-(b) `Support/` map line — add `ConvertActionModel`:
+(b) `Support/` map line - add `ConvertActionModel`:
 `Support/  Non-page helper types: LibraryLinks, ItemRowModel, Pager, SortLinks, ConvertRowStateResolver, ConvertActionModel.`
 
 (c) Add this bullet to `## Load-bearing conventions`, after the convert-row-state bullet:
@@ -1092,7 +1092,7 @@ In `docs/ARCHITECTURE.md`:
   detail page can convert any cbz/cbr in an item via `/convert/{id}?file={ino}`,
   but the key stays `{itemId}-{size}-{mtimeMs}-…` using the chosen file's
   size+mtime. The **primary** ebook uses no `file=` and its own size+mtime, so its
-  cache entry is identical to the one the listing/converted view write — the badge
+  cache entry is identical to the one the listing/converted view write - the badge
   agrees across pages. `_ConvertAction` renders the convert `<span>` (states +
   plain regen) for both the row and the detail formats list.
 ```
@@ -1110,13 +1110,13 @@ git commit -m "docs: record the item detail page"
 
 After Task 6, from the repo root inside the devcontainer:
 
-- [ ] Run `dotnet test` — all green.
+- [ ] Run `dotnet test` - all green.
 - [ ] (Manual, optional) Run the dev server on 5099, open a listing, tap a title → `/item/{id}`; confirm metadata, multiple authors/series, genre/tag links jump to a filtered listing, every ebook file has a download, a cbz shows Convert (and "EPUB ✓" if already converted from the listing), and the read toggle works. Real-device check before merge (defensive-CSS convention).
 
 ## Notes on decisions (from the spec)
 
-- **Per-file convert; primary shares the listing's cache entry** — the ino is never in the cache key.
+- **Per-file convert; primary shares the listing's cache entry** - the ino is never in the cache key.
 - **`_ConvertAction` partial** keeps the regen-stays-plain rule in one place.
-- **Genre/tag/narrator** filter by name (their value is the label); authors/series by id — all through the existing `?filter=` path.
-- **`/converted` view unchanged** — still one row per item.
+- **Genre/tag/narrator** filter by name (their value is the label); authors/series by id - all through the existing `?filter=` path.
+- **`/converted` view unchanged** - still one row per item.
 - Description is `descriptionPlain` (no raw HTML).

@@ -2,17 +2,17 @@
 
 **Status:** design approved, ready for implementation plan
 **Date:** 2026-07-17
-**Roadmap item:** Priority #1 — "Settings system + retina toggle" (scoped down)
+**Roadmap item:** Priority #1 - "Settings system + retina toggle" (scoped down)
 
 ## Goal
 
 Give Inkshelf a real per-device settings system and use it to expose two
 rendering knobs that today are hard-coded or absent:
 
-- **Retina toggle** — replaces the hard-coded `ScreenTarget.Retina = false`
+- **Retina toggle** - replaces the hard-coded `ScreenTarget.Retina = false`
   const. On a high-DPR phone the non-retina pages are upscaled and hard to
   read; let the user opt into full-resolution pages per device.
-- **Grayscale toggle** — optionally desaturate converted pages to shrink files
+- **Grayscale toggle** - optionally desaturate converted pages to shrink files
   on e-ink; kept manual because `matchMedia('(monochrome)')` is unreliable on
   e-ink panels.
 
@@ -23,12 +23,12 @@ toggle, the grayscale toggle, and the "Retina dpr clamp" security fix (which is
 a prerequisite for turning retina on safely).
 
 **Out (stays on the roadmap):**
-- **Resolution override** — moved back to the backlog; design undecided.
-- **EPUB2 reflowable fallback** — undecided whether to build it at all.
+- **Resolution override** - moved back to the backlog; design undecided.
+- **EPUB2 reflowable fallback** - undecided whether to build it at all.
 
 ## Design
 
-### A. Storage — the settings cookie
+### A. Storage - the settings cookie
 
 A new server-written cookie `inkshelf_settings` holds the user's choices,
 handled by a small `DeviceSettings` type in `Auth/`, mirroring the read/write
@@ -38,7 +38,7 @@ shape of the existing `Favorites.cs`.
   grayscale). Absent, empty, or unparseable → defaults.
 - **Defaults:** retina **off** (matches today's `Retina = false`), grayscale
   **off**.
-- **Cookie flags:** identical to `Favorites` — `HttpOnly`, `SameSite=Lax`,
+- **Cookie flags:** identical to `Favorites` - `HttpOnly`, `SameSite=Lax`,
   `Secure = ForceSecureCookies || Request.IsHttps`, `IsEssential`, `Path=/`,
   `MaxAge = 365 days`.
 - The existing `scr` (device-probe) and `inkshelf_fav_library` cookies are
@@ -52,21 +52,21 @@ how `Favorites` reads/writes its cookie.
 
 ### B. Settings page + write endpoint + entry links
 
-- **`Pages/Settings.cshtml`** — Razor Page (`OnGet` only). Renders a plain
+- **`Pages/Settings.cshtml`** - Razor Page (`OnGet` only). Renders a plain
   `<form method="post" action="/settings">` with two checkboxes (retina,
   grayscale) pre-filled from the cookie, an antiforgery token, and an
   informational readout of the detected device parsed from `scr`
   (e.g. "detected 375×812 @dpr 3") so the retina choice has context. Framed
   clearly as "applies to this device/browser." Defensive CSS only (no
   `object-fit`, no flex `gap`).
-- **`POST /settings`** — minimal-API endpoint (new `MapSettingsEndpoints` in
+- **`POST /settings`** - minimal-API endpoint (new `MapSettingsEndpoints` in
   `Endpoints/`, matching the `/favorite` + `/logout` action convention).
   Writes the cookie and PRG-redirects back (to a local-only return path, same
   open-redirect guard style as `ConvertEndpoints.LocalReturn`). Checkbox
   semantics: an unchecked box sends no field, so absent = off.
-- **Entry links:** a cog-glyph-only `<a>` (⚙, no text label — carries an
+- **Entry links:** a cog-glyph-only `<a>` (⚙, no text label - carries an
   accessible `title`/`aria-label`) in the Index `.page-head` (next to Log out)
-  and in the Library `.page-head`. No shared header partial — two small `<a>`
+  and in the Library `.page-head`. No shared header partial - two small `<a>`
   tags in two views, consistent with the current per-page head pattern.
 
 ### C. How retina + grayscale reach conversion
@@ -86,14 +86,14 @@ parameters through the call chain:
   `RenderTarget`, so the per-row "✓ converted" badge matches what a real
   conversion produces.
 - **Cache key:** `EpubCache.PathFor` / `TryGet` gain a grayscale marker:
-  `…-{maxW}x{maxH}{(grayscale ? "-g" : "")}.epub`. Retina needs no marker — it
+  `…-{maxW}x{maxH}{(grayscale ? "-g" : "")}.epub`. Retina needs no marker - it
   already changes `maxW/maxH` (retina → css×dpr, non-retina → css), so the two
   variants already produce different filenames. Colour vs grayscale at the same
   dimensions would otherwise collide, hence the marker.
-- **Security fix — "Retina dpr clamp"** (the roadmap Security item): in
+- **Security fix - "Retina dpr clamp"** (the roadmap Security item): in
   `FromCookie`, clamp each dimension to `MaxDimension` **after** multiplying by
   `dpr`, and bound `dpr` itself (cap at 4). Today the clamp happens before the
-  multiply and `dpr` is unbounded — harmless only while `Retina = false`. This
+  multiply and `dpr` is unbounded - harmless only while `Retina = false`. This
   must land with the retina toggle.
 
 ### D. Testing + docs

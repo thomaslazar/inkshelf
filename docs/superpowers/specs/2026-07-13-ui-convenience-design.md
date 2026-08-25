@@ -1,7 +1,7 @@
-# UI polish + convenience features — Design
+# UI polish + convenience features - Design
 
 **Date:** 2026-07-13
-**Status:** Approved — proceeding to plan/implementation on `feat/ui-convenience`
+**Status:** Approved - proceeding to plan/implementation on `feat/ui-convenience`
 
 ## Purpose
 
@@ -16,7 +16,7 @@ All additions keep the near-zero-JavaScript rule: plain `<form>` and `<a>` only.
 
 Source assets live in `temp/logo/` (gitignored). Copy into the repo:
 
-- **Web root `wwwroot/`** (favicon set — absolute paths in the manifest require
+- **Web root `wwwroot/`** (favicon set - absolute paths in the manifest require
   root placement): `favicon.ico`, `favicon-16x16.png`, `favicon-32x32.png`,
   `apple-touch-icon.png`, `android-chrome-192x192.png`,
   `android-chrome-512x512.png`, `site.webmanifest`.
@@ -65,7 +65,7 @@ form. Keep it small (constrained width) for e-ink.
 
 ## Favorite library
 
-- Plain (unencrypted) cookie `inkshelf_fav_library=<libraryId>` — a UI
+- Plain (unencrypted) cookie `inkshelf_fav_library=<libraryId>` - a UI
   preference, not a secret. HttpOnly, SameSite=Lax, long max-age.
 - **Toggle:** a small `<form method="post">` on the library page posting to a
   `POST /favorite` endpoint with the library id and an antiforgery token (same
@@ -80,7 +80,7 @@ form. Keep it small (constrained width) for e-ink.
 
 ## Item listing changes
 
-- Page size **10** (was 24) — `LibraryModel.PageSize = 10`.
+- Page size **10** (was 24) - `LibraryModel.PageSize = 10`.
 - Move the Prev/Next pager to the **top** of the list (above the rows). No
   bottom pager (save e-ink space).
 - **Clickable author/series.** The items list is **always minified** in ABS
@@ -93,7 +93,7 @@ form. Keep it small (constrained width) for e-ink.
   paged listing. Search-result Series/Authors groups already carry ids and link
   directly to `?filter=<group>.<base64(id)>`.
 - Cover unchanged, except a missing cover now returns **404** (not 500), so a
-  coverless item just shows no image. (No download affordance — that feature
+  coverless item just shows no image. (No download affordance - that feature
   was scrapped and is out of scope for this iteration.)
 
 ## Search + filtered listing
@@ -103,11 +103,11 @@ The library page (`/library/{id}`) supports three modes, chosen by query params:
 1. **Default** (no `q`, no `filter`): paged listing (10/page).
 2. **Search** (`?q=<text>`): grouped results from
    `GET /api/libraries/{id}/search?q=&limit=`:
-   - **Books** — matched items rendered like list rows (cover/title/author/
+   - **Books** - matched items rendered like list rows (cover/title/author/
      series). The book match's item is the expanded form, so its author/series
      are clickable filter links too, exactly like the normal listing.
-   - **Series** — each links to `/library/{id}?filter=series.<base64(seriesId)>`.
-   - **Authors** — each links to `/library/{id}?filter=authors.<base64(authorId)>`.
+   - **Series** - each links to `/library/{id}?filter=series.<base64(seriesId)>`.
+   - **Authors** - each links to `/library/{id}?filter=authors.<base64(authorId)>`.
    Search results are not paged (ABS caps them; use `limit=25`).
 3. **Filtered** (`?filter=<group>.<b64>`): paged listing passing `filter`
    through to `GET /api/libraries/{id}/items?...&filter=...`.
@@ -126,11 +126,11 @@ URL-encode when placing in the link (`+`/`/`/`=` are not URL-safe).
 ## Client / data additions (`AbsClient`, `AbsModels`)
 
 - The items list is always minified, so `AbsMetadata` stays
-  `{ Title, AuthorName, SeriesName }` (no id arrays — they aren't available).
+  `{ Title, AuthorName, SeriesName }` (no id arrays - they aren't available).
   Author/series ids are resolved from names via `SearchAsync` at click time
   (see the listing section). `AbsRef`/`AbsSeriesRef` exist only for the search
   DTOs.
-- `GetItemsAsync(..., string? filter = null)` — appends `&filter=<value>` when
+- `GetItemsAsync(..., string? filter = null)` - appends `&filter=<value>` when
   set (value already `group.<b64>`, URL-encoded).
 - `SearchAsync(accessToken, libraryId, q, limit)` →
   `Task<AbsSearchResults>`; `GET /api/libraries/{id}/search?q=&limit=`.
@@ -157,17 +157,17 @@ disposable ABS instance is seeded with data and run locally via Docker. This
 mirrors abs-cli's `docker/` setup, **isolated so both projects' stacks can run
 at once**:
 
-- `docker/docker-compose.yml` — `advplyr/audiobookshelf:2.35.1`. Isolation from
+- `docker/docker-compose.yml` - `advplyr/audiobookshelf:2.35.1`. Isolation from
   abs-cli: compose project `name: inkshelf-it`, host port **13379** (abs-cli
   uses 13378), own named volumes (prefixed by the project name),
   `RATE_LIMIT_AUTH_MAX=0` so repeated logins during testing don't rate-limit.
-- `docker/seed.sh` — initializes root (`root`/`root`), creates a book library,
+- `docker/seed.sh` - initializes root (`root`/`root`), creates a book library,
   and uploads ~15 items (each created from a minimal generated EPUB, which is
   just the media file ABS needs to make a book item) across several authors and
   multiple series. Enough for **2+ pages** at 10/page, with distinct
   titles/authors/series for search and filter links. Then triggers a scan and
   waits for the items to index.
-- `docker/smoke-test.sh` — drives Inkshelf's own HTTP routes end to end
+- `docker/smoke-test.sh` - drives Inkshelf's own HTTP routes end to end
   (login → cookie, libraries, items page, `?q=` search, `?filter=` listing,
   `/cover/{id}`), asserting status codes and key content. It discovers a
   library id via the ABS API (root token). Runs against a running Inkshelf

@@ -1,4 +1,4 @@
-# Conversion failure reasons — design
+# Conversion failure reasons - design
 
 ## Problem
 
@@ -23,13 +23,13 @@ path against a seeded oversized item.
 - Tapping the row action on a Failed item **retries immediately** (today's
   behaviour, unchanged).
 - **JS path:** the existing status poll, on seeing `failed`, navigates to the
-  reason page — the watching user lands on the reason automatically.
+  reason page - the watching user lands on the reason automatically.
 - **No-JS path:** the listing keeps its redirect-back + meta-refresh flow;
   when a row renders Failed, it shows "Convert (retry)" plus a small "why?"
   link to the reason page.
 - The "why?" link lives in the shared `_ConvertAction.cshtml` Failed case, so
   it appears on listing rows, search rows, the `/converted` view, **and the
-  item detail page** — identically for JS and no-JS renders.
+  item detail page** - identically for JS and no-JS renders.
 - The reason page has **Retry** (the normal `/convert/{id}?…&return=…` kick
   URL) and **Back** (the guarded return URL). If the failed entry has expired
   (10-min TTL) or been re-queued, the page redirects back instead of showing
@@ -40,7 +40,7 @@ path against a seeded oversized item.
 - New `ConvertFailReason` enum: `TooLarge`, `DownloadFailed`, `BadArchive`,
   `ConvertError`.
 - `ConvertQueue.MarkFailed(path)` gains `(ConvertFailReason reason, string?
-  detail)` stored on the existing Failed `Entry` — same 10-min TTL, in-memory
+  detail)` stored on the existing Failed `Entry` - same 10-min TTL, in-memory
   only. Transient is fine: a re-tap reproduces a deterministic failure. A new
   accessor (e.g. `FailureFor(path)`) returns the reason while the entry is
   Failed, null otherwise.
@@ -65,12 +65,12 @@ metadata; both paths mark the same `TooLarge` reason.
 
 ## Surface
 
-- A small Razor page (route `/convert/{id}/why`, query: `file`, `return`) —
-  not hand-built HTML in `ConvertEndpoints` — so it gets `_Layout`, the `@L`
+- A small Razor page (route `/convert/{id}/why`, query: `file`, `return`) -
+  not hand-built HTML in `ConvertEndpoints` - so it gets `_Layout`, the `@L`
   localizer, and the existing CSS for free. Plain HTML, zero JS.
 - Content: item title (from the batch-metadata fetch the other pages already
-  use), one localized sentence per reason — TooLarge is actionable and
-  includes both sizes ("The archive is 1.3 GB, over the 1 GB limit") — then
+  use), one localized sentence per reason - TooLarge is actionable and
+  includes both sizes ("The archive is 1.3 GB, over the 1 GB limit") - then
   Retry and Back links.
 - It resolves the same cache path as the endpoint (device `scr` cookie +
   settings → `RenderTarget` → `EpubCache.PathFor`) and reads
@@ -79,7 +79,7 @@ metadata; both paths mark the same `TooLarge` reason.
 - `_ConvertAction.cshtml` Failed case adds the "why?" link next to
   "Convert (retry)". Rows stay lean: one short localized word.
 - Layout JS: when the poll transitions to `failed`, set `location.href` to
-  the why-page URL (built server-side into a `data-why` attribute — the JS
+  the why-page URL (built server-side into a `data-why` attribute - the JS
   composes nothing).
 
 ## Logging
@@ -98,7 +98,7 @@ formatted server-side (GiB/MiB, one decimal).
 The seeded-ABS Playwright pass must hit the real failure path:
 
 - `docker/seed.sh` seeds one extra CBZ fixture, an **oversized comic** (e.g.
-  "Neon Blade Vol. 0" — a CBZ padded to ~1 MiB with incompressible bytes so
+  "Neon Blade Vol. 0" - a CBZ padded to ~1 MiB with incompressible bytes so
   the stored size is genuinely over the test ceiling).
 - `tools/uicheck/run.sh` starts Inkshelf with a very small archive ceiling
   (e.g. `export MaxArchiveBytes=102400`, 100 KiB) so the oversized fixture

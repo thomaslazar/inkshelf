@@ -95,17 +95,17 @@ public class DeviceSettingsTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter FullyQualifiedName~DeviceSettingsTests`
-Expected: FAIL — `DeviceSettings` has no 3-arg constructor / `Lang` member.
+Expected: FAIL - `DeviceSettings` has no 3-arg constructor / `Lang` member.
 
 - [ ] **Step 3: Update `DeviceSettings`**
 
-Edit `src/Inkshelf/Auth/DeviceSettings.cs` — change the record, `Default`, `Serialize`, `Read`, and add `SanitizeLang`:
+Edit `src/Inkshelf/Auth/DeviceSettings.cs` - change the record, `Default`, `Serialize`, `Read`, and add `SanitizeLang`:
 
 ```csharp
 public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
 {
     public const string Cookie = "inkshelf_settings";
-    // Retina defaults ON — most readers want crisp pages; opt out per device.
+    // Retina defaults ON - most readers want crisp pages; opt out per device.
     // Lang "" = no explicit choice yet (resolved from Accept-Language at render).
     public static readonly DeviceSettings Default = new(true, false, "");
 
@@ -151,7 +151,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
 
 - [ ] **Step 4: Fix the one broken construction site**
 
-Edit `src/Inkshelf/Endpoints/SettingsEndpoints.cs` — read `lang` from the form and pass it:
+Edit `src/Inkshelf/Endpoints/SettingsEndpoints.cs` - read `lang` from the form and pass it:
 
 ```csharp
             var form = await ctx.Request.ReadFormAsync();
@@ -187,10 +187,10 @@ Load `<lang>.json` files into an immutable lookup.
 **Interfaces:**
 - Produces:
   - `LocalizationCatalog.Load(string dir, ILogger? logger = null) → LocalizationCatalog`
-  - `string Get(string? lang, string key)` — translation, else `key`
+  - `string Get(string? lang, string key)` - translation, else `key`
   - `bool Has(string lang)`
-  - `string DisplayName(string lang)` — `$name` value, else the code
-  - `IReadOnlyCollection<string> Languages` — loaded codes (excludes English)
+  - `string DisplayName(string lang)` - `$name` value, else the code
+  - `IReadOnlyCollection<string> Languages` - loaded codes (excludes English)
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -261,7 +261,7 @@ public class LocalizationCatalogTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter FullyQualifiedName~LocalizationCatalogTests`
-Expected: FAIL — `LocalizationCatalog` does not exist.
+Expected: FAIL - `LocalizationCatalog` does not exist.
 
 - [ ] **Step 3: Implement `LocalizationCatalog`**
 
@@ -303,7 +303,7 @@ public sealed class LocalizationCatalog
            && !string.IsNullOrWhiteSpace(n) ? n : lang;
 
     // Load every *.json in dir. A malformed/unreadable file is logged and skipped
-    // — a bad translation file must never crash the sidecar. Missing dir → empty.
+    // - a bad translation file must never crash the sidecar. Missing dir → empty.
     public static LocalizationCatalog Load(string dir, ILogger? logger = null)
     {
         var result = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
@@ -433,7 +433,7 @@ public class LocalizerTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter FullyQualifiedName~LocalizerTests`
-Expected: FAIL — `Localizer` does not exist.
+Expected: FAIL - `Localizer` does not exist.
 
 - [ ] **Step 3: Implement `Localizer`**
 
@@ -448,7 +448,7 @@ namespace Inkshelf.Localization;
 // View-facing localiser. Injected once via _ViewImports (`@inject Localizer L`)
 // and used as `L["English string"]`. Resolves the request language itself (from
 // the DeviceSettings cookie, then Accept-Language) so strings in the layout and
-// shared partials — which have no PageModel — need no plumbing.
+// shared partials - which have no PageModel - need no plumbing.
 public sealed class Localizer
 {
     private readonly LocalizationCatalog _catalog;
@@ -512,14 +512,14 @@ Make the machinery live without changing any rendered text yet.
 - Modify: `src/Inkshelf/Inkshelf.csproj`
 - Modify: `src/Inkshelf/Pages/_ViewImports.cshtml`
 - Create: `src/Inkshelf/locales/de.json`
-- Modify: `README.md` (configuration list — add `LOCALES_PATH`)
+- Modify: `README.md` (configuration list - add `LOCALES_PATH`)
 
 **Interfaces:**
 - Produces: `AbsOptions.LocalesPath`; a registered singleton `LocalizationCatalog` and singleton `Localizer`; `@inject Localizer L` available in all views.
 
 - [ ] **Step 1: Add `LocalesPath` to `AbsOptions`**
 
-Edit `src/Inkshelf/AbsOptions.cs` — add after `DataProtectionKeysPath`:
+Edit `src/Inkshelf/AbsOptions.cs` - add after `DataProtectionKeysPath`:
 
 ```csharp
     // Directory holding <lang>.json UI translation files, scanned at startup.
@@ -553,7 +553,7 @@ builder.Services.AddSingleton<Localizer>();
 
 - [ ] **Step 3: Copy `locales/**` to output**
 
-Edit `src/Inkshelf/Inkshelf.csproj` — add inside a new `<ItemGroup>`:
+Edit `src/Inkshelf/Inkshelf.csproj` - add inside a new `<ItemGroup>`:
 
 ```xml
   <ItemGroup>
@@ -566,7 +566,7 @@ Edit `src/Inkshelf/Inkshelf.csproj` — add inside a new `<ItemGroup>`:
 
 - [ ] **Step 4: Inject the localizer into all views**
 
-Edit `src/Inkshelf/Pages/_ViewImports.cshtml` — append:
+Edit `src/Inkshelf/Pages/_ViewImports.cshtml` - append:
 
 ```cshtml
 @using Inkshelf.Localization
@@ -603,7 +603,7 @@ Create `src/Inkshelf/locales/de.json` with the full key set (English source stri
   "Convert": "Konvertieren",
   "Converting…": "Konvertiere…",
   "Convert (retry)": "Konvertieren (erneut)",
-  "Already converted — downloads right away": "Bereits konvertiert – lädt sofort herunter",
+  "Already converted - downloads right away": "Bereits konvertiert - lädt sofort herunter",
   "Regenerate": "Neu erzeugen",
 
   "Username": "Benutzername",
@@ -613,7 +613,7 @@ Create `src/Inkshelf/locales/de.json` with the full key set (English source stri
 
   "These settings apply to this device / browser only.": "Diese Einstellungen gelten nur für dieses Gerät / diesen Browser.",
   "Detected screen: {0}": "Erkannter Bildschirm: {0}",
-  "Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)": "Retina-Seiten (volle Auflösung; schärfer, aber schwerer – kann Reader mit wenig Speicher belasten)",
+  "Retina pages (full-resolution; crisper but heavier - may strain low-memory readers)": "Retina-Seiten (volle Auflösung; schärfer, aber schwerer - kann Reader mit wenig Speicher belasten)",
   "Grayscale pages (smaller files on e-ink)": "Graustufen-Seiten (kleinere Dateien auf E-Ink)",
   "Save": "Speichern",
   "Language": "Sprache",
@@ -656,16 +656,16 @@ Create `src/Inkshelf/locales/de.json` with the full key set (English source stri
 
 - [ ] **Step 6: Add `LOCALES_PATH` to the README configuration list**
 
-Edit `README.md` — add a row/bullet in the configuration section:
+Edit `README.md` - add a row/bullet in the configuration section:
 
 ```
-- `LOCALES_PATH` — directory of `<lang>.json` UI translation files (default `<content-root>/locales`). Drop a file in and restart to add a language; no rebuild.
+- `LOCALES_PATH` - directory of `<lang>.json` UI translation files (default `<content-root>/locales`). Drop a file in and restart to add a language; no rebuild.
 ```
 
 - [ ] **Step 7: Build and verify the catalog is deployed and loads**
 
 Run: `dotnet build src/Inkshelf`
-Expected: build succeeds with **no** NETSDK1022 duplicate-content warning. If that warning appears, the `Update` attribute in Step 3 is correct — re-check it is `Update`, not `Include`.
+Expected: build succeeds with **no** NETSDK1022 duplicate-content warning. If that warning appears, the `Update` attribute in Step 3 is correct - re-check it is `Update`, not `Include`.
 
 Run: `ls src/Inkshelf/bin/Debug/net10.0/locales/de.json`
 Expected: the file exists (proves `CopyToOutputDirectory` works).
@@ -775,7 +775,7 @@ Edit `src/Inkshelf/Pages/Login.cshtml`:
 </form>
 ```
 
-(`@L[Model.Error]` localises the English error string set in `LoginModel` — the code needs no change.)
+(`@L[Model.Error]` localises the English error string set in `LoginModel` - the code needs no change.)
 
 - [ ] **Step 4: Run the integration tests**
 
@@ -850,7 +850,7 @@ public class SettingsModel : PageModel
 
 - [ ] **Step 2: Add the `<select>` to the settings form**
 
-Edit `src/Inkshelf/Pages/Settings.cshtml` — add this `<p>` block inside `<form class="settings-form">`, above the `Save` button (other text in this view is localised in Task 8):
+Edit `src/Inkshelf/Pages/Settings.cshtml` - add this `<p>` block inside `<form class="settings-form">`, above the `Save` button (other text in this view is localised in Task 8):
 
 ```cshtml
     <p>
@@ -865,12 +865,12 @@ Edit `src/Inkshelf/Pages/Settings.cshtml` — add this `<p>` block inside `<form
     </p>
 ```
 
-Note: the `English` option carries value `en` (an explicit choice), never the empty/unset state — matches the spec.
+Note: the `English` option carries value `en` (an explicit choice), never the empty/unset state - matches the spec.
 
 - [ ] **Step 3: Build and verify manually**
 
 Run: `ABS_URL=http://abs.invalid dotnet run --project src/Inkshelf` (port per your local convention), open `/settings`.
-Expected: a **Language** dropdown listing `English` and `Deutsch`. Pick `Deutsch`, Save — the page reloads and the dropdown shows `Deutsch` selected (cookie `inkshelf_settings` now ends in `de`). Stop the server.
+Expected: a **Language** dropdown listing `English` and `Deutsch`. Pick `Deutsch`, Save - the page reloads and the dropdown shows `Deutsch` selected (cookie `inkshelf_settings` now ends in `de`). Stop the server.
 
 - [ ] **Step 4: Run the full suite**
 
@@ -886,7 +886,7 @@ git commit -m "feat: add language picker to Settings"
 
 ---
 
-### Task 7: Localise shared chrome — layout JS labels + partials
+### Task 7: Localise shared chrome - layout JS labels + partials
 
 **Files:**
 - Modify: `src/Inkshelf/Pages/Shared/_Layout.cshtml` (convert-status JS labels)
@@ -898,7 +898,7 @@ All keys already exist in `de.json` (Task 4).
 
 - [ ] **Step 1: Set `<html lang>` and source the convert-status JS labels**
 
-Edit `src/Inkshelf/Pages/Shared/_Layout.cshtml`. First, reflect the resolved language on the root element — change `<html lang="en">` to:
+Edit `src/Inkshelf/Pages/Shared/_Layout.cshtml`. First, reflect the resolved language on the root element - change `<html lang="en">` to:
 
 ```cshtml
 <html lang="@(L.CurrentLang() ?? "en")">
@@ -918,7 +918,7 @@ Then, immediately before the second `<script>` block (the convert-status one), e
     </script>
 ```
 
-Then in that convert-status script, replace the four hardcoded English literals with `I18N` fields (leave `'EPUB ↓'` — a format name — as-is):
+Then in that convert-status script, replace the four hardcoded English literals with `I18N` fields (leave `'EPUB ↓'` - a format name - as-is):
 
 - `a.firstChild.nodeValue = 'Convert (retry)';` → `a.firstChild.nodeValue = I18N.retry;` (both occurrences: the `poll` failed-branch and the `kick` error-branch)
 - in `poll`: `(s === 'failed') ? 'Convert (retry)' : 'Convert'` → `(s === 'failed') ? I18N.retry : I18N.convert`
@@ -954,9 +954,9 @@ Apply these exact replacements (leave all `@item`, `@m`, `@authors`, `@s` data b
 
 - [ ] **Step 4: Localise `_ConvertAction.cshtml`**
 
-Replace the visible label/title text (keep `EPUB &#10003;` — format name + glyph — literal; keep `href`/`data-*` untouched):
+Replace the visible label/title text (keep `EPUB &#10003;` - format name + glyph - literal; keep `href`/`data-*` untouched):
 
-- `title="Already converted — downloads right away"` → `title="@L["Already converted — downloads right away"]"`
+- `title="Already converted - downloads right away"` → `title="@L["Already converted - downloads right away"]"`
 - `<a href="@baseHref" data-warm data-poll>Converting&#8230;</a>` → `<a href="@baseHref" data-warm data-poll>@L["Converting…"]</a>`
 - `<a href="@baseHref" data-warm>Convert (retry)</a>` → `<a href="@baseHref" data-warm>@L["Convert (retry)"]</a>`
 - `<a href="@baseHref" data-warm>Convert</a>` → `<a href="@baseHref" data-warm>@L["Convert"]</a>`
@@ -1004,7 +1004,7 @@ All keys already exist in `de.json`. In every case wrap only the human-readable 
 - ` Settings</h1>` (after the crumb-sep) → ` @L["Settings"]</h1>`
 - `<p class="settings-note">These settings apply to <strong>this device / browser</strong> only.</p>` → `<p class="settings-note">@L["These settings apply to this device / browser only."]</p>` (drop the inner `<strong>`; the sentence is one key)
 - `<p class="settings-note">Detected screen: @Model.DetectedScreen</p>` → `<p class="settings-note">@L["Detected screen: {0}", Model.DetectedScreen]</p>`
-- retina label text → `@L["Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)"]`
+- retina label text → `@L["Retina pages (full-resolution; crisper but heavier - may strain low-memory readers)"]`
 - grayscale label text → `@L["Grayscale pages (smaller files on e-ink)"]`
 - `<button type="submit">Save</button>` → `<button type="submit">@L["Save"]</button>`
 
@@ -1015,7 +1015,7 @@ All keys already exist in `de.json`. In every case wrap only the human-readable 
 - search input `placeholder="Search…"` → `placeholder="@L["Search…"]"`; search `<button type="submit">Search</button>` → `<button type="submit">@L["Search"]</button>`
 - gear `title="Settings"`/`alt="Settings"` → `@L["Settings"]`
 - results line `<p>Results for "<strong>@Model.Q</strong>" · <a href="/library/@Model.Id">clear</a></p>` → `<p>@L["Results for"] "<strong>@Model.Q</strong>" · <a href="/library/@Model.Id">@L["clear"]</a></p>`
-- tabs and headings — wrap the words, keep counts/glyphs/ids:
+- tabs and headings - wrap the words, keep counts/glyphs/ids:
   - `Books (@books.Count)` → `@L["Books"] (@books.Count)` (both the `<a>` and the `<span>` form)
   - `Series (@series.Count)` → `@L["Series"] (@series.Count)`
   - `Authors (@authors.Count)` → `@L["Authors"] (@authors.Count)`
@@ -1025,7 +1025,7 @@ All keys already exist in `de.json`. In every case wrap only the human-readable 
   ```cshtml
   <p>@L["Filtered by"] <strong>@L[Model.FilterType!]@(Model.FilterName is null ? "" : $": {Model.FilterName}")</strong> · <a href="/library/@Model.Id">@L["clear"]</a></p>
   ```
-  (`@L[Model.FilterType!]` uses the English token — `Author`/`Series`/`Genre`/`Tag`/`Narrator`/`Filter` — as the key; an unmapped custom group falls back to itself.)
+  (`@L[Model.FilterType!]` uses the English token - `Author`/`Series`/`Genre`/`Tag`/`Narrator`/`Filter` - as the key; an unmapped custom group falls back to itself.)
 - sort bar: `Sort:` → `@L["Sort:"]`; then wrap each label *before* its `Arrow(...)` glyph:
   - `>Title@(Inkshelf.Pages.SortLinks.Arrow(...))` → `>@L["Title"]@(Inkshelf.Pages.SortLinks.Arrow(...))`
   - `Author…` → `@L["Author"]…`, `Added…` → `@L["Added"]…`, `Sequence…` → `@L["Sequence"]…`
@@ -1038,7 +1038,7 @@ All keys already exist in `de.json`. In every case wrap only the human-readable 
 - gear `title`/`alt` `Settings` → `@L["Settings"]`
 - `<h2>@(m?.Title ?? "(untitled)")</h2>` → `<h2>@(m?.Title ?? L["(untitled)"])</h2>`
 - section labels: `<p>Authors:` → `<p>@L["Authors:"]`; `<p>Series:` → `<p>@L["Series:"]`; `<p>Narrators:` → `<p>@L["Narrators:"]`; `<p>Genres:` → `<p>@L["Genres:"]`; `<p>Tags:` → `<p>@L["Tags:"]` (keep the loops/links after each label unchanged)
-- read form buttons — identical to `_ItemRow` (Task 7 Step 3): `title="@L["Mark as unread"]">&#10003; @L["Read"]` and `title="@L["Mark as read"]">@L["Mark read"]`
+- read form buttons - identical to `_ItemRow` (Task 7 Step 3): `title="@L["Mark as unread"]">&#10003; @L["Read"]` and `title="@L["Mark as read"]">@L["Mark read"]`
 - `<h2>Files</h2>` → `<h2>@L["Files"]</h2>`
 - `<p>No downloadable files.</p>` → `<p>@L["No downloadable files."]</p>`
 - file-row `<a href="@f.DownloadHref">Download</a>` → `<a href="@f.DownloadHref">@L["Download"]</a>`
@@ -1069,13 +1069,13 @@ git commit -m "feat: localise index, library, item, settings, and converted page
 
 ## Known non-localised strings (deliberate)
 
-- **ABS content** — titles, subtitles, author/series/narrator/genre/tag names, descriptions, media type — stay in ABS's language.
-- **Brand** — `Inkshelf`, the `<title>`, the version string.
-- **`EPUB ✓` / `EPUB ↓`** — format name plus a universal glyph.
-- **`LibraryName` fallback `"Library"`** (`Library.cshtml.cs:40,52`) — shown only when a library id can't be resolved (a degenerate/error state); left English rather than injecting the localizer into the page model for one edge case.
+- **ABS content** - titles, subtitles, author/series/narrator/genre/tag names, descriptions, media type - stay in ABS's language.
+- **Brand** - `Inkshelf`, the `<title>`, the version string.
+- **`EPUB ✓` / `EPUB ↓`** - format name plus a universal glyph.
+- **`LibraryName` fallback `"Library"`** (`Library.cshtml.cs:40,52`) - shown only when a library id can't be resolved (a degenerate/error state); left English rather than injecting the localizer into the page model for one edge case.
 
 ## Self-Review
 
 - **Spec coverage:** catalog format + `$name` (Task 2, 4) · location/`LOCALES_PATH`/shipping (Task 4) · resilient startup load (Task 2) · Localizer + `@inject` + format args (Task 3, 4) · resolution order incl. Accept-Language (Task 3) · `DeviceSettings.Lang` + backward compat (Task 1) · Settings picker with `en` value (Task 6) · `<html lang>` + convert-status JS labels (Task 7 Step 1) · full string inventory incl. code-side errors/filter labels (Tasks 5, 7, 8). All spec sections map to a task.
-- **Placeholder scan:** none — every step carries exact code or exact find/replace text.
-- **Type consistency:** `Localizer` ctor `(LocalizationCatalog, IHttpContextAccessor)` and indexers match across Tasks 3–8; `LocalizationCatalog.Get/Has/DisplayName/Languages` signatures match Tasks 2, 4, 6; `DeviceSettings(bool,bool,string)` matches Tasks 1, 5.
+- **Placeholder scan:** none - every step carries exact code or exact find/replace text.
+- **Type consistency:** `Localizer` ctor `(LocalizationCatalog, IHttpContextAccessor)` and indexers match across Tasks 3-8; `LocalizationCatalog.Get/Has/DisplayName/Languages` signatures match Tasks 2, 4, 6; `DeviceSettings(bool,bool,string)` matches Tasks 1, 5.

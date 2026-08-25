@@ -12,7 +12,7 @@
 
 - **No AOT.** .NET 10, ASP.NET Core. Razor Pages for HTML, minimal APIs for actions.
 - **Near-zero client JS.** The toggle is a plain POST `<form>` (full reload). No new JS.
-- **Defensive CSS only** — no `object-fit`, no flex `gap`.
+- **Defensive CSS only** - no `object-fit`, no flex `gap`.
 - **State-changing POSTs are antiforgery-protected**, following the exact `/favorite` + `/logout` convention: `[FromForm]` + manual `antiforgery.ValidateRequestAsync(ctx)` in try/catch → `Results.BadRequest()` on `AntiforgeryValidationException` + `.DisableAntiforgery()` on the route.
 - **New ABS call = new method on `AbsApiClient`** (no `accessToken` param; `AbsAuthHandler` injects the Bearer). Introduce a **new DTO** rather than widening an existing one.
 - **ABS field names** (verified against ABS v2.35.1): `GET /api/me` → top-level `mediaProgress` (array); each entry has `libraryItemId` and `isFinished`. Write: `PATCH /api/me/progress/{libraryItemId}` body `{"isFinished": <bool>}`.
@@ -83,14 +83,14 @@ public async Task SetReadAsync_patches_isFinished_false_to_unmark()
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --filter AbsApiClientTests`
-Expected: FAIL — `GetFinishedItemIdsAsync` / `SetReadAsync` / `AbsMe` don't exist (compile error).
+Expected: FAIL - `GetFinishedItemIdsAsync` / `SetReadAsync` / `AbsMe` don't exist (compile error).
 
 - [ ] **Step 3: Add the DTOs**
 
 In `src/Inkshelf/Abs/AbsModels.cs`, append:
 
 ```csharp
-// Current user (GET /api/me) — only the media-progress read-state is consumed.
+// Current user (GET /api/me) - only the media-progress read-state is consumed.
 public record AbsMe(
     [property: JsonPropertyName("mediaProgress")] List<AbsMediaProgress>? MediaProgress);
 public record AbsMediaProgress(
@@ -116,7 +116,7 @@ public async Task<HashSet<string>> GetFinishedItemIdsAsync(CancellationToken ct 
     return set;
 }
 
-// Mark an item read (isFinished:true) or unread (false). PATCH is symmetric —
+// Mark an item read (isFinished:true) or unread (false). PATCH is symmetric -
 // unmarking leaves a harmless isFinished:false progress row, so no DELETE / no
 // need to know the progress-row id.
 public async Task SetReadAsync(string itemId, bool finished, CancellationToken ct = default)
@@ -154,7 +154,7 @@ git commit -m "feat: add ABS read-state read/write to AbsApiClient"
 
 - [ ] **Step 1: Write the failing tests**
 
-Add to `tests/Inkshelf.Tests/EndpointTests.cs`, using the existing `CreateFactory()` + `GetAntiforgeryTokenAsync` helpers (no ABS stub / session plumbing — the PATCH URL/body is already covered by `AbsApiClientTests`):
+Add to `tests/Inkshelf.Tests/EndpointTests.cs`, using the existing `CreateFactory()` + `GetAntiforgeryTokenAsync` helpers (no ABS stub / session plumbing - the PATCH URL/body is already covered by `AbsApiClientTests`):
 
 ```csharp
 [Fact]
@@ -196,7 +196,7 @@ public async Task Read_post_with_token_but_no_session_redirects_to_login()
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --filter EndpointTests`
-Expected: FAIL — `/read/item1` returns 404 (route not mapped).
+Expected: FAIL - `/read/item1` returns 404 (route not mapped).
 
 - [ ] **Step 3: Implement the endpoint**
 
@@ -340,7 +340,7 @@ public async Task Search_row_shows_read_toggle_too()
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --filter ListingRenderTests`
-Expected: FAIL — no `/read/` form / `Mark read` in the rendered rows.
+Expected: FAIL - no `/read/` form / `Mark read` in the rendered rows.
 
 - [ ] **Step 3: Add `Read` to `ItemRowModel`**
 
@@ -379,11 +379,11 @@ private async Task<HashSet<string>> FetchFinishedAsync(CancellationToken ct)
 ```
 
 In `OnGetAsync`, set `_finished` in **both** branches:
-- Search branch — after `_structured = await FetchStructuredAsync(books, ct);` and before `return Page();`:
+- Search branch - after `_structured = await FetchStructuredAsync(books, ct);` and before `return Page();`:
   ```csharp
   _finished = await FetchFinishedAsync(ct);
   ```
-- Listing branch — after `ComputeConvertStates(Items);`:
+- Listing branch - after `ComputeConvertStates(Items);`:
   ```csharp
   _finished = await FetchFinishedAsync(ct);
   ```
@@ -413,7 +413,7 @@ In `src/Inkshelf/Pages/Shared/_ItemRow.cshtml`, inside the `<div class="actions"
             </form>
 ```
 
-The `&#10003;` (✓) is emitted as literal markup — like the existing `EPUB &#10003;` — rather than a C# string, so Razor doesn't entity-re-encode it and the rendered output is a stable `&#10003; Read` the test asserts on.
+The `&#10003;` (✓) is emitted as literal markup - like the existing `EPUB &#10003;` - rather than a C# string, so Razor doesn't entity-re-encode it and the rendered output is a stable `&#10003; Read` the test asserts on.
 
 - [ ] **Step 6: Style the read button**
 
@@ -427,7 +427,7 @@ Append to `src/Inkshelf/wwwroot/app.css`:
 - [ ] **Step 7: Run the full suite**
 
 Run: `dotnet test`
-Expected: PASS. (Existing `ListingRenderTests` still pass — every row now also renders a "Mark read" button, which their assertions don't conflict with.)
+Expected: PASS. (Existing `ListingRenderTests` still pass - every row now also renders a "Mark read" button, which their assertions don't conflict with.)
 
 - [ ] **Step 8: Verify in the running app**
 
@@ -444,16 +444,16 @@ git commit -m "feat: add read/unread toggle to listing and search rows"
 
 ---
 
-### Task 4: Documentation — ARCHITECTURE + ROADMAP
+### Task 4: Documentation - ARCHITECTURE + ROADMAP
 
 **Files:**
 - Modify: `docs/ARCHITECTURE.md`
 - Modify: `docs/ROADMAP.md`
 
-- [ ] **Step 1: Update `ARCHITECTURE.md`** (present-tense, structural — no changelog/shipped-status prose)
+- [ ] **Step 1: Update `ARCHITECTURE.md`** (present-tense, structural - no changelog/shipped-status prose)
 
 - In the layout map, add `Read` to the `Endpoints/` group list.
-- Under "Adding a new X" / the ABS section, the two new `AbsApiClient` methods fit the existing "7 data methods" note — update the count/wording if it names a number, and mention read state is per-user ABS media progress (`GET /api/me` for the finished-set, `PATCH /api/me/progress/{id}` to toggle).
+- Under "Adding a new X" / the ABS section, the two new `AbsApiClient` methods fit the existing "7 data methods" note - update the count/wording if it names a number, and mention read state is per-user ABS media progress (`GET /api/me` for the finished-set, `PATCH /api/me/progress/{id}` to toggle).
 - Add one load-bearing bullet:
 
 ```markdown
@@ -466,11 +466,11 @@ git commit -m "feat: add read/unread toggle to listing and search rows"
 
 - [ ] **Step 2: Update `ROADMAP.md`**
 
-- Remove the **Read-state toggle** bullet from *Browsing & reading*. (Leave the *Item detail page* bullet's own read-state mention — it's built when the detail page is.)
+- Remove the **Read-state toggle** bullet from *Browsing & reading*. (Leave the *Item detail page* bullet's own read-state mention - it's built when the detail page is.)
 - Add to **Done**:
 
 ```markdown
-- **Read-state toggle** — per-row Mark read / ✓ Read on listing + search rows,
+- **Read-state toggle** - per-row Mark read / ✓ Read on listing + search rows,
   synced to ABS media progress (`GET /api/me` finished-set; `PATCH
   /api/me/progress/{id}` `{isFinished}`).
 ```
@@ -489,4 +489,4 @@ git commit -m "docs: record read-state toggle, trim roadmap"
 - **Spec coverage:** ABS read/write methods + DTO (Task 1); `/read/{id}` endpoint (Task 2); row toggle on listing **and** search + `LibraryModel` wiring with safe degradation (Task 3); docs incl. moving the item to Done (Task 4). PATCH-for-unmark, once-per-render `GET /api/me`, and "every downloadable row" all reflected. All covered.
 - **Type consistency:** `AbsMe.MediaProgress` (`List<AbsMediaProgress>?`), `AbsMediaProgress.LibraryItemId`/`IsFinished`; `GetFinishedItemIdsAsync` → `HashSet<string>`; `SetReadAsync(string, bool, CancellationToken)`; `ItemRowModel.Read`; form fields `read` (`"1"`/`"0"`) + `return`; endpoint `read == "1"`. Consistent across tasks.
 - **Incrementality:** each task ends green. Task 1 (ABS methods) and Task 2 (endpoint) don't change rendering; Task 3 adds the UI and the once-per-render `/api/me` call, and updates the shared stub so existing render tests keep passing.
-- **Placeholder scan:** none — every step carries concrete code/commands.
+- **Placeholder scan:** none - every step carries concrete code/commands.

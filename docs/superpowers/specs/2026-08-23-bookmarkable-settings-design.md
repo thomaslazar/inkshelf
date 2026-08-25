@@ -1,7 +1,7 @@
 # Bookmarkable device settings
 
 Issue #45. Some readers keep no cookies across a browser restart, so every
-session starts by logging in again *and* re-entering settings — including the
+session starts by logging in again *and* re-entering settings - including the
 screen override that had to be measured by hand on hardware.
 
 A bookmark is the one thing such a device does keep. This makes the settings page
@@ -35,13 +35,13 @@ Example target:
 means "these are my settings": values are sanitised, written to the cookie, and
 rendered. A plain `GET /settings` behaves exactly as today.
 
-The recognised keys are exactly the ones `Serialize` writes — `retina`, `gray`,
-`lang`, `fav`, `did`, `spread`, `scale`, `ovr`, `ovrw`, `ovrh`, `ovrd` — and
+The recognised keys are exactly the ones `Serialize` writes - `retina`, `gray`,
+`lang`, `fav`, `did`, `spread`, `scale`, `ovr`, `ovrw`, `ovrh`, `ovrd` - and
 nothing else. `range` and `scalerange` are warning markers, not settings, so a URL
 carrying only those is not a restore.
 
-**The restart flow.** `/settings` needs no login — it reads cookies and the
-locale catalog, never ABS — so opening the bookmark lands straight on the settings
+**The restart flow.** `/settings` needs no login - it reads cookies and the
+locale catalog, never ABS - so opening the bookmark lands straight on the settings
 page with the values applied. Logging in happens on the next page that needs the
 library, and it does not disturb the settings cookie just written. Either order
 works: bookmark then login, or login then bookmark. The restart therefore costs a
@@ -59,19 +59,19 @@ change settings from a page where changing settings is not the point.
 **The device id travels too.** Download marks are keyed to it, so the ↓ arrows
 showing what this device already has survive the restart as well. It is a random
 16-hex tag, not anything personal, but sharing the URL does hand over that
-identity — hence the id is in the URL only because the URL is meant to be
+identity - hence the id is in the URL only because the URL is meant to be
 bookmarked, not sent.
 
 ## Components
 
 Three small changes, no new files.
 
-**`DeviceSettings`** — the cookie path already parses a query string. Extract it
+**`DeviceSettings`** - the cookie path already parses a query string. Extract it
 into `FromQuery(IQueryCollection)`, returning `null` when the query carries none
 of the recognised keys, and have `Read` call it by wrapping the parsed cookie in a
 `QueryCollection`. One parser, two sources, so cookie and URL cannot drift apart.
 
-**`SettingsModel.OnGet`** —
+**`SettingsModel.OnGet`** -
 
 ```csharp
 var restored = DeviceSettings.FromQuery(Request.Query);
@@ -81,10 +81,10 @@ Settings = restored is { } r ? DeviceSettings.Set(Response, r) : DeviceSettings.
 `Set` mints a device id when one is missing, so a hand-edited URL without `did`
 still lands on a valid marks key rather than an empty one.
 
-**`SettingsEndpoints`** — redirect target becomes `"/settings?" +
+**`SettingsEndpoints`** - redirect target becomes `"/settings?" +
 settings.Serialize()`, warnings appended.
 
-**View** — one localised sentence: "Bookmark this page to restore these settings
+**View** - one localised sentence: "Bookmark this page to restore these settings
 later", plus the German string.
 
 ## Validation
@@ -97,17 +97,17 @@ is rejected to empty and re-minted, an unparseable ratio drops to 0.
 
 ## Testing
 
-- **Parser parity** — the same string parsed as a cookie and as a query yields
+- **Parser parity** - the same string parsed as a cookie and as a query yields
   identical settings. This is the invariant that keeps the two sources honest.
 - **`FromQuery` returns null** for a query with no recognised keys, so a plain
   page load cannot be mistaken for a restore.
-- **Restore writes the cookie** — `GET /settings?…ovrw=1120…` responds with a
+- **Restore writes the cookie** - `GET /settings?…ovrw=1120…` responds with a
   `Set-Cookie` carrying those values and renders them in the fields.
-- **Plain GET leaves the cookie alone** — no `Set-Cookie` for settings.
-- **Save round-trips** — `POST /settings` redirects to a location carrying the
+- **Plain GET leaves the cookie alone** - no `Set-Cookie` for settings.
+- **Save round-trips** - `POST /settings` redirects to a location carrying the
   saved values, and following that location reproduces them.
-- **Sanitisation holds** — `ovrw=99999` and `did=../../x` do not survive.
-- **uicheck** — the bookmark sentence appears in both languages.
+- **Sanitisation holds** - `ovrw=99999` and `did=../../x` do not survive.
+- **uicheck** - the bookmark sentence appears in both languages.
 
 ## Notes
 

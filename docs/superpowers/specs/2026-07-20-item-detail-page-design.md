@@ -1,11 +1,11 @@
-# Item detail page — design
+# Item detail page - design
 
 ## Problem
 
 There is no per-item page. The listing/search/converted rows are deliberately
 lean (primary file's download + convert + read toggle), so the full metadata ABS
-holds — genres, tags, description, narrators, publisher, multiple series/authors
-— is never shown, and only the *primary* ebook file is reachable. An item with,
+holds - genres, tags, description, narrators, publisher, multiple series/authors
+- is never shown, and only the *primary* ebook file is reachable. An item with,
 say, a PDF + EPUB + CBZ exposes only one of them.
 
 ## Goal
@@ -25,7 +25,7 @@ is the one place that exposes every file.
   existing no-ino path so it shares the listing's cache entry (see below).
 - **Multiple series/authors/narrators** are all arrays and render as lists of
   individual facet links.
-- **Description** is shown as ABS's `descriptionPlain` (HTML-stripped) — safe on
+- **Description** is shown as ABS's `descriptionPlain` (HTML-stripped) - safe on
   old e-reader browsers, no injection.
 - **Read state** reuses the shared `/api/me` finished-set.
 
@@ -39,15 +39,15 @@ is the one place that exposes every file.
   `descriptionPlain`.
 - media-level: `tags[]` (string names), `coverPath`, `ebookFile` (the **primary**,
   carrying an `ino`).
-- item-level: `libraryId`, `libraryFiles[]` — each with `ino`, `fileType`, and
+- item-level: `libraryId`, `libraryFiles[]` - each with `ino`, `fileType`, and
   `metadata` (filename, ext, size, mtimeMs). The downloadable ebooks are the
   entries with `fileType == "ebook"`.
 
-`GetItemDetailAsync` will request `?expanded=1` (additive — it already returns
+`GetItemDetailAsync` will request `?expanded=1` (additive - it already returns
 `AbsItemDetail`; `ConvertService`, which uses it for the primary ebook, keeps
 working since expanded still carries `media.ebookFile`/`metadata`).
 
-## The page (`/item/{id}` — new `Item.cshtml` + `ItemModel`)
+## The page (`/item/{id}` - new `Item.cshtml` + `ItemModel`)
 
 Injects `AbsApiClient`, `EpubCache`, `ConvertQueue`. `OnGetAsync`:
 
@@ -58,11 +58,11 @@ Injects `AbsApiClient`, `EpubCache`, `ConvertQueue`. `OnGetAsync`:
 4. Build the metadata view-model and the formats list (below).
 
 ### Metadata block
-Larger cover (`/cover/{id}` at a bigger width, e.g. ~240px — still bounded by the
+Larger cover (`/cover/{id}` at a bigger width, e.g. ~240px - still bounded by the
 existing `/cover` cap of 400). Title (+ subtitle), then **lists** of author,
 series (with `#sequence`), and narrator links, plus publisher/year/language,
 genres, and tags. Author/series link by **id**; narrator/genre/tag link by
-**name** — all via the existing `?filter=` facet path (`AbsFilter.Encode(group,
+**name** - all via the existing `?filter=` facet path (`AbsFilter.Encode(group,
 value)` → `/library/{libraryId}?filter=…`), built through a per-item
 `LibraryLinks(libraryId, …)`. Description shown as `descriptionPlain` below.
 
@@ -92,11 +92,11 @@ The only choice is **which file's** size+mtime to use:
   load-bearing requirement: the primary must never be looked up under an
   ino-derived key, or it would miss the existing cached file.
 - **Non-primary** cbz/cbr → that file's own size+mtime (a distinct key; different
-  files have distinct size+mtime, so no collision — the ino is not needed in the
+  files have distinct size+mtime, so no collision - the ino is not needed in the
   key).
 
 The `ino` is used only to (a) download the correct non-primary file's bytes and
-(b) label per-file downloads — never in the cache key.
+(b) label per-file downloads - never in the cache key.
 
 ### Per-file convert-state
 `ConvertRowStateResolver` gains a lower-level overload
@@ -105,12 +105,12 @@ target, EpubCache cache, ConvertQueue queue)` that does the format check +
 `PathFor` + `queue.Status` mapping. The existing
 `Resolve(item, media, …)` becomes a thin wrapper that extracts fmt/size/mtime and
 calls it (listing behavior unchanged). The detail page calls `ResolveFor` per
-cbz/cbr file — for the primary, with the primary's size+mtime (→ matches the
+cbz/cbr file - for the primary, with the primary's size+mtime (→ matches the
 listing).
 
 ## Per-file convert / download plumbing
 
-- **`/convert/{id}?file={ino}`** and **`/download/{id}?file={ino}`** — `file` is
+- **`/convert/{id}?file={ino}`** and **`/download/{id}?file={ino}`** - `file` is
   optional; **absent = primary**, so all existing links are unchanged.
 - `ConvertService.ResolveAsync` accepts an optional file ino: when present, it
   locates that `libraryFile` (needs `libraryFiles` from the expanded detail),
@@ -130,7 +130,7 @@ of `_ItemRow` into `_ConvertAction.cshtml`, taking `(Id, FileIno?, State,
 ReturnUrl)` and building the `/convert/{id}[?file=…]&return=…` hrefs. `_ItemRow`
 renders it for the primary (`FileIno = null`); the detail formats list renders it
 per cbz/cbr file. This keeps the load-bearing "regen stays a plain link (no
-data-warm)" rule in one place — the existing `ListingRenderTests` guard it.
+data-warm)" rule in one place - the existing `ListingRenderTests` guard it.
 
 ## Genre / tag / narrator filter labelling
 
@@ -138,10 +138,10 @@ These facets filter by **name** (their value *is* the display name), unlike
 authors/series (by id). `LibraryModel` currently resolves the facet name from the
 fetched batch (id → name) for series/authors only. Extend it so that for
 `genres`/`tags`/`narrators` the label is the decoded facet value directly, and
-`Humanize` maps them to "Genre"/"Tag"/"Narrator". No server-side change — ABS
+`Humanize` maps them to "Genre"/"Tag"/"Narrator". No server-side change - ABS
 already accepts these filter groups (verified against v2.35.1).
 
-## Layout (defensive CSS — no flex `gap`, no `object-fit`)
+## Layout (defensive CSS - no flex `gap`, no `object-fit`)
 
 ```
 Libraries › {Library} › {Title}                         ⚙
@@ -170,7 +170,7 @@ Files
 - **Missing metadata fields** (no series/narrator/publisher/description): omit
   that line rather than show an empty label.
 - **Converted view still dedupes by item id**, so multiple converted files for
-  one item collapse to one row there — rare, unchanged, noted.
+  one item collapse to one row there - rare, unchanged, noted.
 
 ## Non-goals (v1)
 

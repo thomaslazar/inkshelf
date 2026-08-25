@@ -1,4 +1,4 @@
-# Inkshelf v1 — Design
+# Inkshelf v1 - Design
 
 **Date:** 2026-07-11
 **Status:** Approved (design), pending implementation
@@ -7,7 +7,7 @@
 
 A thin, server-rendered web client for the Audiobookshelf (ABS) API with
 near-zero JavaScript, so e-reader browsers (Tolino) work. The ABS web UI is too
-JS-heavy for e-ink devices — after login, nothing happens. Inkshelf runs as a
+JS-heavy for e-ink devices - after login, nothing happens. Inkshelf runs as a
 sidecar container next to ABS and talks to the ABS API on the user's behalf.
 
 **v1 scope:** log in with ABS credentials → pick a library → browse its items,
@@ -35,8 +35,8 @@ compose file.
 | `/login`         | GET    | username/password `<form>`                                        |
 | `/login`         | POST   | ABS `login`, encrypt JWT into cookie, redirect `/`                |
 | `/`              | GET    | list libraries as `<a>` links; redirect `/login` if no cookie     |
-| `/library/{id}`  | GET    | `?page=` — paginated item list; Prev/Next `<a>`; cover `<img>`    |
-| `/cover/{id}`    | GET    | `?w=` — fetch ABS cover with token, stream bytes back             |
+| `/library/{id}`  | GET    | `?page=` - paginated item list; Prev/Next `<a>`; cover `<img>`    |
+| `/cover/{id}`    | GET    | `?w=` - fetch ABS cover with token, stream bytes back             |
 | `/logout`        | POST   | clear cookie → `/login`                                           |
 
 ## ABS client surface (`AbsClient`)
@@ -100,6 +100,6 @@ inkshelf/
 ## Development workflow
 
 - `main`: scaffolding only (devcontainer, docs, CLAUDE.md, this spec). No C#.
-- All .NET development happens **inside the devcontainer** — no dotnet on the
+- All .NET development happens **inside the devcontainer** - no dotnet on the
   Mac host. Implementation lands on a dedicated feature branch created inside
   the container.

@@ -1,4 +1,4 @@
-# Converted (this device) View — Implementation Plan
+# Converted (this device) View - Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -11,18 +11,18 @@
 ## Global Constraints
 
 - **No AOT.** .NET 10, Razor Pages for HTML.
-- **Reuse `_ItemRow`** — no new row partial, no new download endpoint (use `/convert/{id}` and `/download/{id}` as the listing does).
-- **No cache-key change**, no sidecar index — reverse-parse the filename.
-- **DTO additions are additive only** — never declare `series` as an array on `AbsMetadata` (that reintroduces a deserialization bug); add fields to the *batch* shapes.
-- **Never touch `CHANGELOG.md`** — that is release-skill-only. Record shipped work in ROADMAP "## Done" and ARCHITECTURE.
-- **`LibraryLinks` is the single URL authority** — build row links through it, never inline strings.
+- **Reuse `_ItemRow`** - no new row partial, no new download endpoint (use `/convert/{id}` and `/download/{id}` as the listing does).
+- **No cache-key change**, no sidecar index - reverse-parse the filename.
+- **DTO additions are additive only** - never declare `series` as an array on `AbsMetadata` (that reintroduces a deserialization bug); add fields to the *batch* shapes.
+- **Never touch `CHANGELOG.md`** - that is release-skill-only. Record shipped work in ROADMAP "## Done" and ARCHITECTURE.
+- **`LibraryLinks` is the single URL authority** - build row links through it, never inline strings.
 - Cache filename scheme (authoritative, from `EpubCache.PathFor`): `{itemId}-{size}-{mtimeMs}-{maxW}x{maxH}[-g].epub`.
 - All work on branch `feat/converted-view`. `dotnet test` from repo root (inside the devcontainer) must stay green.
 - Conventional Commits, subject imperative/lowercase/no period/max ~72 chars; NO `Co-Authored-By:` or "Generated with Claude Code" lines.
 
 ---
 
-### Task 1: ABS batch fetch — expose id, libraryId, title, coverPath
+### Task 1: ABS batch fetch - expose id, libraryId, title, coverPath
 
 Extend the batch DTOs (additive) and add `GetItemsBatchAsync` returning the raw expanded items; reimplement the existing dict method on top of it so the listing is unchanged.
 
@@ -87,7 +87,7 @@ Add to `tests/Inkshelf.Tests/AbsApiClientTests.cs` (the `Client(...)` helper and
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter FullyQualifiedName~AbsApiClientTests`
-Expected: FAIL — `GetItemsBatchAsync` doesn't exist / `AbsBatchItem` has no `LibraryId` / `AbsBatchMetadata` has no `Title` (compile errors).
+Expected: FAIL - `GetItemsBatchAsync` doesn't exist / `AbsBatchItem` has no `LibraryId` / `AbsBatchMetadata` has no `Title` (compile errors).
 
 - [ ] **Step 3: Extend the DTOs**
 
@@ -116,7 +116,7 @@ In `src/Inkshelf/Abs/AbsApiClient.cs`, replace `GetItemsMetadataBatchAsync` with
 
 ```csharp
     // Fetch expanded items (id, libraryId, structured metadata, coverPath,
-    // ebookFile) for a set of ids in ONE call. Cross-library — batch/get queries
+    // ebookFile) for a set of ids in ONE call. Cross-library - batch/get queries
     // by id only, not scoped to a library.
     public async Task<List<AbsBatchItem>> GetItemsBatchAsync(
         IReadOnlyCollection<string> itemIds, CancellationToken ct = default)
@@ -142,7 +142,7 @@ In `src/Inkshelf/Abs/AbsApiClient.cs`, replace `GetItemsMetadataBatchAsync` with
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `dotnet test --filter FullyQualifiedName~AbsApiClientTests`
-Expected: PASS — new tests plus all pre-existing `AbsApiClientTests` (the dict method is behavior-identical).
+Expected: PASS - new tests plus all pre-existing `AbsApiClientTests` (the dict method is behavior-identical).
 
 - [ ] **Step 6: Commit**
 
@@ -153,7 +153,7 @@ git commit -m "feat: expose libraryId/title/cover from the ABS batch fetch"
 
 ---
 
-### Task 2: `EpubCache.ListVariants` — enumerate + reverse-parse cached files
+### Task 2: `EpubCache.ListVariants` - enumerate + reverse-parse cached files
 
 **Files:**
 - Modify: `src/Inkshelf/Convert/EpubCache.cs`
@@ -175,7 +175,7 @@ Add to `tests/Inkshelf.Tests/EpubCacheTests.cs` (uses the existing `TempDirPath(
     {
         var dir = TempDirPath();
         var c = new EpubCache(dir);
-        // A UUID-style id contains hyphens — must survive right-to-left parsing.
+        // A UUID-style id contains hyphens - must survive right-to-left parsing.
         var idA = "3f2a1b6c-dead-beef-0001-abcdef123456";
         File.WriteAllText(c.PathFor(idA, 100, 200, 1730, 2246), "e");
         File.WriteAllText(c.PathFor("i2", 55, 66, 800, 1000, grayscale: true), "e");
@@ -206,7 +206,7 @@ Add to `tests/Inkshelf.Tests/EpubCacheTests.cs` (uses the existing `TempDirPath(
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter FullyQualifiedName~EpubCacheTests`
-Expected: FAIL — `ListVariants` / `CachedVariant` don't exist (compile error).
+Expected: FAIL - `ListVariants` / `CachedVariant` don't exist (compile error).
 
 - [ ] **Step 3: Implement `ListVariants` + `CachedVariant`**
 
@@ -345,7 +345,7 @@ public class ConvertRowStateResolverTests
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `dotnet test --filter FullyQualifiedName~ConvertRowStateResolverTests`
-Expected: FAIL — `ConvertRowStateResolver` doesn't exist (compile error).
+Expected: FAIL - `ConvertRowStateResolver` doesn't exist (compile error).
 
 - [ ] **Step 3: Create the resolver**
 
@@ -385,7 +385,7 @@ public static class ConvertRowStateResolver
 
 - [ ] **Step 4: Delegate `LibraryModel.RowState` to the resolver**
 
-In `src/Inkshelf/Pages/Library.cshtml.cs`, replace the entire private `RowState` method body with a delegating call (leave `ComputeConvertStates` untouched — it still calls `RowState(item, media, t)`):
+In `src/Inkshelf/Pages/Library.cshtml.cs`, replace the entire private `RowState` method body with a delegating call (leave `ComputeConvertStates` untouched - it still calls `RowState(item, media, t)`):
 
 ```csharp
     private ConvertRowState RowState(AbsItem item, AbsBatchMedia? media, RenderTarget target)
@@ -395,7 +395,7 @@ In `src/Inkshelf/Pages/Library.cshtml.cs`, replace the entire private `RowState`
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `dotnet test --filter "FullyQualifiedName~ConvertRowStateResolverTests|FullyQualifiedName~ListingRenderTests"`
-Expected: PASS — the resolver's own tests, and the existing `ListingRenderTests` (which exercise the listing's states end-to-end) confirm no behavior change.
+Expected: PASS - the resolver's own tests, and the existing `ListingRenderTests` (which exercise the listing's states end-to-end) confirm no behavior change.
 
 - [ ] **Step 6: Commit**
 
@@ -583,7 +583,7 @@ public class ConvertedRenderTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter FullyQualifiedName~ConvertedRenderTests`
-Expected: FAIL — no `/converted` route (404 → assertions fail) and no Index link.
+Expected: FAIL - no `/converted` route (404 → assertions fail) and no Index link.
 
 - [ ] **Step 3: Create `ConvertedModel`**
 
@@ -755,7 +755,7 @@ Record the feature in ROADMAP and ARCHITECTURE. **Do not touch `CHANGELOG.md`.**
 In `docs/ROADMAP.md`, under `## Browsing & reading`, delete the entire `- **Per-library "already converted" view.** …` bullet (through its trailing `*Note:*` sentence). Then add, as the FIRST bullet under `## Done`:
 
 ```markdown
-- **Converted (this device) view** — a `/converted` page listing every comic
+- **Converted (this device) view** - a `/converted` page listing every comic
   already converted and cached for the current device, across all libraries
   (the cache is enumerated by reverse-parsing filenames and filtered to the
   device's render target). Reuses the listing row (`_ItemRow`), with a metadata
@@ -802,13 +802,13 @@ git commit -m "docs: record the converted-this-device view"
 
 After Task 5, from the repo root inside the devcontainer:
 
-- [ ] Run `dotnet test` — all green.
-- [ ] (Manual, optional) Run the dev server on 5099, convert a comic, then open `/converted` — confirm the item appears with its cover, title, a working series link, and an EPUB download. Confirm the home page shows the entry link. A real-device check before merge matches the near-zero-JS / defensive-CSS convention.
+- [ ] Run `dotnet test` - all green.
+- [ ] (Manual, optional) Run the dev server on 5099, convert a comic, then open `/converted` - confirm the item appears with its cover, title, a working series link, and an EPUB download. Confirm the home page shows the entry link. A real-device check before merge matches the near-zero-JS / defensive-CSS convention.
 
 ## Notes on decisions (from the spec)
 
-- **Single combined view**, reusing `_ItemRow` — no new row UI, no new download endpoint.
-- **Reverse-parse filenames** (no sidecar index) — keeps "done = File.Exists", no dual source of truth.
-- **Stale entries** (ebook changed since conversion) render as "Convert", since state is computed from the current ebook file — correct, if slightly odd for a "converted" list. Acceptable for v1.
+- **Single combined view**, reusing `_ItemRow` - no new row UI, no new download endpoint.
+- **Reverse-parse filenames** (no sidecar index) - keeps "done = File.Exists", no dual source of truth.
+- **Stale entries** (ebook changed since conversion) render as "Convert", since state is computed from the current ebook file - correct, if slightly odd for a "converted" list. Acceptable for v1.
 - **Fixed sort** series→sequence→title, no pager/sort controls (cache is size-bounded).
-- **CHANGELOG.md is untouched** — release-skill only.
+- **CHANGELOG.md is untouched** - release-skill only.

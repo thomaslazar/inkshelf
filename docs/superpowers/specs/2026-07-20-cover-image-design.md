@@ -1,4 +1,4 @@
-# Cover image — design
+# Cover image - design
 
 ## Problem
 
@@ -10,7 +10,7 @@ rendering page 1. The book has no library thumbnail.
 ## Goal
 
 The converted EPUB declares a real cover so strict readers show a thumbnail.
-**Thumbnail only** — the cover is metadata, not a rendered page; reading still
+**Thumbnail only** - the cover is metadata, not a rendered page; reading still
 opens on page 1.
 
 ## Cover source (fallback, decided in the worker)
@@ -21,7 +21,7 @@ opens on page 1.
    decode → flag the first page image as the cover. No extra file.
 
 For comics with no embedded cover, ABS auto-extracts page 1 as the cover, so the
-two paths often yield the same image — which is fine, since the cover only lands
+two paths often yield the same image - which is fine, since the cover only lands
 in metadata, never the spine.
 
 ## Both cover mechanisms (compatibility)
@@ -38,7 +38,7 @@ ever a thumbnail (and a reader's "cover view"), so page-resolution art (retina
 for tens of KB. The device page cap still acts as an *upper* bound inside
 `PageImageProcessor` (it only downscales, never upscales), so a low-res device
 naturally gets a smaller cover and everyone else gets 600. (For contrast, the
-in-app `/cover` listing proxy requests 120px, capped at 400 — those are the tiny
+in-app `/cover` listing proxy requests 120px, capped at 400 - those are the tiny
 e-reader listing rows; this embedded cover is seen in other readers' libraries
 too, hence the step up.)
 
@@ -48,7 +48,7 @@ too, hence the step up.)
 Add `DownloadCoverAsync(itemId, accessToken, width, ct)`, mirroring
 `DownloadEbookAsync`: handler-free, caller-supplied bearer, **no** 401 refresh.
 Returns the cover stream (+ content-type). This is why we do **not** reuse
-`AbsApiClient.GetCoverAsync` — the worker has no `HttpContext` for `AbsAuthHandler`
+`AbsApiClient.GetCoverAsync` - the worker has no `HttpContext` for `AbsAuthHandler`
 to resolve a token from.
 
 ### `ConvertWorker.ProcessAsync`
@@ -59,7 +59,7 @@ extension from the content-type (`image/png`→`.png`, `image/webp`→`.webp`, e
 must never fail the conversion.** Pass the raw bytes + ext to the converter.
 
 The cover is fetched with the same captured token used for the ebook download;
-one small extra request on an already-heavy (60–90 s) path is negligible, and
+one small extra request on an already-heavy (60-90 s) path is negligible, and
 always-trying avoids coupling to the detail metadata's `coverPath` shape. A 404
 (no cover) simply falls through to `null`.
 
@@ -88,14 +88,14 @@ whether a cover was supplied and whether any pages exist.
 
 ## Non-goals
 
-- **No cache-key change.** The cover derives deterministically from the item — no
-  new user input — so `EpubCache.PathFor` is untouched. Existing cached EPUBs stay
+- **No cache-key change.** The cover derives deterministically from the item - no
+  new user input - so `EpubCache.PathFor` is untouched. Existing cached EPUBs stay
   coverless until regenerated (↻) or evicted; not worth invalidating the cache.
 - **No `cover.xhtml` spine page.** Thumbnail only; adding the cover to the reading
   flow would double the cover for comics whose page 1 is already the cover.
 - **No min-dimension "large enough" guard.** Present + decodable is enough; ABS
   covers are effectively always usable for comics.
-- **String-built EPUB XML stays** (load-bearing convention — no XML library).
+- **String-built EPUB XML stays** (load-bearing convention - no XML library).
 
 ## Testing
 

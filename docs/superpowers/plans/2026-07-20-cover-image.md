@@ -4,18 +4,18 @@
 
 **Goal:** The converted EPUB declares a real cover (thumbnail) so strict readers (Apple Books) show it instead of a blank placeholder.
 
-**Architecture:** The token-less background `ConvertWorker` best-effort fetches the ABS cover via a new `AbsDownloadClient.DownloadCoverAsync` (captured bearer, no `HttpContext`). It hands the raw bytes to `EpubConverter`, which runs them through the existing `PageImageProcessor` and passes the result to `EpubWriter`. The writer declares the cover with **both** the EPUB3 `properties="cover-image"` manifest flag and the EPUB2 `<meta name="cover">`. When no ABS cover is usable, the first page image is flagged as the cover instead — no extra file, no reading-flow change.
+**Architecture:** The token-less background `ConvertWorker` best-effort fetches the ABS cover via a new `AbsDownloadClient.DownloadCoverAsync` (captured bearer, no `HttpContext`). It hands the raw bytes to `EpubConverter`, which runs them through the existing `PageImageProcessor` and passes the result to `EpubWriter`. The writer declares the cover with **both** the EPUB3 `properties="cover-image"` manifest flag and the EPUB2 `<meta name="cover">`. When no ABS cover is usable, the first page image is flagged as the cover instead - no extra file, no reading-flow change.
 
 **Tech Stack:** ASP.NET Core / .NET 10, ImageSharp (SixLabors), xUnit. String-built EPUB XML.
 
 ## Global Constraints
 
 - **No AOT.** .NET 10, ASP.NET Core Razor Pages + minimal APIs.
-- **String-built EPUB XML** in `EpubWriter` — do NOT introduce an XML library.
-- **Thumbnail only** — the cover is metadata, never a spine entry; reading still opens on page 1.
+- **String-built EPUB XML** in `EpubWriter` - do NOT introduce an XML library.
+- **Thumbnail only** - the cover is metadata, never a spine entry; reading still opens on page 1.
 - **Fixed request width 600px**, independent of the device page cap. The device cap (`target.MaxW/MaxH`) still acts as an upper bound inside `PageImageProcessor` (it only downscales, never upscales).
-- **The cover must never fail the conversion** — any fetch/decode failure falls back to the first page.
-- **No cache-key change** — the cover derives deterministically from the item; `EpubCache.PathFor` is untouched.
+- **The cover must never fail the conversion** - any fetch/decode failure falls back to the first page.
+- **No cache-key change** - the cover derives deterministically from the item; `EpubCache.PathFor` is untouched.
 - All work on branch `feat/cover-image`. `dotnet test` from repo root (inside the devcontainer) must stay green.
 - Conventional Commits; no `Co-Authored-By`/"Generated with" lines.
 
@@ -23,7 +23,7 @@
 
 ### Task 1: `AbsDownloadClient.DownloadCoverAsync`
 
-Add the worker's token-less cover fetch, mirroring `DownloadEbookAsync`. No DI change needed — `AbsDownloadClient` is already registered (`Program.cs:57`).
+Add the worker's token-less cover fetch, mirroring `DownloadEbookAsync`. No DI change needed - `AbsDownloadClient` is already registered (`Program.cs:57`).
 
 **Files:**
 - Modify: `src/Inkshelf/Abs/AbsDownloadClient.cs`
@@ -31,7 +31,7 @@ Add the worker's token-less cover fetch, mirroring `DownloadEbookAsync`. No DI c
 
 **Interfaces:**
 - Consumes: nothing new.
-- Produces: `Task<(Stream Content, string ContentType)> AbsDownloadClient.DownloadCoverAsync(string itemId, string accessToken, int width, CancellationToken ct)` — returns the cover stream + its content-type; throws `HttpRequestException` on non-2xx. Caller owns/disposes the stream.
+- Produces: `Task<(Stream Content, string ContentType)> AbsDownloadClient.DownloadCoverAsync(string itemId, string accessToken, int width, CancellationToken ct)` - returns the cover stream + its content-type; throws `HttpRequestException` on non-2xx. Caller owns/disposes the stream.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -71,7 +71,7 @@ Add to `tests/Inkshelf.Tests/AbsDownloadClientTests.cs` (the `Client(...)` helpe
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter FullyQualifiedName~AbsDownloadClientTests`
-Expected: FAIL — `AbsDownloadClient` does not contain a definition for `DownloadCoverAsync` (compile error).
+Expected: FAIL - `AbsDownloadClient` does not contain a definition for `DownloadCoverAsync` (compile error).
 
 - [ ] **Step 3: Implement `DownloadCoverAsync`**
 
@@ -115,7 +115,7 @@ git commit -m "feat: add token-less ABS cover download for the worker"
 
 ### Task 2: `EpubWriter` cover declaration
 
-Teach the writer to declare a cover. Add a `Cover` record + optional `WriteAsync` parameter, extract a mime helper, and update `Opf(...)` to emit the EPUB3 `properties="cover-image"` flag and the EPUB2 `<meta name="cover">` — using the dedicated cover item when present, else flagging the first page, else nothing.
+Teach the writer to declare a cover. Add a `Cover` record + optional `WriteAsync` parameter, extract a mime helper, and update `Opf(...)` to emit the EPUB3 `properties="cover-image"` flag and the EPUB2 `<meta name="cover">` - using the dedicated cover item when present, else flagging the first page, else nothing.
 
 **Files:**
 - Modify: `src/Inkshelf/Convert/EpubWriter.cs`
@@ -125,7 +125,7 @@ Teach the writer to declare a cover. Add a `Cover` record + optional `WriteAsync
 - Consumes: nothing new.
 - Produces:
   - `public sealed record Cover(byte[] Bytes, string Ext);` (nested in `EpubWriter`; `Ext` includes the leading dot, e.g. `".jpg"`).
-  - `EpubWriter.WriteAsync(string outPath, EbookMeta meta, IAsyncEnumerable<Page> pages, double dpr, CancellationToken ct, Cover? cover = null)` — the trailing optional `cover` is the only signature change; all existing calls keep compiling.
+  - `EpubWriter.WriteAsync(string outPath, EbookMeta meta, IAsyncEnumerable<Page> pages, double dpr, CancellationToken ct, Cover? cover = null)` - the trailing optional `cover` is the only signature change; all existing calls keep compiling.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -187,7 +187,7 @@ Add to `tests/Inkshelf.Tests/EpubWriterTests.cs` (the `Jpg(...)` and `Stream(...
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter FullyQualifiedName~EpubWriterTests`
-Expected: FAIL — `EpubWriter.Cover` does not exist / `WriteAsync` has no 6th parameter (compile error).
+Expected: FAIL - `EpubWriter.Cover` does not exist / `WriteAsync` has no 6th parameter (compile error).
 
 - [ ] **Step 3: Add the `Cover` record and thread it through `WriteAsync`**
 
@@ -195,7 +195,7 @@ In `src/Inkshelf/Convert/EpubWriter.cs`, add the record next to the existing `Pa
 
 ```csharp
     // A processed cover image: its bytes and in-zip extension (with dot, e.g. ".jpg").
-    // Metadata-only — declared as the cover, never added to the spine.
+    // Metadata-only - declared as the cover, never added to the spine.
     public sealed record Cover(byte[] Bytes, string Ext);
 ```
 
@@ -298,7 +298,7 @@ Accept a raw cover on `ConvertAsync`, run it through `PageImageProcessor` (same 
 
 **Interfaces:**
 - Consumes: `EpubWriter.Cover`, `PageImageProcessor.ProcessAsync(byte[], string, int, int, bool, CancellationToken)` → `ProcessedImage(byte[] Bytes, string Extension, int Width, int Height)`.
-- Produces: `EpubConverter.ConvertAsync(Stream archive, EbookMeta meta, string outPath, RenderTarget target, CancellationToken ct, (byte[] Bytes, string Ext)? cover = null)` — trailing optional `cover` is the only signature change; existing calls keep compiling.
+- Produces: `EpubConverter.ConvertAsync(Stream archive, EbookMeta meta, string outPath, RenderTarget target, CancellationToken ct, (byte[] Bytes, string Ext)? cover = null)` - trailing optional `cover` is the only signature change; existing calls keep compiling.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -342,7 +342,7 @@ Add to `tests/Inkshelf.Tests/EpubConverterTests.cs` (the `Img(...)` helper and t
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter FullyQualifiedName~EpubConverterTests`
-Expected: FAIL — `ConvertAsync` has no 6th parameter (compile error).
+Expected: FAIL - `ConvertAsync` has no 6th parameter (compile error).
 
 - [ ] **Step 3: Thread the cover through `ConvertAsync`**
 
@@ -360,7 +360,7 @@ In `src/Inkshelf/Convert/EpubConverter.cs`, change `ConvertAsync` and add a priv
 
     // Process the raw ABS cover through the same pipeline as pages (cap, grayscale,
     // WebP→JPEG). A cover that fails to decode is dropped (null) so the writer falls
-    // back to flagging the first page — a bad cover must never fail the conversion.
+    // back to flagging the first page - a bad cover must never fail the conversion.
     private static async Task<EpubWriter.Cover?> ProcessCoverAsync(
         (byte[] Bytes, string Ext)? cover, RenderTarget target, CancellationToken ct)
     {
@@ -488,7 +488,7 @@ Add these tests to the class:
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter FullyQualifiedName~ConvertWorkerTests`
-Expected: FAIL — `Embeds_the_ABS_cover_when_available` fails (no `OEBPS/cover.jpg` / no `cover-img`) because the worker does not yet fetch or pass a cover.
+Expected: FAIL - `Embeds_the_ABS_cover_when_available` fails (no `OEBPS/cover.jpg` / no `cover-img`) because the worker does not yet fetch or pass a cover.
 
 - [ ] **Step 3: Fetch the cover and pass it to the converter**
 
@@ -501,7 +501,7 @@ In `src/Inkshelf/Convert/ConvertWorker.cs`, add the cover width constant and hel
     private const int CoverWidth = 600;
 
     // Best-effort ABS cover fetch. Any failure (no cover / 404 / transient) yields
-    // null and the converter falls back to the first page — never fails the job.
+    // null and the converter falls back to the first page - never fails the job.
     // Cancellation (app stopping) is allowed to propagate.
     private static async Task<(byte[] Bytes, string Ext)?> TryFetchCoverAsync(
         AbsDownloadClient download, ConvertJob job, CancellationToken ct)
@@ -552,7 +552,7 @@ with:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `dotnet test --filter FullyQualifiedName~ConvertWorkerTests`
-Expected: PASS — including the existing tests (`ScopeFactoryReturning` returns the CBZ for the cover request too; it fails to decode and falls back to the first page, which those tests don't assert on).
+Expected: PASS - including the existing tests (`ScopeFactoryReturning` returns the CBZ for the cover request too; it fails to decode and falls back to the first page, which those tests don't assert on).
 
 - [ ] **Step 5: Run the full suite**
 
@@ -588,16 +588,16 @@ In `docs/ROADMAP.md`, under `## Conversion / rendering`, delete the entire `- **
 In `docs/ROADMAP.md`, add as the FIRST bullet under `## Done` (before `- **Background conversion**`):
 
 ```markdown
-- **Cover image** — the converted EPUB declares a real cover (EPUB3
+- **Cover image** - the converted EPUB declares a real cover (EPUB3
   `properties="cover-image"` + EPUB2 `<meta name="cover">`), so Apple Books and
   other strict readers show a thumbnail. Prefers the ABS cover art (fetched at
   600px), falling back to the first page when ABS has no usable cover. Metadata
-  only — reading still opens on page 1.
+  only - reading still opens on page 1.
 ```
 
 - [ ] **Step 3: Add the changelog entry**
 
-In `CHANGELOG.md`, add a new section directly below the `Format follows …` line and above `## v0.1.2 — 2026-07-17`:
+In `CHANGELOG.md`, add a new section directly below the `Format follows …` line and above `## v0.1.2 - 2026-07-17`:
 
 ```markdown
 ## Unreleased
@@ -616,7 +616,7 @@ In `docs/ARCHITECTURE.md`, under `## Load-bearing conventions (do not "clean the
   `properties="cover-image"` manifest flag and the EPUB2 `<meta name="cover">`.
   The worker prefers the ABS cover art (`AbsDownloadClient.DownloadCoverAsync`,
   600px) and the converter falls back to flagging the first page when ABS has no
-  usable cover. Metadata only — the cover is never a spine entry, so reading opens
+  usable cover. Metadata only - the cover is never a spine entry, so reading opens
   on page 1. It is not part of the cache key (it derives from the item).
 ```
 
@@ -633,12 +633,12 @@ git commit -m "docs: record the cover-image feature"
 
 After Task 5, from the repo root inside the devcontainer:
 
-- [ ] Run `dotnet test` — all green.
-- [ ] (Optional, if epubcheck is available) Convert a comic locally on port 5099 and run epubcheck on the output — expect no new errors and a declared cover. Confirm on a real e-ink reader before merge (near-zero-JS / defensive-CSS convention).
+- [ ] Run `dotnet test` - all green.
+- [ ] (Optional, if epubcheck is available) Convert a comic locally on port 5099 and run epubcheck on the output - expect no new errors and a declared cover. Confirm on a real e-ink reader before merge (near-zero-JS / defensive-CSS convention).
 
 ## Notes on decisions (from the spec)
 
-- **Thumbnail only** (no `cover.xhtml` spine page) — avoids double-cover for comics whose page 1 is already the cover.
-- **Present + decodable** usability check — no min-dimension guard.
-- **Always-try cover fetch** in the worker (one small request on an already-heavy path) rather than threading a `HasCover` flag from the detail metadata — keeps the job record and detail-shape coupling out of it.
-- **No cache-key change** — existing cached EPUBs stay coverless until regenerated (↻) or evicted.
+- **Thumbnail only** (no `cover.xhtml` spine page) - avoids double-cover for comics whose page 1 is already the cover.
+- **Present + decodable** usability check - no min-dimension guard.
+- **Always-try cover fetch** in the worker (one small request on an already-heavy path) rather than threading a `HasCover` flag from the detail metadata - keeps the job record and detail-shape coupling out of it.
+- **No cache-key change** - existing cached EPUBs stay coverless until regenerated (↻) or evicted.

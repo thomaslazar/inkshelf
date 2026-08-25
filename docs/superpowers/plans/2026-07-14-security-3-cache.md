@@ -1,4 +1,4 @@
-# Security #3 — scr clamp + EPUB cache LRU cap — Implementation Plan
+# Security #3 - scr clamp + EPUB cache LRU cap - Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -55,10 +55,10 @@ In `tests/Inkshelf.Tests/ScreenTargetTests.cs`, add:
     }
 ```
 
-- [ ] **Step 3: Run — verify fail**
+- [ ] **Step 3: Run - verify fail**
 
 Run: `dotnet test --filter FullyQualifiedName~ScreenTargetTests`
-Expected: FAIL — `ScreenTarget.MaxDimension` doesn't exist (compile error), and/or the clamp assertion fails.
+Expected: FAIL - `ScreenTarget.MaxDimension` doesn't exist (compile error), and/or the clamp assertion fails.
 
 - [ ] **Step 4: Add the clamp**
 
@@ -92,7 +92,7 @@ For the legacy 2-part path:
 
 (Convert the existing single-expression `if` body to the braced form shown for the 3-part path.)
 
-- [ ] **Step 5: Run ScreenTarget tests — GREEN**
+- [ ] **Step 5: Run ScreenTarget tests - GREEN**
 
 Run: `dotnet test --filter FullyQualifiedName~ScreenTargetTests`
 Expected: PASS (existing parse tests + the two new clamp tests).
@@ -179,10 +179,10 @@ In `tests/Inkshelf.Tests/EpubCacheTests.cs`, add (use a temp dir; write files wi
     }
 ```
 
-- [ ] **Step 4: Run — verify fail to compile**
+- [ ] **Step 4: Run - verify fail to compile**
 
 Run: `dotnet test --filter FullyQualifiedName~EpubCacheTests`
-Expected: FAIL to compile — `EnforceCap`/`Touch` don't exist.
+Expected: FAIL to compile - `EnforceCap`/`Touch` don't exist.
 
 - [ ] **Step 5: Implement in `EpubCache.cs`**
 
@@ -190,7 +190,7 @@ Append to `src/Inkshelf/Convert/EpubCache.cs`:
 
 ```csharp
     // Bump a served file's timestamp so EnforceCap treats recently-used entries as
-    // "new" (approximate LRU — serving a file doesn't otherwise touch its mtime).
+    // "new" (approximate LRU - serving a file doesn't otherwise touch its mtime).
     public void Touch(string path)
     {
         try { if (File.Exists(path)) File.SetLastWriteTimeUtc(path, DateTime.UtcNow); }
@@ -215,7 +215,7 @@ Append to `src/Inkshelf/Convert/EpubCache.cs`:
 
 (`System.Linq` is available via implicit usings.)
 
-- [ ] **Step 6: Run EpubCache tests — GREEN**
+- [ ] **Step 6: Run EpubCache tests - GREEN**
 
 Run: `dotnet test --filter FullyQualifiedName~EpubCacheTests`
 Expected: PASS (existing + 2 new).
@@ -254,7 +254,7 @@ In the `else` (cached-serve) branch, touch the file so it counts as recently use
         }
 ```
 
-(`AbsOptions` resolves via the enclosing `Inkshelf` namespace — the file is in `Inkshelf.Convert`.)
+(`AbsOptions` resolves via the enclosing `Inkshelf` namespace - the file is in `Inkshelf.Convert`.)
 
 - [ ] **Step 8: Fix `ConvertServiceTests` construction**
 
@@ -271,7 +271,7 @@ Add `using Inkshelf;` to the test file if `AbsOptions` doesn't resolve.
 - [ ] **Step 9: Full suite**
 
 Run: `dotnet test`
-Expected: PASS (84 + 2 new EpubCache = 86). Existing `ConvertServiceTests` (cached/warm/not-found) still pass — the cached path now also touches the file (harmless) and the cap is effectively unlimited in tests.
+Expected: PASS (84 + 2 new EpubCache = 86). Existing `ConvertServiceTests` (cached/warm/not-found) still pass - the cached path now also touches the file (harmless) and the cap is effectively unlimited in tests.
 
 - [ ] **Step 10: Commit**
 
@@ -286,10 +286,10 @@ git commit -m "feat: cap EPUB cache with LRU eviction and touch-on-serve"
 
 **Spec coverage (#3):** `scr` dimensions clamped to `[1,4096]` in both parse paths (Task 1); global max-bytes LRU sweep via `EnforceCap` after conversion + `Touch` on cached serve for true-LRU (Task 2); `MaxCacheBytes` config, default 1 GB. ✓
 
-**Placeholder scan:** None — clamp asserts exact values; cache tests assert which file survives eviction and that Touch advances the timestamp.
+**Placeholder scan:** None - clamp asserts exact values; cache tests assert which file survives eviction and that Touch advances the timestamp.
 
 **Type consistency:** `ScreenTarget.MaxDimension` used in impl + tests. `EpubCache.EnforceCap(long)`/`Touch(string)` match tests and the `ConvertService` call sites. `ConvertService`'s new 5-arg constructor matches the `ConvertServiceTests.Service` helper.
 
 **Edge note:** `EnforceCap` could in principle delete a just-written file if a single EPUB exceeded the whole cap; at a 1 GB default vs. tens-of-MB EPUBs this can't occur in practice. Documented rather than special-cased.
 
-**Scope:** Two tasks. #5 (ConvertLock) and #4 (archive ceiling) are the next just-in-time plans — both also touch `ConvertService`, building on the `AbsOptions` dependency added here.
+**Scope:** Two tasks. #5 (ConvertLock) and #4 (archive ceiling) are the next just-in-time plans - both also touch `ConvertService`, building on the `AbsOptions` dependency added here.

@@ -1,8 +1,8 @@
-# Sorting + ebook delivery — Implementation Plan
+# Sorting + ebook delivery - Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans or subagent-driven-development. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** Add item sorting, a primary-ebook download, and on-the-fly CBZ/CBR→EPUB conversion (metadata-embedded, disk-cached, force-regenerable) — one PR.
+**Goal:** Add item sorting, a primary-ebook download, and on-the-fly CBZ/CBR→EPUB conversion (metadata-embedded, disk-cached, force-regenerable) - one PR.
 
 **Architecture:** Sorting is an ABS query param surfaced as cycling sort-links that compose with filters + paging. Download proxies the ABS ebook file. Conversion reads the archive with SharpCompress, sizes/transcodes images with ImageSharp, writes a fixed-layout EPUB with `System.IO.Compression`, and caches it on disk at a volume-mounted path.
 
@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Near-zero JavaScript; Tolino = Chrome-30/ES5 (`docs/tolino-browser.md`) — margins not `gap`, no `object-fit`, etc.
+- Near-zero JavaScript; Tolino = Chrome-30/ES5 (`docs/tolino-browser.md`) - margins not `gap`, no `object-fit`, etc.
 - Ebook links render only when `media.ebookFormat` is set. Download = any format; Convert = cbz/cbr only.
 - Converted EPUB download name: `<Author> - <Title>.epub` (sanitized). Plain download keeps the ABS filename.
 - Cache key: `{itemId}-{size}-{mtimeMs}.epub`. `?fresh=1` deletes `{itemId}-*.epub` then regenerates.
@@ -23,7 +23,7 @@
 
 - Item detail `GET /api/items/{id}` → `media.metadata.{title, authorName, seriesName, authors:[{id,name}], series:[{id,name,sequence}]}` and `media.ebookFile.{ebookFormat, metadata:{filename,size,mtimeMs}}`.
 - Ebook bytes: `GET /api/items/{id}/ebook` (primary ebook; no special permission).
-- Items list sort: `?sort=<key>&desc=0|1` — keys `media.metadata.title`, `media.metadata.authorNameLF`, `addedAt`, `sequence`.
+- Items list sort: `?sort=<key>&desc=0|1` - keys `media.metadata.title`, `media.metadata.authorNameLF`, `addedAt`, `sequence`.
 
 ---
 
@@ -70,7 +70,7 @@ In `docker-compose.example.yml`, add `CachePath: "/cache"` to `environment`, a
 
 - [ ] **Step 5: README**
 
-Add a row to the config table: `CachePath` — optional; where converted EPUBs are
+Add a row to the config table: `CachePath` - optional; where converted EPUBs are
 cached; default `<ContentRoot>/.cache/epub`; mount a volume to persist across
 restarts. Note conversions are cached and survive restarts when the volume is mounted.
 
@@ -96,7 +96,7 @@ git commit -m "chore: add SharpCompress + ImageSharp, cache path config and volu
   - `AbsItemDetail` DTOs (title/author/series + ebookFile size/mtime/filename/format).
   - `AbsClient.GetItemDetailAsync(token, id, ct)` → `AbsItemDetail`.
   - `AbsClient.GetEbookStreamAsync(token, id, ct)` → `(Stream Content, string ContentType)` (live).
-  - `GetItemsAsync(token, libId, page, limit, filter, sort, desc, ct)` — appends `sort`/`desc` when set.
+  - `GetItemsAsync(token, libId, page, limit, filter, sort, desc, ct)` - appends `sort`/`desc` when set.
 
 - [ ] **Step 1: Write failing tests (append to AbsClientTests)**
 
@@ -126,7 +126,7 @@ public async Task GetItemDetailAsync_parses_ebook_and_metadata()
 }
 ```
 
-- [ ] **Step 2: Run, verify fail** — `dotnet test tests/Inkshelf.Tests --filter AbsClientTests`
+- [ ] **Step 2: Run, verify fail** - `dotnet test tests/Inkshelf.Tests --filter AbsClientTests`
 
 - [ ] **Step 3: Extend `AbsModels.cs`**
 
@@ -251,7 +251,7 @@ public static class SortLinks
 
 - [ ] **Step 4: Run tests, verify pass.**
 
-- [ ] **Step 5: `LibraryModel` — sort state + href helpers**
+- [ ] **Step 5: `LibraryModel` - sort state + href helpers**
 
 Add `[FromQuery] public string? Sort { get; set; }` and `[FromQuery(Name="desc")] public bool Desc { get; set; }`. Pass `Sort`/`Desc` into `GetItemsAsync` (listing branch only). Add a single URL builder that any link uses, so facet + sort + page always compose:
 
@@ -348,7 +348,7 @@ After the `.body` metadata, gated on ebook presence:
     </div>
 }
 ```
-Add `.actions { margin-top: .25rem; }` and `.actions a { margin-right: .75rem; }` to `app.css`. (The `/convert` links are wired in Task 7; the markup is fine now — they 404 until then.)
+Add `.actions { margin-top: .25rem; }` and `.actions a { margin-right: .75rem; }` to `app.css`. (The `/convert` links are wired in Task 7; the markup is fine now - they 404 until then.)
 
 - [ ] **Step 3: Build + suite; commit**
 
@@ -452,7 +452,7 @@ git commit -m "feat: on-disk EPUB cache keyed by item id + size + mtime"
 **Interfaces:**
 - Produces:
   - `record EbookMeta(string Title, string Author, string? Series, string? Sequence)`.
-  - `EpubConverter.ConvertAsync(Stream archive, EbookMeta meta, string outPath, CancellationToken ct)` — writes a fixed-layout EPUB to `outPath`.
+  - `EpubConverter.ConvertAsync(Stream archive, EbookMeta meta, string outPath, CancellationToken ct)` - writes a fixed-layout EPUB to `outPath`.
 
 - [ ] **Step 1: Write failing test (builds a tiny in-memory CBZ incl. a WebP page)**
 
@@ -519,7 +519,7 @@ public class EpubConverterTests
 - [ ] **Step 3: Implement `EpubConverter.cs`**
 
 Key points: read archive with SharpCompress (`ArchiveFactory.Open` needs a
-seekable stream — the caller passes a `MemoryStream`); collect image entries
+seekable stream - the caller passes a `MemoryStream`); collect image entries
 (`.jpg/.jpeg/.png/.gif/.webp`), order by `Key` (ordinal); per page read bytes,
 `Image.Identify` for `Width`/`Height`; if the entry is WebP, `Image.Load` +
 `SaveAsJpeg` and use `.jpg`; write the EPUB with `System.IO.Compression`.
@@ -641,7 +641,7 @@ public class EpubConverter
 }
 ```
 
-- [ ] **Step 4: Run tests, verify pass.** (If ImageSharp's WebP encoder needs a package, it's included in the main `SixLabors.ImageSharp` — no extra reference.)
+- [ ] **Step 4: Run tests, verify pass.** (If ImageSharp's WebP encoder needs a package, it's included in the main `SixLabors.ImageSharp` - no extra reference.)
 
 - [ ] **Step 5: Commit**
 

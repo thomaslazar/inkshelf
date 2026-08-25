@@ -1,4 +1,4 @@
-# Security #5 — Concurrent-convert lock — Implementation Plan
+# Security #5 - Concurrent-convert lock - Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - `dotnet test` green after every task. No behavior change for the single-request path.
-- Distinct targets (different item/device-size) must NOT serialize against each other — only identical cache-output paths do.
+- Distinct targets (different item/device-size) must NOT serialize against each other - only identical cache-output paths do.
 - Conventional Commits; no `Co-Authored-By`. Branch `security/hardening`.
 
 ## File Structure
@@ -78,10 +78,10 @@ public class ConvertLockTests
 }
 ```
 
-- [ ] **Step 3: Run — verify fail to compile**
+- [ ] **Step 3: Run - verify fail to compile**
 
 Run: `dotnet test --filter FullyQualifiedName~ConvertLockTests`
-Expected: FAIL to compile — `ConvertLock` doesn't exist.
+Expected: FAIL to compile - `ConvertLock` doesn't exist.
 
 - [ ] **Step 4: Create `ConvertLock.cs`**
 
@@ -115,7 +115,7 @@ public sealed class ConvertLock
         }
         catch
         {
-            // Never acquired the semaphore — undo the ref (and drop the entry if last).
+            // Never acquired the semaphore - undo the ref (and drop the entry if last).
             lock (_gate) { if (--entry.Refs == 0) _entries.Remove(key); }
             throw;
         }
@@ -143,7 +143,7 @@ public sealed class ConvertLock
 }
 ```
 
-- [ ] **Step 5: Run ConvertLock tests — GREEN**
+- [ ] **Step 5: Run ConvertLock tests - GREEN**
 
 Run: `dotnet test --filter FullyQualifiedName~ConvertLockTests`
 Expected: PASS (3).
@@ -159,7 +159,7 @@ builder.Services.AddSingleton<ConvertLock>();
 - [ ] **Step 7: Full suite**
 
 Run: `dotnet test`
-Expected: PASS (86 + 3 = 89). `ConvertLock` is registered but not yet used by `ConvertService` — app behavior unchanged.
+Expected: PASS (86 + 3 = 89). `ConvertLock` is registered but not yet used by `ConvertService` - app behavior unchanged.
 
 - [ ] **Step 8: Commit**
 
@@ -228,7 +228,7 @@ Replace the current `if (!File.Exists(path)) { …convert… } else { Touch; log
         _cache.Touch(path);   // count this serve as recent use (fresh or cached)
 ```
 
-Remove the old `else { _cache.Touch(path); _logger.LogInformation("Serving cached EPUB…") }` branch — touch now happens once after the block for both paths. (Dropping the "Serving cached" info log is acceptable; it carried no behavior.)
+Remove the old `else { _cache.Touch(path); _logger.LogInformation("Serving cached EPUB…") }` branch - touch now happens once after the block for both paths. (Dropping the "Serving cached" info log is acceptable; it carried no behavior.)
 
 - [ ] **Step 3: Update `ConvertServiceTests` construction**
 
@@ -243,7 +243,7 @@ The `Service` helper needs the new `ConvertLock` arg:
 - [ ] **Step 4: Full suite**
 
 Run: `dotnet test`
-Expected: PASS (89). The three `ConvertServiceTests` still hold: `NotFound` (wrong format — never reaches the lock), `File`/`Warmed` (cached — `File.Exists` true, so the lock block is skipped and the file is touched + served).
+Expected: PASS (89). The three `ConvertServiceTests` still hold: `NotFound` (wrong format - never reaches the lock), `File`/`Warmed` (cached - `File.Exists` true, so the lock block is skipped and the file is touched + served).
 
 - [ ] **Step 5: Commit**
 
@@ -258,10 +258,10 @@ git commit -m "fix: serialize same-target conversions to avoid double-work and c
 
 **Spec coverage (#5):** keyed `SemaphoreSlim` in a singleton `ConvertLock` (home per the design), keyed by cache-output path; convert-on-miss runs inside the lock with a double-checked `File.Exists`; ref-counted map cleanup. ✓
 
-**Placeholder scan:** None — lock tests assert serialization (incomplete task while held), concurrency (different keys don't block), and map cleanup (`ActiveKeys == 0`).
+**Placeholder scan:** None - lock tests assert serialization (incomplete task while held), concurrency (different keys don't block), and map cleanup (`ActiveKeys == 0`).
 
 **Type consistency:** `ConvertLock.AcquireAsync(string, CancellationToken) : Task<IDisposable>` matches tests and the `ConvertService` `using (await …)` site. `ConvertService`'s new 6-arg constructor matches the `Service` test helper. Cancellation during `WaitAsync` undoes the ref (no leak).
 
 **Ordering note:** Done before #4 (archive ceiling) so #4's size check lands *inside* this locked convert block, as the spec sequences.
 
-**Scope:** Two tasks — additive lock, then wire. #4 (archive ceiling) and docs remain.
+**Scope:** Two tasks - additive lock, then wire. #4 (archive ceiling) and docs remain.
