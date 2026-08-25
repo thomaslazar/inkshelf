@@ -3,6 +3,43 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.6.1 - 2026-08-25
+
+### Highlights
+- The libraries page now names the ABS account the device is signed in as, next
+  to the version string. On a shared install there was previously no way to tell
+  which account a reader was using.
+
+### Features
+- feat: keep the logged-in username in the session cookie
+- feat: name the logged-in user on the libraries page
+
+### Fixes
+- fix: drop the em dash from the version line
+- fix: no-store the libraries page and de-dup a test cookie helper
+
+### Internal
+
+**Tests**
+- test: assert the username itself round-trips past a newline
+
+**Docs**
+- docs: drop the last references to a locale file that does not exist
+- docs: fix rollback, citations, and roadmap for the logged-in user
+- docs: forbid em dashes and purge them from this branch
+- docs: name the banned characters by codepoint
+- docs: plan the logged-in user display
+- docs: spec showing the logged-in user on the libraries page
+
+**Chore**
+- chore: bump version to 0.6.1
+- chore: hyphenate the two user-facing strings and widen the rule
+- chore: kill em and en dashes in code comments
+- chore: kill em and en dashes in the design docs
+- chore: kill em and en dashes in the docs and readme
+- chore: kill em and en dashes in the tooling
+- chore: kill em dashes in the compose example
+
 ## v0.6.0 - 2026-08-25
 
 ### Highlights
