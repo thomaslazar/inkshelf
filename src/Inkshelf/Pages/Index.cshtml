@@ -16,4 +16,4 @@
     <li><a href="/library/@lib.Id">@lib.Name</a> <small>(@lib.MediaType)</small></li>
 }
 </ul>
-<p class="app-version"><small>Inkshelf v@(Model.Version)@if (Model.Username.Length > 0) {<text> &#8212; @L["User: {0}", Model.Username]</text>}</small></p>
+<p class="app-version"><small>Inkshelf v@(Model.Version)@if (Model.Username.Length > 0) {<text> @L["User: {0}", Model.Username]</text>}</small></p>

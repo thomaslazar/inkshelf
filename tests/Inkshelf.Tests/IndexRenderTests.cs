@@ -88,12 +88,11 @@ public class IndexRenderTests
     public async Task The_version_line_stays_bare_when_no_username_is_stored()
     {
         // A cookie from before the username was stored must render exactly today's
-        // line — no separator, no empty label.
+        // line — the version and nothing appended to it.
         var html = await GetIndexHtml(session: "acc\nref", lang: "");
 
-        Assert.Contains($"Inkshelf v{AppVersion.Current}", html);
+        Assert.Contains($"Inkshelf v{AppVersion.Current}</small>", html);
         Assert.DoesNotContain("User:", html);
-        Assert.DoesNotContain("&#8212;", html);
     }
 
     [Fact]

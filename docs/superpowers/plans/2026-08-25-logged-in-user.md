@@ -16,7 +16,6 @@
 - **The username goes LAST in the cookie.** ABS usernames are not newline-free by contract; after the tokens, a newline inside one can only add a line break to a display string instead of shifting a token field.
 - `Tokens.Username` defaults to `""` so the eight existing `new Tokens("acc", "ref")` call sites keep compiling. Empty string, never null.
 - The name is a **display string only** — nothing branches on it, nothing authorises with it.
-- Non-ASCII glyphs are emitted as HTML entities, matching the codebase (`&#8595;`, `&#8594;`, `›`).
 - Localised label: locale keys in this project **are** the English string (`L["Log out"]`), and formatted keys exist (`L["Log in with {0}", …]`).
 - **Comments state rules and reasons, not narration.** A comment restating what the next line does will be rejected in review. Keep them short.
 - **Do not touch `CHANGELOG.md`** — release process only. `docs/ARCHITECTURE.md` is a map: this feature introduces no new invariant, so **do not add anything to it**.
@@ -253,7 +252,7 @@ Create `tests/Inkshelf.Tests/IndexRenderTests.cs`. Follow `ItemRenderTests`' fac
 
         Assert.Contains($"Inkshelf v{AppVersion.Current}", html);
         Assert.DoesNotContain("User:", html);
-        Assert.DoesNotContain("&#8212;", html);
+        Assert.Contains($"Inkshelf v{AppVersion.Current}</small>", html);
     }
 
     [Fact]
@@ -301,7 +300,7 @@ does), so the store just has to exist and be constructible.
 `Index.cshtml`, replacing the last line:
 
 ```html
-<p class="app-version"><small>Inkshelf v@(Model.Version)@if (Model.Username.Length > 0) {<text> &#8212; @L["User: {0}", Model.Username]</text>}</small></p>
+<p class="app-version"><small>Inkshelf v@(Model.Version)@if (Model.Username.Length > 0) {<text> @L["User: {0}", Model.Username]</text>}</small></p>
 ```
 
 - [ ] **Step 5: Add the locale key**

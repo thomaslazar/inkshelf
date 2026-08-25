@@ -21,15 +21,15 @@ for a question asked occasionally rather than continuously.
 The libraries page renders a labelled name after the version it already shows:
 
 ```
-Inkshelf v0.6.0 — User: root          (en)
-Inkshelf v0.6.0 — Benutzer: root      (de)
+Inkshelf v0.6.0 User: root          (en)
+Inkshelf v0.6.0 Benutzer: root      (de)
 ```
 
 The label is localised like everything else user-facing, so it needs one key in
 each locale file. The login page is untouched: there is no user yet.
 
 When the name is not known the line is exactly what it is today — bare
-`Inkshelf v0.6.0`, with no separator and no empty label.
+`Inkshelf v0.6.0`, with nothing appended.
 
 ## Where the name comes from
 
