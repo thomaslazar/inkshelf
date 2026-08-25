@@ -99,7 +99,7 @@ public class ItemRenderTests
         Assert.Contains("My Comic.pdf", html);                       // every ebook file listed
         Assert.Contains($"/download/{ItemId}?file=2", html);         // non-primary download by ino
         Assert.Matches($"/download/{ItemId}\\?t=", html);            // primary download (no file=)
-        // The cached state, discriminated by the title only that branch renders —
+        // The cached state, discriminated by the title only that branch renders -
         // NOT by a bare ">EPUB", which the file-format span also emits for a raw epub.
         Assert.Contains("title=\"Already converted", html);          // primary cbz cached (shared key)
         Assert.Contains($"action=\"/read/{ItemId}\"", html);         // read toggle
@@ -126,7 +126,7 @@ public class ItemRenderTests
             .Add(did, DownloadMarks.EpubKey(ItemId, null)); // marks the PRIMARY's EPUB key only
         // Also mark the primary's RAW key, so the same request exercises the raw
         // Download arrow's per-file mapping (Item.cshtml.cs's `RawKey(Id, keyIno)`)
-        // alongside the EPUB one — a single shared mistake in `keyIno` would break both.
+        // alongside the EPUB one - a single shared mistake in `keyIno` would break both.
         factory.Services.GetRequiredService<DownloadMarks>()
             .Add(did, DownloadMarks.RawKey(ItemId, null));
 
@@ -170,7 +170,7 @@ public class ItemRenderTests
         Assert.DoesNotContain($"/convert/{ItemId}?file=1", html);    // primary is NOT keyed by its ino
     }
 
-    // The item page is the ONLY place regen is offered (listing rows dropped it —
+    // The item page is the ONLY place regen is offered (listing rows dropped it -
     // too small a target next to Convert). The old regression still applies here:
     // the ↻ anchor must stay a PLAIN link. Give it data-warm and the poll script
     // overwrites its glyph with status text, producing a duplicate "EPUB".

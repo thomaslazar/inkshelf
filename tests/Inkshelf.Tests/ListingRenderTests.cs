@@ -14,7 +14,7 @@ namespace Inkshelf.Tests;
 
 // Renders a real /library/{id} response end-to-end (WebApplicationFactory +
 // stubbed ABS) and asserts the per-row convert markup. Listing rows must carry
-// NO regen "↻" action — it was a ~14px target wedged beside Convert, and a
+// NO regen "↻" action - it was a ~14px target wedged beside Convert, and a
 // mistap costs a real conversion run. The regen link (and the regression that
 // it must stay a PLAIN link, or the poll script overwrites its glyph) now lives
 // on the item page; see ItemRenderTests.
@@ -46,7 +46,7 @@ public class ListingRenderTests
 
     // A search hit for the same cbz item. Search uses ABS's EXPANDED item JSON,
     // which carries the full ebookFile (format is at media.ebookFile.ebookFormat)
-    // but — unlike the minified listing — NO top-level media.ebookFormat.
+    // but - unlike the minified listing - NO top-level media.ebookFormat.
     private static string SearchJson() => $$"""
         {"book":[{"libraryItem":{"id":"{{ItemId}}","media":{"metadata":{"title":"My Comic"},"ebookFile":{"ebookFormat":"cbz"} } } }],"series":[],"authors":[]}
         """;
@@ -84,8 +84,8 @@ public class ListingRenderTests
                         o.HttpMessageHandlerBuilderActions.Add(hb => hb.PrimaryHandler = refresh));
                 // Drop the background ConvertWorker: these tests assert the RENDER
                 // of a given queue state (a Queued row shows "Converting…"). The
-                // real worker would drain the enqueued job and — with no stubbed
-                // AbsDownloadClient — fail the download and mark it Failed, racing
+                // real worker would drain the enqueued job and - with no stubbed
+                // AbsDownloadClient - fail the download and mark it Failed, racing
                 // the request and flaking the assertion.
                 var worker = services.FirstOrDefault(s => s.ImplementationType == typeof(ConvertWorker));
                 if (worker is not null) services.Remove(worker);
@@ -108,7 +108,7 @@ public class ListingRenderTests
         return req;
     }
 
-    // Isolate the row's convert anchor — a whole-page DoesNotContain("data-warm")
+    // Isolate the row's convert anchor - a whole-page DoesNotContain("data-warm")
     // would false-fail on the layout's own poll script, which references the
     // attribute by name.
     private static string PrimaryConvertAnchor(string html)
@@ -164,7 +164,7 @@ public class ListingRenderTests
     public async Task A_raw_mark_does_not_mark_the_epub_action()
     {
         // The row offers two different files. Marking one must not light up the
-        // other — the whole reason keys carry a d:/e: discriminator.
+        // other - the whole reason keys carry a d:/e: discriminator.
         using var cacheDir = new TempDir();
         using var keysDir = new TempDir();
         using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
@@ -189,7 +189,7 @@ public class ListingRenderTests
     public async Task The_cached_epub_action_no_longer_renders_a_checkmark()
     {
         // The label already says EPUB rather than Convert, so the checkmark was
-        // decoration — and dropping it leaves the arrow as the only glyph in that
+        // decoration - and dropping it leaves the arrow as the only glyph in that
         // column. Asserting the exact old string rather than a bare "&#10003;",
         // because the read-state button legitimately renders one for "✓ Read".
         using var cacheDir = new TempDir();
@@ -284,7 +284,7 @@ public class ListingRenderTests
     }
 
     // Task 6: row-state must be keyed on the SAME RenderTarget (scr probe + the
-    // inkshelf_settings cookie's grayscale flag) the real conversion uses — a
+    // inkshelf_settings cookie's grayscale flag) the real conversion uses - a
     // grayscale-variant cache file only counts as "converted" when the request
     // carries grayscale=on; the same file is not this request's cache path
     // otherwise, so the row must still offer plain "Convert".
@@ -296,7 +296,7 @@ public class ListingRenderTests
         using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
         // HandleCookies off: a page render writes the settings cookie back (it mints
         // the device id a download ticket needs), and a cookie jar would replay the
-        // first request's settings into the second — which asserts on NOT having them.
+        // first request's settings into the second - which asserts on NOT having them.
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         { AllowAutoRedirect = false, HandleCookies = false });
 
@@ -525,7 +525,7 @@ public class ListingRenderTests
     }
 
     // Query settings are honoured on /settings ONLY. A link is allowed to change
-    // settings on the page where changing settings is the point — nowhere else,
+    // settings on the page where changing settings is the point - nowhere else,
     // or any URL anyone sends becomes a silent settings rewrite.
     [Fact]
     public async Task A_listing_url_carrying_settings_keys_ignores_them()
@@ -625,7 +625,7 @@ public class ListingRenderTests
     // read AFTER the page's ABS calls: AbsAuthHandler refreshes on a 401
     // mid-request, and a bearer read before that first call is the one ABS just
     // rejected. Tickets minted from it fail on exactly the cookie-less
-    // download-manager request the feature exists for — invisibly, since the
+    // download-manager request the feature exists for - invisibly, since the
     // browser render itself still works. This has been got wrong in both
     // directions (read too early; the deferral "simplified" away), hence the test.
     [Fact]

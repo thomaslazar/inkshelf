@@ -41,15 +41,15 @@ public class SettingsModel : PageModel
         // A bookmarked URL carrying settings IS the restore mechanism for devices
         // that lose their cookies on a browser restart: apply it and store it, so
         // the rest of the session behaves as if the values had been typed in.
-        // Only this page honours query settings — see the spec.
+        // Only this page honours query settings - see the spec.
         // Localizer.CurrentLang() reads the REQUEST cookie; this only writes the
-        // response cookie, so this first render still uses the previous locale — the
+        // response cookie, so this first render still uses the previous locale - the
         // next request picks up the restored language. Not worth re-architecting the
         // localizer over.
         var restored = DeviceSettings.FromQuery(Request.Query);
         Settings = restored is { } r ? DeviceSettings.Set(Response, r) : DeviceSettings.Read(Request);
         // A restored override that is stored yet unusable (e.g. a hand-typed ovrw of
-        // 99999) must warn the same way a POST-time rejection does — otherwise the
+        // 99999) must warn the same way a POST-time rejection does - otherwise the
         // page ticks the override and silently shows the probe's numbers instead,
         // exactly what SettingsEndpoints' `unusable` comment says must never happen.
         RangeWarning = Request.Query.ContainsKey("range")
@@ -66,14 +66,14 @@ public class SettingsModel : PageModel
         var probe = ParseScreen(Request.Cookies["scr"]);
 
         // Both the readout and the override fields report the screen in PHYSICAL
-        // pixels — the number a person goes looking for, and the number a vendor spec
+        // pixels - the number a person goes looking for, and the number a vendor spec
         // sheet gives. The cookie stores CSS pixels plus the ratio, so multiply.
         // Printing the cookie raw made the page look like it gave two sizes for one
         // screen (769 × 953 in the readout, 1442 × 1787 in the fields).
         //
         // Deliberately NOT retina-aware: this is a statement about the hardware and
         // the fields have to agree with it. So ticking the override converts at the
-        // screen's real resolution whatever retina says — consistent with retina being
+        // screen's real resolution whatever retina says - consistent with retina being
         // disabled while an override is active.
         int devW = 0, devH = 0; double devDpr = 0;
         if (probe is { } cur)
@@ -103,7 +103,7 @@ public class SettingsModel : PageModel
     }
 
     // "769x953x1.875" → (769, 953, 1.875) in CSS pixels × dpr, as the "scr" cookie
-    // itself reports them — NOT multiplied together. Callers decide what to do with
+    // itself reports them - NOT multiplied together. Callers decide what to do with
     // the two numbers. null when absent/unparseable.
     //
     // The legacy 2-part cookie ("769x953", written before the script reported dpr) is

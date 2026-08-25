@@ -10,7 +10,7 @@ public readonly record struct FailureView(string Title, ConvertFailReason Reason
 
 // The convert "kick": HTTP-free orchestration that runs IN THE REQUEST SCOPE.
 // It fetches item detail (needs the ABS token), validates the format, computes
-// the per-device cache path, and — on a miss — captures the access token and
+// the per-device cache path, and - on a miss - captures the access token and
 // enqueues a background job. It never downloads or converts; ConvertWorker does
 // that on the app lifetime. Kept HTTP-free so it unit-tests without a request.
 public class ConvertService

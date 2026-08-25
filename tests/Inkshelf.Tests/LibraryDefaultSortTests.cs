@@ -11,7 +11,7 @@ using Microsoft.Extensions.Http;
 
 namespace Inkshelf.Tests;
 
-// The main listing defaults to newest-first, a FACET listing does not — ABS's own
+// The main listing defaults to newest-first, a FACET listing does not - ABS's own
 // order is the meaningful one there (series sequence). Asserted on the outgoing
 // ABS query, since that is where the default is applied.
 public class LibraryDefaultSortTests
@@ -80,7 +80,7 @@ public class LibraryDefaultSortTests
         Assert.Contains("desc=1", q);
         // …and the sort bar says so, rather than showing an unsorted-looking bar.
         Assert.Contains("Added &#x2193;", html);
-        // Next click turns sorting OFF, and says so in the query — an absent
+        // Next click turns sorting OFF, and says so in the query - an absent
         // sort now means the default, so the link would otherwise do nothing.
         Assert.Contains($"/library/{LibId}?sort={SortLinks.Off}\"", html);
     }

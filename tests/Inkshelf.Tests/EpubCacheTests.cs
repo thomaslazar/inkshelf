@@ -98,7 +98,7 @@ public class EpubCacheTests
     {
         var dir = TempDirPath();
         var c = new EpubCache(dir);
-        // A UUID-style id contains hyphens — must survive right-to-left parsing.
+        // A UUID-style id contains hyphens - must survive right-to-left parsing.
         var idA = "3f2a1b6c-dead-beef-0001-abcdef123456";
         File.WriteAllText(c.PathFor(idA, 100, 200, 1730, 2246), "e");
         File.WriteAllText(c.PathFor("i2", 55, 66, 800, 1000, grayscale: true), "e");
@@ -148,7 +148,7 @@ public class EpubCacheTests
     {
         // Marks live under the cache dir. What makes that safe is that every cache
         // glob is EXTENSION-scoped (*.epub, *.tmp) while a valid device id can never
-        // contain a dot — so recursion alone is harmless. The real risk is a WIDENED
+        // contain a dot - so recursion alone is harmless. The real risk is a WIDENED
         // pattern: change EnforceCap's "*.epub" to "*" and this test fails, because
         // eviction then counts and deletes the marks file.
         var dir = TempDirPath();
@@ -206,8 +206,8 @@ public class EpubCacheTests
     {
         // Dpr got away with being absent from the key while it was always implied by
         // WxH: under retina the cap IS css × dpr, and without retina it is always 1.
-        // An explicit override breaks that — 1000x2000 at dpr 1 and at dpr 2 are
-        // different EPUBs — so the second device would be served the first one's file.
+        // An explicit override breaks that - 1000x2000 at dpr 1 and at dpr 2 are
+        // different EPUBs - so the second device would be served the first one's file.
         var c = new EpubCache(TempDirPath());
         Assert.EndsWith("i1-1-2-800x1000-f.epub", c.PathFor("i1", 1, 2, 800, 1000));
         Assert.EndsWith("i1-1-2-800x1000-f-d1.875.epub", c.PathFor("i1", 1, 2, 800, 1000, dpr: 1.875));

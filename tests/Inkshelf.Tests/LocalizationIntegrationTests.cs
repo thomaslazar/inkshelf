@@ -52,7 +52,7 @@ public class LocalizationIntegrationTests : IClassFixture<LocalizationIntegratio
 
     // Regression: the convert-status labels are assigned in JS via nodeValue, which
     // does not decode HTML entities. They must be JS-escaped (JSON), not routed
-    // through Razor's HTML encoder — otherwise "Converting…" shows as the literal
+    // through Razor's HTML encoder - otherwise "Converting…" shows as the literal
     // "Converting&#x2026;". The layout renders on every page, so /login covers it.
     [Fact]
     public async Task Convert_js_labels_are_js_encoded_not_html_entities()

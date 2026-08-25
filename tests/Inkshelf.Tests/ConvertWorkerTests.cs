@@ -91,7 +91,7 @@ public class ConvertWorkerTests
     }
 
     // A DI provider whose AbsDownloadClient returns `ebook` for /ebook and throws a
-    // timeout-style TaskCanceledException for /cover — simulating an HttpClient
+    // timeout-style TaskCanceledException for /cover - simulating an HttpClient
     // request timeout, NOT an app-shutdown cancellation (the job's ct stays live).
     private static IServiceScopeFactory ScopeFactoryCoverThrows(byte[] ebook)
     {
@@ -121,7 +121,7 @@ public class ConvertWorkerTests
         new("item1", "tok", path, new EbookMeta("T", "A", null, null, "item1"),
             new RenderTarget(0, 0, 1.0, false), null, bytes);
 
-    // A download stub that always throws — proves the pre-download size check runs
+    // A download stub that always throws - proves the pre-download size check runs
     // BEFORE any download attempt.
     private static IServiceScopeFactory ScopeFactoryDownloadThrows()
     {
@@ -371,8 +371,8 @@ public class ConvertWorkerTests
         var path = cache.PathFor("item1", 1, 2, 0, 0);
         queue.Enqueue(Job(path));
 
-        // The stub throws TaskCanceledException on /cover — an OperationCanceledException
-        // subtype — but the worker's own token is never cancelled, so this must NOT
+        // The stub throws TaskCanceledException on /cover - an OperationCanceledException
+        // subtype - but the worker's own token is never cancelled, so this must NOT
         // fail the job; it must fall back to the first page like a missing cover.
         var worker = Worker(queue, ScopeFactoryCoverThrows(Cbz()), cache);
         await worker.StartAsync(default);

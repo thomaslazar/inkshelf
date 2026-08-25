@@ -62,7 +62,7 @@ public class EpubWriterTests
         Assert.DoesNotContain("213px", page);
         Assert.DoesNotContain("320px", page);
         Assert.Contains("max-width:100%;max-height:100%", page);
-        // Maxima only on the img — an outright width or height there is the trap.
+        // Maxima only on the img - an outright width or height there is the trap.
         var imgRule = Regex.Match(page, @"img\{([^}]*)\}").Groups[1].Value;
         Assert.NotEqual("", imgRule);
         Assert.DoesNotMatch(@"(?:^|;)(?:width|height):", imgRule);

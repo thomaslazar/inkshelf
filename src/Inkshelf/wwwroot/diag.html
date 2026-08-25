@@ -20,7 +20,7 @@
 <table id="out"><tbody></tbody></table>
 <h2>Raw result</h2>
 <p>This probe was reported to the server, which logged it. Read it there rather
-than off this screen — on a container install:</p>
+than off this screen - on a container install:</p>
 <p><code>docker logs inkshelf 2>&amp;1 | grep "Browser probe"</code></p>
 <p>The same data is in the box below, for the rare browser you can copy text
 from.</p>
@@ -62,8 +62,8 @@ from.</p>
   add('overflow-wrap', css('overflow-wrap', 'break-word'));
   add('media prefers-color-scheme', mq('(prefers-color-scheme: dark)'));
 
-  /* MEASURED, not asked. CSS.supports() is missing on the oldest engines — exactly
-     the ones whose answers matter — so render the declaration and read the geometry
+  /* MEASURED, not asked. CSS.supports() is missing on the oldest engines - exactly
+     the ones whose answers matter - so render the declaration and read the geometry
      back. Each test styles a throwaway element inside an off-screen host and
      compares what the engine actually did. */
   var meas = {};
@@ -168,7 +168,7 @@ from.</p>
 
   // The same payload in one block. Secondary on purpose: e-reader browsers
   // generally cannot select or copy text, so the server log is the real way out
-  // — this only helps when the probe is run from a desktop or phone.
+  // - this only helps when the probe is run from a desktop or phone.
   try { document.getElementById('raw').value = JSON.stringify(payload); } catch (e) {}
   var st = document.getElementById('status');
   try {

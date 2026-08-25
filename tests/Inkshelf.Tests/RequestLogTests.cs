@@ -51,7 +51,7 @@ public class RequestLogTests
         Assert.Contains("GET /settings?ovr=1&ovrw=1120", line);   // the query is the diagnosis
         Assert.Contains(" 200 ", line);
         // Bytes are what the app wrote, which for a complete response equals the body
-        // we received — and a complete response must NOT be flagged as short.
+        // we received - and a complete response must NOT be flagged as short.
         Assert.Contains($" {System.Text.Encoding.UTF8.GetByteCount(body)}b ", line);
         Assert.DoesNotContain("INCOMPLETE", line);
     }

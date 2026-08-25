@@ -32,7 +32,7 @@ public sealed class AbsOptions
     public bool DiagEnabled { get; set; } = true;
     // Offer login through the OIDC provider ABS is configured with. Off by
     // default; when off the /oidc endpoints are not mapped at all. Requires the
-    // operator to whitelist our callback URL in ABS — see README.
+    // operator to whitelist our callback URL in ABS - see README.
     public bool OidcEnabled { get; set; }
     // Provider name shown on the SSO button, substituted into the localized
     // "Log in with {0}". Null → "SSO". Deliberately not a whole-label override:
@@ -43,9 +43,9 @@ public sealed class AbsOptions
     public long MaxCacheBytes { get; set; } = 5_368_709_120;
     // Max bytes read from an ebook archive before conversion; larger archives are
     // refused (decompression-bomb guard). Spooled to a temp file, so this bounds
-    // disk not RAM. Default 1 GiB — comics are large.
+    // disk not RAM. Default 1 GiB - comics are large.
     public long MaxArchiveBytes { get; set; } = 1_073_741_824;
-    // Max conversions the background worker runs at once. Default 1 — a small
+    // Max conversions the background worker runs at once. Default 1 - a small
     // host must not run two ImageSharp resizes concurrently (CPU/RAM thrash).
     public int MaxConcurrentConversions { get; set; } = 1;
 }

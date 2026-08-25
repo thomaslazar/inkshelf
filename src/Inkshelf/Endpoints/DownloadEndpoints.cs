@@ -24,7 +24,7 @@ public static class DownloadEndpoints
                     return Results.File(stream, type, fileDownloadName: tk.DownloadName);
                 }
                 // A ticket is additive, never a gate: if ABS rejects its bearer, fall
-                // through to the cookie path — which a browser request has and which
+                // through to the cookie path - which a browser request has and which
                 // refreshes. Nothing is written to the response yet (AbsDownloadClient
                 // disposes and throws before yielding a stream), so this is clean.
                 catch (HttpRequestException) { }
@@ -49,7 +49,7 @@ public static class DownloadEndpoints
                 marks.Add(DeviceSettings.EnsureDid(ctx).Did, DownloadMarks.RawKey(id, null));
                 // ABS knows the size; the stream is a live network stream, so
                 // Results.File cannot work it out and the response would go out
-                // chunked. Ranges stay unadvertised — we can't serve them.
+                // chunked. Ranges stay unadvertised - we can't serve them.
                 ctx.Response.ContentLength = length;
                 return Results.File(stream, contentType, fileDownloadName: name);
             }

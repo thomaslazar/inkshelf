@@ -4,7 +4,7 @@ using System.Text;
 namespace Inkshelf.Convert;
 
 // Writes a fixed-layout EPUB from pre-processed page images. The XML is
-// string-built on purpose — dependency-free and epubcheck-clean; do NOT swap in
+// string-built on purpose - dependency-free and epubcheck-clean; do NOT swap in
 // an XML library (see the refactor spec's non-goals).
 public static class EpubWriter
 {
@@ -12,12 +12,12 @@ public static class EpubWriter
     // the image's pixel size, and the CSS viewport to declare for it.
     //
     // The viewport is NOT derived here: it needs the device cap and the user's page
-    // scale, which only the caller has. EpubConverter computes it — see the note there
+    // scale, which only the caller has. EpubConverter computes it - see the note there
     // on why it is not simply the image size divided by the pixel ratio.
     public sealed record Page(string Name, byte[] Bytes, int Width, int Height, int ViewW, int ViewH);
 
     // A processed cover image: its bytes and in-zip extension (with dot, e.g. ".jpg").
-    // Metadata-only — declared as the cover, never added to the spine.
+    // Metadata-only - declared as the cover, never added to the spine.
     public sealed record Cover(byte[] Bytes, string Ext);
 
     // Lightweight per-page record kept for the manifest/spine after the page's
@@ -26,7 +26,7 @@ public static class EpubWriter
 
     // Image sizing (the pixel cap, grayscale, spreads) is applied upstream in
     // PageImageProcessor; the CSS viewport arrives per page on Page.ViewW/ViewH. This
-    // writer does no geometry of its own — it lacked the inputs to do it correctly.
+    // writer does no geometry of its own - it lacked the inputs to do it correctly.
     public static async Task WriteAsync(string outPath, EbookMeta meta,
         IAsyncEnumerable<Page> pages, CancellationToken ct, Cover? cover = null)
     {
@@ -54,7 +54,7 @@ public static class EpubWriter
             await foreach (var p in pages.WithCancellation(ct))
             {
                 // Write the image + its xhtml, then keep only the light metadata so
-                // the page's bytes become collectable — one page live at a time.
+                // the page's bytes become collectable - one page live at a time.
                 using (var s = zip.CreateEntry($"OEBPS/img/{p.Name}").Open()) s.Write(p.Bytes);
                 var vw = Math.Max(1, p.ViewW);
                 var vh = Math.Max(1, p.ViewH);

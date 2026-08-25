@@ -76,7 +76,7 @@ public class DownloadTicketEndpointTests
     public async Task A_convert_ticket_marks_the_download_against_its_own_device()
     {
         // The cookie-less request has no settings cookie either, so without the
-        // ticket's did the app would mint a fresh one per download — the trail of
+        // ticket's did the app would mint a fresh one per download - the trail of
         // four device ids in 90 minutes seen on the shine.
         using var cache = new TempDir();
         using var keys = new TempDir();
@@ -198,7 +198,7 @@ public class DownloadTicketEndpointTests
     [Fact]
     public async Task An_expired_or_bogus_ticket_falls_through_to_the_cookie_path()
     {
-        // Additive, never a gate: with no cookie either, that path is today's 401 —
+        // Additive, never a gate: with no cookie either, that path is today's 401 -
         // never a worse outcome than before tickets existed.
         using var cache = new TempDir();
         using var keys = new TempDir();
@@ -290,7 +290,7 @@ public class DownloadTicketEndpointTests
     {
         // A ticket's bearer is never refreshed (this client's contract), so a
         // revoked or expired one must not become the answer: it falls through.
-        // With no cookie either, that path is today's 401 — never worse than
+        // With no cookie either, that path is today's 401 - never worse than
         // before tickets existed.
         var stub = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized));
         using var cache = new TempDir();

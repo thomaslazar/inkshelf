@@ -6,8 +6,8 @@ namespace Inkshelf;
 // One line per request: method, path with query, status, duration, bytes written.
 //
 // It exists because device problems were undiagnosable without it. The log held
-// only outbound ABS calls, so a comic served from the local cache — the case that
-// actually broke on a reader — made no entry at all, and a download that died
+// only outbound ABS calls, so a comic served from the local cache - the case that
+// actually broke on a reader - made no entry at all, and a download that died
 // mid-transfer looked identical to one that never happened.
 //
 // The QUERY is included. It is what makes a failure readable after the fact: which
@@ -18,8 +18,8 @@ namespace Inkshelf;
 // BYTES are what the app WROTE to the response body, which is not always what the
 // client received: Kestrel buffers, so a small response is fully written even if the
 // client walks away mid-read. The number is therefore exact for the case that
-// matters — a large file the app is still streaming when the connection dies, where
-// it stops short — and optimistic for anything that fits the buffer.
+// matters - a large file the app is still streaming when the connection dies, where
+// it stops short - and optimistic for anything that fits the buffer.
 //
 // INCOMPLETE marks the reliable version of that signal: the response declared a
 // Content-Length and fewer bytes than that were written. That is a transfer which

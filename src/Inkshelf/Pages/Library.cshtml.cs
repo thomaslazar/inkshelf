@@ -22,7 +22,7 @@ public class LibraryModel : PageModel
     [FromRoute] public string Id { get; set; } = "";
     [FromQuery] public string? Q { get; set; }
     // Filter by a facet. Either a ready-made ABS filter (from search groups,
-    // which carry ids), or an author/series NAME the row links carry — the
+    // which carry ids), or an author/series NAME the row links carry - the
     // list is always minified so rows only have names; we resolve name→id here.
     [FromQuery] public string? Filter { get; set; }
     [FromQuery] public string? Author { get; set; }
@@ -33,7 +33,7 @@ public class LibraryModel : PageModel
     [FromQuery(Name = "desc")] public string? DescParam { get; set; }
     public bool Desc => DescParam == "1";
 
-    // With no sort in the query the MAIN listing defaults to newest-first —
+    // With no sort in the query the MAIN listing defaults to newest-first -
     // landing on the oldest additions is the least useful page. A facet listing
     // is left alone: ABS's own order there is the meaningful one (series
     // sequence, and the "Sequence" sort link only exists in that branch).
@@ -109,7 +109,7 @@ public class LibraryModel : PageModel
     private string _did = "";
     // The bearer must be read AFTER every ABS call of this request: AbsAuthHandler
     // refreshes on a 401 mid-request, so a read taken before those calls is the
-    // token ABS is about to reject, and every raw ticket minted from it is dead —
+    // token ABS is about to reject, and every raw ticket minted from it is dead -
     // exactly on the cookie-less download-manager request tickets exist for.
     // Lazy, so the read happens in RowFor at view-render time (after every await)
     // and cannot be broken by a later await; cached, so the session cookie is not
@@ -145,7 +145,7 @@ public class LibraryModel : PageModel
         if (state == ConvertRowState.NotConvertible)
         {
             // Reached when the resolved state is NotConvertible because this item's
-            // batch metadata was unavailable (efm null) — not because _states misses
+            // batch metadata was unavailable (efm null) - not because _states misses
             // the key; both OnGetAsync branches store an entry for every item.
             var f = item.Media?.EbookFormat ?? item.Media?.EbookFile?.EbookFormat;
             if (f is "cbz" or "cbr") state = ConvertRowState.Convert;
@@ -203,7 +203,7 @@ public class LibraryModel : PageModel
             {
                 _filterGroup = d.Group; _filterValue = d.Value;
                 FilterType = Humanize(d.Group);
-                // genres/tags/narrators filter by NAME — the decoded value IS the label.
+                // genres/tags/narrators filter by NAME - the decoded value IS the label.
                 if (d.Group is "genres" or "tags" or "narrators") FilterName = d.Value;
             }
             else { FilterType = "Filter"; }
@@ -231,7 +231,7 @@ public class LibraryModel : PageModel
     }
 
     // Resolve a facet filter's display name from the fetched page's batch metadata
-    // — the filtered items carry the matching series/author ref (id + name), so no
+    // - the filtered items carry the matching series/author ref (id + name), so no
     // extra call is needed. Leaves FilterName null (→ just the type) when nothing
     // matches, e.g. an empty result set.
     private void RefineFilterLabel()

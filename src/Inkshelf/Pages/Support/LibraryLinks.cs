@@ -2,7 +2,7 @@ using Inkshelf.Abs;
 
 namespace Inkshelf.Pages;
 
-// Single source of truth for library listing URLs — used by the page (sort bar,
+// Single source of truth for library listing URLs - used by the page (sort bar,
 // pager) and the item-row partial. Built from the active facet context so
 // listing/sort links carry the current filter forward, while row links (by
 // author/series name, or by id) need only the library id.

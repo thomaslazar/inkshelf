@@ -20,7 +20,7 @@ public static class ConvertRowStateResolver
     }
 
     // Lower-level: state for one specific (itemId, file size+mtime, format), plus the
-    // cache path it was decided from — a download ticket has to hold that exact path.
+    // cache path it was decided from - a download ticket has to hold that exact path.
     public static (ConvertRowState State, string? Path) ResolveFor(string itemId, long size, long mtimeMs,
         string? fmt, RenderTarget target, EpubCache cache, ConvertQueue queue)
     {

@@ -10,7 +10,7 @@ namespace Inkshelf.Abs;
 // separate handler-free client, so it can never recurse through this handler.
 //
 // Scoped services (TokenStore, and the request-scoped AbsAuthClient) are
-// resolved from HttpContext.RequestServices per call — never constructor-
+// resolved from HttpContext.RequestServices per call - never constructor-
 // injected, because this handler is pooled by IHttpClientFactory for longer
 // than a request scope.
 public class AbsAuthHandler : DelegatingHandler
@@ -60,8 +60,8 @@ public class AbsAuthHandler : DelegatingHandler
 
     // Build a fresh request each attempt (an HttpRequestMessage can only be sent
     // once). Copy the incoming request's headers first so the User-Agent that the
-    // HttpClient applied before this handler ran survives onto the retry — the ABS
-    // proxy 403s an empty User-Agent — then set/overwrite the Bearer.
+    // HttpClient applied before this handler ran survives onto the retry - the ABS
+    // proxy 403s an empty User-Agent - then set/overwrite the Bearer.
     private async Task<HttpResponseMessage> SendOnce(HttpRequestMessage template,
         string bearer, byte[]? body, MediaTypeHeaderValue? contentType, CancellationToken ct)
     {

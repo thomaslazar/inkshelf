@@ -128,7 +128,7 @@ public class DownloadMarksTests
     public void Read_refreshes_the_files_timestamp_so_an_active_device_is_not_pruned()
     {
         // "Untouched" must mean "this device hasn't used the app", not "hasn't
-        // downloaded" — otherwise browsing for a month prunes your marks mid-use.
+        // downloaded" - otherwise browsing for a month prunes your marks mid-use.
         using var dir = new TempDir();
         var m = new DownloadMarks(dir.Path);
         m.Add(Did, DownloadMarks.RawKey("item1", null));

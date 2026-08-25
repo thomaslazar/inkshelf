@@ -74,7 +74,7 @@ public class ConvertServiceTests
     public async Task A_cache_hit_does_not_restamp_the_file()
     {
         // The cached EPUB's write time IS its conversion time, and /converted sorts
-        // on it. Serving a hit must not bump it — otherwise fetching an old comic
+        // on it. Serving a hit must not bump it - otherwise fetching an old comic
         // would reorder it to "newest conversion", and cap eviction would protect
         // volumes already on the reader while deleting ones not yet fetched.
         using var dir = new TempDir();

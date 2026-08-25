@@ -8,8 +8,8 @@ namespace Inkshelf.Endpoints;
 
 // Login through the OIDC provider ABS is configured with.
 //
-// ABS's own web callback flow is unusable from here — it demands a callback URL
-// on ABS's origin — so this drives the "mobile" flow ABS offers third-party
+// ABS's own web callback flow is unusable from here - it demands a callback URL
+// on ABS's origin - so this drives the "mobile" flow ABS offers third-party
 // clients. The twist is that leg 1 runs server-side: ABS's token exchange needs
 // the session and auth_method cookies from that leg, and the browser cannot pass
 // cookies set on ABS's origin to us.
@@ -37,7 +37,7 @@ public static class OidcEndpoints
                 or InvalidOperationException)
             {
                 // An unwhitelisted callback URL is the likely cause, so log the
-                // URL we sent — that line is the operator's fix.
+                // URL we sent - that line is the operator's fix.
                 logs.CreateLogger(typeof(OidcEndpoints)).LogWarning(ex,
                     "OIDC start failed. Is {RedirectUri} in the ABS mobile redirect URIs?",
                     redirectUri);

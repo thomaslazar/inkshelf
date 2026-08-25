@@ -8,19 +8,19 @@ namespace Inkshelf.Auth;
 
 // Per-device rendering preferences plus the favorite library, stored in one
 // server-written cookie via static Read/Set. Distinct from the JS-written "scr"
-// device probe — this is user CHOICE, scr is device TRUTH; the two are read
+// device probe - this is user CHOICE, scr is device TRUTH; the two are read
 // together where conversion happens.
 public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
 {
     public const string Cookie = "inkshelf_settings";
-    // Retina defaults ON — most readers want crisp pages; opt out per device.
+    // Retina defaults ON - most readers want crisp pages; opt out per device.
     // Lang "" = no explicit choice yet (resolved from Accept-Language at render).
     public static readonly DeviceSettings Default = new(true, false, "");
 
     public const string LegacyFavCookie = "inkshelf_fav_library";
 
     // An init property rather than a fourth positional parameter, so the ten
-    // existing `new DeviceSettings(a, b, c)` sites in the tests keep compiling —
+    // existing `new DeviceSettings(a, b, c)` sites in the tests keep compiling -
     // those tests are the regression net for this refactor. Record equality still
     // covers it and `with { Fav = ... }` still works.
     public string Fav { get; init; } = "";
@@ -36,7 +36,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     public int Scale { get; init; } = 100;
 
     // Lowest page scale accepted. The useful values turned out to be a percent or two
-    // below 100 — a fixed list of coarse steps could not express them — so this is a
+    // below 100 - a fixed list of coarse steps could not express them - so this is a
     // free number with a floor rather than a menu.
     public const int MinScale = 50;
 
@@ -62,12 +62,12 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // device's downloaded-file marks. An init property for the same reason as Fav:
     // the existing three-argument construction sites keep compiling.
     //
-    // NOT a secret and NOT derived from anything the browser exposes — we mint it,
+    // NOT a secret and NOT derived from anything the browser exposes - we mint it,
     // so no fingerprinting is involved and no privacy countermeasure applies to it.
     public string Did { get; init; } = "";
 
     // Keyed, NOT positional: "retina=1&gray=0&lang=de&fav=". Looks like a query
-    // string because it is parsed by QueryHelpers, but it is a cookie value —
+    // string because it is parsed by QueryHelpers, but it is a cookie value -
     // Response.Cookies.Append escapes the & and = to %26/%3D and the request side
     // unescapes them. Every key is always written, including empty ones: Read
     // distinguishes "key present but empty" from "key absent" and they mean
@@ -97,7 +97,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     }
 
     // The keys Serialize writes, and nothing else. A query carrying none of them
-    // is not a settings payload — `range`/`scalerange` are warning markers.
+    // is not a settings payload - `range`/`scalerange` are warning markers.
     private static readonly string[] Keys =
         ["retina", "gray", "lang", "fav", "did", "spread", "scale", "ovr", "ovrw", "ovrh", "ovrd"];
 
@@ -134,7 +134,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
         };
 
     // An absent key means "not specified", which must land on the DOCUMENTED
-    // default — retina defaults ON, so a plain `== "1"` would silently flip it off.
+    // default - retina defaults ON, so a plain `== "1"` would silently flip it off.
     // v[0], not v.ToString(): StringValues.ToString() joins a duplicated key
     // ("retina=1&retina=1") with a comma, so "1,1" would compare false and flip
     // the flag off instead of landing on the default like every other garbled value.
@@ -156,17 +156,17 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // bound: a typo'd 99999 is not a request for 4096, it is a mistake, and
     // silently converting at a size the user never asked for is worse than
     // falling back to the probe.
-    // NOT `Convert.ScreenTarget…` — `Convert` binds to System.Convert here, which is
+    // NOT `Convert.ScreenTarget…` - `Convert` binds to System.Convert here, which is
     // why this file already fully-qualifies System.Convert.ToHexString. The file's
     // `using Inkshelf.Convert;` makes the bare type name work.
     public static int SanitizeDim(int px) => px > 0 && px <= ScreenTarget.MaxDimension ? px : 0;
 
     // Lower bound is 1, not 0: EpubWriter.WriteAsync documents "pxPerCss >= 1", and
     // dpr is the only input that can violate it. A dpr below 1 would enlarge the
-    // declared viewport past the physical screen — pages clipped to a corner, the
+    // declared viewport past the physical screen - pages clipped to a corner, the
     // exact disease this override cures.
     // Rounded on the way in, so the cookie carries "1.325" rather than the raw
-    // float-widened "1.3250000476837158" — see ScreenTarget.RoundDpr.
+    // float-widened "1.3250000476837158" - see ScreenTarget.RoundDpr.
     public static double SanitizeDpr(double dpr) =>
         dpr >= 1 && dpr <= ScreenTarget.MaxDpr ? ScreenTarget.RoundDpr(dpr) : 0;
 
@@ -203,7 +203,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
         return s;
     }
 
-    // Returns the settings as written, including any id minted here — the download
+    // Returns the settings as written, including any id minted here - the download
     // endpoints need it to record a mark for a device seen for the first time.
     // Minting lives in Set so that no call site can write this cookie without an
     // id; every write path (POST /settings, POST /favorite, Index's stale-favorite

@@ -12,9 +12,9 @@ namespace Inkshelf.Convert;
 // split returns TWO images, in reading order, so the result is always a list.
 //
 // padToBox letterboxes the result onto exactly maxWidth × maxHeight, which is how
-// every page in a book ends up the same size — see EpubConverter's page box.
+// every page in a book ends up the same size - see EpubConverter's page box.
 //
-// EVERY mode emits a portrait-shaped page — Fit pads the spread onto the full
+// EVERY mode emits a portrait-shaped page - Fit pads the spread onto the full
 // cap box rather than leaving a wide page behind. That is the whole point, not
 // tidiness: a wide fixed-layout viewport is what the e-reader mishandles (it
 // letterboxes vertically AND clips ~10% off the right edge). Padding reduces the
@@ -52,7 +52,7 @@ public static class PageImageProcessor
         var (w, h) = rotate ? (info.Height, info.Width) : (info.Width, info.Height);
         var box = maxWidth > 0 && maxHeight > 0;
         var oversized = box && (w > maxWidth || h > maxHeight);
-        // An image already exactly the box needs no padding — the common case for an
+        // An image already exactly the box needs no padding - the common case for an
         // ordinary page, and it keeps the pass-through path below alive.
         var needsPad = padToBox && box && (w != maxWidth || h != maxHeight);
         if (oversized || rotate || needsPad || extension == ".webp" || grayscale)

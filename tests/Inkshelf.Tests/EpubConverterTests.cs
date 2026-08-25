@@ -193,7 +193,7 @@ public class EpubConverterTests
     public async Task Scale_shrinks_the_declared_viewport_but_not_the_image()
     {
         // The manual fix for a reader that cuts a strip off the page. The IMAGE must keep
-        // its pixels — only the CSS box shrinks — or the knob would cost sharpness.
+        // its pixels - only the CSS box shrinks - or the knob would cost sharpness.
         var full = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
         var small = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
         var target = new RenderTarget(600, 900, 1, false) { Spread = SpreadMode.Fit };
@@ -225,7 +225,7 @@ public class EpubConverterTests
 
     private static MemoryStream SmallScansCbz()
     {
-        // 1125x1600 scans — the real proportions of a book that rendered small on
+        // 1125x1600 scans - the real proportions of a book that rendered small on
         // device, and smaller than the cap used below.
         var ms = new MemoryStream();
         using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
@@ -242,7 +242,7 @@ public class EpubConverterTests
     {
         // The reader lays a page out at its declared CSS size and never scales it UP,
         // so a viewport of image px ÷ dpr drew a low-resolution book small with dead
-        // margin around it — 1125x1600 scans on a 1442x1787 screen came out at 78% of
+        // margin around it - 1125x1600 scans on a 1442x1787 screen came out at 78% of
         // the width. The viewport is scaled to the cap instead, while the IMAGE keeps
         // its own pixels: no extra bytes, and the reader does the upscaling.
         var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");

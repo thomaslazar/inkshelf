@@ -61,7 +61,7 @@ public class AbsAuthHandlerTests
         // Seed the cookie (if any) BEFORE pointing the shared accessor at ctx.
         // IHttpContextAccessor.HttpContext is backed by a static AsyncLocal shared
         // across every instance in this call context, so the throwaway accessor
-        // below — used only to run TokenStore.Save against a scratch context —
+        // below - used only to run TokenStore.Save against a scratch context -
         // would otherwise clobber what `accessor` (and thus AbsAuthHandler) sees.
         if (withToken)
         {
