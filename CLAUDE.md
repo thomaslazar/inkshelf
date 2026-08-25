@@ -4,10 +4,14 @@
 be brief
 
 ## Never use em or en dashes
-No em dashes (`-`) and no en dashes (`-`), anywhere, ever. Not in code, not in
-comments, not in documentation, not in commit messages, not in PR text, not in
+No em dashes (U+2014) and no en dashes (U+2013), anywhere, ever. Not in code, not
+in comments, not in documentation, not in commit messages, not in PR text, not in
 chat. Use a plain hyphen `-`, a comma, or two sentences. This is absolute and has
-no exceptions, including in German text where `-` would be conventional.
+no exceptions, including in German text where an en dash would be conventional.
+
+The characters are named by codepoint above on purpose: writing them out would
+make this file the one place in the repo that still contains them, and a sweep
+would silently flatten the rule into nonsense. It already did once.
 
 ## What this is
 Inkshelf - thin, server-rendered web client for the Audiobookshelf (ABS) API.
