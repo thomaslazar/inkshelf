@@ -34,11 +34,13 @@ marks.
 
 ## I tapped Download and nothing arrived
 
-If the reader brought the page back from its own cache — the page you land on
-first after restarting the browser often is one — its download links are stale,
-and the part of the device that actually fetches the file has nothing to
-authorise itself with. Go to the book again from the library and download from
-that page.
+The page's download links have gone stale, and the part of the device that
+actually fetches the file has nothing to authorise itself with. Two things cause
+it: the reader brought the page back from its own cache (the page you land on
+first after restarting the browser often is one), or Inkshelf itself has been
+restarted or updated since the page was opened.
+
+Either way, go to the book again from the library and download from that page.
 
 ## Where do I find my device's numbers?
 

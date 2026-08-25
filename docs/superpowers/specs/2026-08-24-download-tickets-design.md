@@ -153,6 +153,15 @@ and reloading the page fixes that. Adding a refresh to the ticket path would mea
 holding a refresh token in the table, which buys an edge case and costs the
 table's blast radius — no refresh token ever enters the table.
 
+A restart empties the table, so the download links on any page already open stop
+resolving until that page is re-rendered — in a deployment that means every
+update. Where cookies persist the browser's own request still succeeds and only
+the manager's fails; on a reader whose manager sends none, the download fails
+until the page is reloaded. Observed on the shine on 2026-08-25: two attempts
+answered 401 on pre-restart tickets, then the same comic downloaded in full once
+the listing had been reloaded. Navigating is the whole remedy, which is why it is
+an accepted cost rather than a reason to persist the table.
+
 In-memory state is right here: we are one sidecar container, tickets are minted
 per page render, and losing the table on restart costs nothing. Growth is bounded
 by authenticated page renders and by the 15-minute window. Accepted risk: the
