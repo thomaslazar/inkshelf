@@ -33,11 +33,16 @@ When the name is not known the line is exactly what it is today — bare
 
 ## Where the name comes from
 
-ABS returns the user object on **both** login and refresh — `/login` and
-`/auth/refresh` both answer through `handleLoginSuccess` (`server/Auth.js:263`,
-`:324`) — and `AbsAuthClient.ReadTokens` already parses that object to pull the
-tokens out of it. So the name arrives with the credentials we already read, on
-either path, for both password and OIDC login.
+ABS returns the user object on **both** login and refresh, though by different
+routes: `/login` (`server/Auth.js:320`) calls `handleLoginSuccess`
+(`server/Auth.js:294`), which calls `getUserLoginResponsePayload`
+(`server/Auth.js:96`); `/auth/refresh` (`server/Auth.js:329`) calls
+`getUserLoginResponsePayload` directly after `handleRefreshToken`, without going
+through `handleLoginSuccess`. Both paths include `username` via
+`toOldJSONForBrowser` (`server/models/User.js:596`), and
+`AbsAuthClient.ReadTokens` already parses that object to pull the tokens out of
+it. So the name arrives with the credentials we already read, on either path,
+for both password and OIDC login.
 
 It is then stored in the session cookie beside the tokens, which means **no extra
 ABS call anywhere**: the libraries page reads a cookie it already decrypts, and
@@ -62,6 +67,32 @@ The name goes **last**. ABS usernames are not newline-free by contract, and
 putting the name after the tokens means a newline inside it cannot shift the
 token fields — the worst case is a display string with a line break in it, which
 the view HTML-encodes anyway.
+
+### Rolling back
+
+The reverse direction — a three-part cookie meeting an old build — was also
+worked through, because it is not free the way the upgrade is. The old `Read`
+does `Split('\n', 2)`, which on `"acc\nref\nalice"` returns two parts: it
+*accepts* the cookie, with the username glued onto the refresh token. The access
+token is untouched, so the rolled-back device keeps browsing until that access
+token expires. On the first 401 the refresh sends the mangled value as an HTTP
+header, which throws — a newline is not a legal header value — before anything
+leaves the process, so nothing is sent upstream and nothing is logged. The
+handler catches that, clears the session, and the device lands on `/login`. Net
+cost: every signed-in device is signed out exactly once, deferred to its first
+token refresh after the rollback — one hand-typed password on an e-reader
+keyboard. Logging back in on the old build writes two fields again, so rolling
+forward afterwards just re-learns the name. No wedged state either direction.
+
+This is why the format stays a plain `access \n refresh \n username` rather than
+something that would degrade more gracefully on rollback. A version prefix fares
+no better — the old parser would read the prefix as the access token and still
+fail the same way on refresh — and it adds a field for one direction of a rare
+operation. A separate cookie just for the name was rejected for a sharper
+reason: it would outlive the session it names — surviving a logout, or a
+session that simply expires — so a shared reader could go on showing a name
+next to libraries that account can no longer reach: the exact confusion this
+feature exists to prevent.
 
 ## Components
 

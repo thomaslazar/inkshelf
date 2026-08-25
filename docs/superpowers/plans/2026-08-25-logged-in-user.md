@@ -37,7 +37,7 @@
 - `src/Inkshelf/Auth/TokenStore.cs` — write three fields, parse two or three.
 - `src/Inkshelf/Pages/Index.cshtml.cs` — expose the name.
 - `src/Inkshelf/Pages/Index.cshtml` — render it.
-- `src/Inkshelf/locales/en.json`, `de.json` — one key.
+- `src/Inkshelf/locales/de.json` — one key. English needs no file: `LocalizationCatalog.Get` returns the key itself on a miss, and the key is the English string.
 - `tests/Inkshelf.Tests/TokenStoreTests.cs`, `AbsAuthClientTests.cs`.
 - `tools/uicheck/Program.cs` — assert it on the authed German pass.
 
@@ -306,7 +306,7 @@ does), so the store just has to exist and be constructible.
 
 - [ ] **Step 5: Add the locale key**
 
-`en.json`: `"User: {0}": "User: {0}"`. `de.json`: `"User: {0}": "Benutzer: {0}"`. Insert each in the file's existing key order and keep the JSON valid.
+`de.json`: `"User: {0}": "Benutzer: {0}"`. Insert it in the file's existing key order and keep the JSON valid. No `en.json` exists or is needed — `LocalizationCatalog.Get` returns the key itself on a miss, and the key `"User: {0}"` already reads as English.
 
 - [ ] **Step 6: Run the tests**
 
