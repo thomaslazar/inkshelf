@@ -119,6 +119,26 @@ public class ListingRenderTests
     }
 
     [Fact]
+    public async Task The_breadcrumb_library_name_links_to_the_unfiltered_listing()
+    {
+        // On a reader the crumb is the only target that never moves, so it is how a
+        // filter or a search gets dropped. Its href must therefore carry no query,
+        // even when the current page does.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var plain = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+        Assert.Contains($"<a href=\"/library/{LibId}\">Test Library</a>", plain);
+
+        var sorted = LibraryRequest(factory);
+        sorted.RequestUri = new Uri($"/library/{LibId}?sort=title&desc=true", UriKind.Relative);
+        var html = await (await client.SendAsync(sorted)).Content.ReadAsStringAsync();
+        Assert.Contains($"<a href=\"/library/{LibId}\">Test Library</a>", html);
+    }
+
+    [Fact]
     public async Task A_downloaded_action_renders_the_arrow_and_an_unmarked_one_does_not()
     {
         using var cacheDir = new TempDir();

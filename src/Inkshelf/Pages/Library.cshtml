@@ -8,7 +8,10 @@
 <div class="page-head" id="top">
     <h1 class="page-title">
         <a href="/?all=1" class="home-link" title="@L["Libraries"]"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a>
-        <a href="/?all=1">@L["Libraries"]</a> <span class="crumb-sep">›</span> @Model.LibraryName
+        @* The library name stays a link even on its own page: it is the one target
+           that is always in the same place, so tapping it is how you drop a filter
+           or a search without hunting for the inline "clear" button. *@
+        <a href="/?all=1">@L["Libraries"]</a> <span class="crumb-sep">›</span> <a href="/library/@Model.Id">@Model.LibraryName</a>
     </h1>
     <form class="fav-form" method="post" action="/favorite">
         @Html.AntiForgeryToken()
