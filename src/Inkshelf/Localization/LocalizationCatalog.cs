@@ -33,14 +33,14 @@ public sealed class LocalizationCatalog
            && !string.IsNullOrWhiteSpace(n) ? n : lang;
 
     // Load every *.json in dir. A malformed/unreadable file is logged and skipped
-    // — a bad translation file must never crash the sidecar. Missing dir → empty.
+    // - a bad translation file must never crash the sidecar. Missing dir → empty.
     public static LocalizationCatalog Load(string dir, ILogger? logger = null)
         => Load([dir], logger);
 
     // Load and merge *.json across dirs, in order: languages union, and later
     // dirs win per-key (so an override dir can add a language or replace a few
     // strings without copying the whole baseline file). Malformed/unreadable
-    // files are logged and skipped — loading must never crash the sidecar.
+    // files are logged and skipped - loading must never crash the sidecar.
     public static LocalizationCatalog Load(IReadOnlyList<string> dirs, ILogger? logger = null)
     {
         var merged = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);

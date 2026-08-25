@@ -93,7 +93,7 @@ public class ConvertedRenderTests
         return await (await client.SendAsync(Request(factory, "/converted" + query))).Content.ReadAsStringAsync();
     }
 
-    // b2 converted most recently, then c3, then a1 — deliberately not the
+    // b2 converted most recently, then c3, then a1 - deliberately not the
     // alphabetical, series or author order.
     private static (string, DateTime)[] Seed() =>
     [
@@ -195,7 +195,7 @@ public class ConvertedRenderTests
     public async Task Default_views_converted_link_toggles_to_ascending_not_desc_again()
     {
         // The applied direction is already descending, so clicking "Converted"
-        // from the default view must offer the OTHER direction (no &desc=1) —
+        // from the default view must offer the OTHER direction (no &desc=1) -
         // not re-request the descending order already shown.
         var html = await GetConvertedAsync("", Seed());
         Assert.Contains("/converted?sort=converted\"", html);
@@ -284,13 +284,13 @@ public class ConvertedRenderTests
         var html = await (await client.SendAsync(Request(factory, "/converted"))).Content.ReadAsStringAsync();
 
         Assert.Contains("My Comic", html);
-        // Cached state, keyed on the title only that branch renders — a bare ">EPUB"
+        // Cached state, keyed on the title only that branch renders - a bare ">EPUB"
         // would also match a raw epub file's format label.
         Assert.Contains("title=\"Already converted", html);      // cached state (current ebook)
         Assert.Contains($"/library/{LibId}?filter=", html);     // series/author link into the item's library
 
         // Both hrefs are re-requested by a cookie-less download manager (issue #40),
-        // so each must carry a ticket — not just the listing's rows.
+        // so each must carry a ticket - not just the listing's rows.
         Assert.Matches($"href=\"/download/{ItemId}\\?t=[A-Za-z0-9_-]{{22}}\"", html);
         Assert.Matches($"href=\"/convert/{ItemId}\\?return=[^\"]*&amp;t=[A-Za-z0-9_-]{{22}}\"", html);
     }
@@ -329,7 +329,7 @@ public class ConvertedRenderTests
     {
         // The device's target has Dpr 1 (the request's "scr" cookie carries no
         // retina/override, so FromCookie returns Dpr 1). A cache file that differs
-        // from the target ONLY in Dpr must not be treated as a match — otherwise a
+        // from the target ONLY in Dpr must not be treated as a match - otherwise a
         // device would be served a variant sized for a different pixel ratio.
         using var cacheDir = new TempDir();
         using var keysDir = new TempDir();
@@ -381,7 +381,7 @@ public class ConvertedRenderTests
         var html = await (await client.SendAsync(Request(factory, "/?all=1"))).Content.ReadAsStringAsync();
         Assert.Contains("href=\"/converted\"", html);
         // The title icon is a home link, and the deployed version renders (a real
-        // number, not the literal Razor expression — guards the v@Model email trap).
+        // number, not the literal Razor expression - guards the v@Model email trap).
         Assert.Contains("<a href=\"/?all=1\" class=\"home-link\"", html);
         Assert.Matches(@"Inkshelf v\d+\.\d+", html);
         Assert.DoesNotContain("@Model", html);

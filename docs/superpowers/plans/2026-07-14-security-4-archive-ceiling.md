@@ -1,17 +1,17 @@
-# Security #4 — Archive size ceiling — Implementation Plan
+# Security #4 - Archive size ceiling - Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Stop a decompression-bomb / oversized CBZ from OOMing the sidecar by bounding how many bytes `ConvertService` will buffer from the ebook stream.
 
-**Architecture:** `ConvertService` copies the ebook stream into its `MemoryStream` through a bounded copy that aborts once `AbsOptions.MaxArchiveBytes` (config `MaxArchiveBytes`, default 500 MB) is exceeded; on abort it logs a warning and returns `ConvertOutcome.NotFound` (the endpoint's existing "can't convert" signal — no new outcome kind). The bounded copy lands inside the already-locked convert-on-miss block from #5.
+**Architecture:** `ConvertService` copies the ebook stream into its `MemoryStream` through a bounded copy that aborts once `AbsOptions.MaxArchiveBytes` (config `MaxArchiveBytes`, default 500 MB) is exceeded; on abort it logs a warning and returns `ConvertOutcome.NotFound` (the endpoint's existing "can't convert" signal - no new outcome kind). The bounded copy lands inside the already-locked convert-on-miss block from #5.
 
 **Tech Stack:** .NET 10, xUnit.
 
 ## Global Constraints
 
 - New config on `AbsOptions` (key `MaxArchiveBytes`, default `524288000` = 500 MB). `dotnet test` green.
-- Legitimate archives (well under 500 MB; conversion downscales anyway) convert exactly as before — only oversized/bomb inputs are refused.
+- Legitimate archives (well under 500 MB; conversion downscales anyway) convert exactly as before - only oversized/bomb inputs are refused.
 - Deterministic bound: abort during the copy (never buffer more than ~one chunk past the limit). No temp-file spooling.
 - Conventional Commits; no `Co-Authored-By`. Branch `security/hardening`.
 
@@ -74,10 +74,10 @@ Then add the test (a cbz detail with an empty cache → the convert path runs; t
     }
 ```
 
-- [ ] **Step 4: Run — verify fail**
+- [ ] **Step 4: Run - verify fail**
 
 Run: `dotnet test --filter FullyQualifiedName~ConvertServiceTests`
-Expected: FAIL to compile first (the `Service` helper gains a parameter — pre-existing callers still compile via the default; the new test references it), then the new test FAILS because the ceiling isn't enforced yet (conversion proceeds / throws instead of returning `NotFound`).
+Expected: FAIL to compile first (the `Service` helper gains a parameter - pre-existing callers still compile via the default; the new test references it), then the new test FAILS because the ceiling isn't enforced yet (conversion proceeds / throws instead of returning `NotFound`).
 
 - [ ] **Step 5: Enforce the ceiling in `ConvertService`**
 
@@ -99,7 +99,7 @@ with a bounded copy that bails out past the ceiling:
                     {
                         if (!await CopyWithLimitAsync(archive, buffered, _options.MaxArchiveBytes, ct))
                         {
-                            _logger.LogWarning("Archive for {Id} exceeds {Limit} bytes — refusing to convert.", id, _options.MaxArchiveBytes);
+                            _logger.LogWarning("Archive for {Id} exceeds {Limit} bytes - refusing to convert.", id, _options.MaxArchiveBytes);
                             return ConvertOutcome.NotFound;
                         }
                     }
@@ -127,12 +127,12 @@ Add the helper (alongside `Sanitize`):
     }
 ```
 
-Note: the early `return ConvertOutcome.NotFound` sits inside the `using (await _lock.AcquireAsync(...))` block — the `using` disposes the lock on the way out, so the semaphore is released correctly. No file was written, so nothing to touch/clean.
+Note: the early `return ConvertOutcome.NotFound` sits inside the `using (await _lock.AcquireAsync(...))` block - the `using` disposes the lock on the way out, so the semaphore is released correctly. No file was written, so nothing to touch/clean.
 
-- [ ] **Step 6: Run ConvertService tests — GREEN**
+- [ ] **Step 6: Run ConvertService tests - GREEN**
 
 Run: `dotnet test --filter FullyQualifiedName~ConvertServiceTests`
-Expected: PASS — the new ceiling test plus the existing three (NotFound wrong-format, File cached, Warmed cached; the cached ones pre-write the file so they never reach the copy).
+Expected: PASS - the new ceiling test plus the existing three (NotFound wrong-format, File cached, Warmed cached; the cached ones pre-write the file so they never reach the copy).
 
 - [ ] **Step 7: Full suite**
 
@@ -152,10 +152,10 @@ git commit -m "feat: bound archive buffering with a MaxArchiveBytes ceiling"
 
 **Spec coverage (#4):** archive buffering bounded by `MaxArchiveBytes` (default 500 MB) via a copy that aborts past the limit; over-limit → warning log + `ConvertOutcome.NotFound` (reuses the existing outcome, no new kind); no temp-file spooling. ✓
 
-**Placeholder scan:** None — the new test asserts `NotFound` when the streamed bytes exceed a tiny cap.
+**Placeholder scan:** None - the new test asserts `NotFound` when the streamed bytes exceed a tiny cap.
 
 **Type consistency:** `AbsOptions.MaxArchiveBytes` used in `Program.cs` binding + `ConvertService`. `CopyWithLimitAsync(Stream, Stream, long, CancellationToken) : Task<bool>` matches its single call site. `Service` helper's new optional `maxArchiveBytes` parameter defaults to `long.MaxValue`, so the three existing tests are unaffected.
 
-**Interaction with #5:** the bounded copy and its early `return` are inside the `using (await _lock…)` block — the lock releases on return; correct. The ceiling check happens before any `.tmp` is written, so an over-limit request never creates a partial cache file.
+**Interaction with #5:** the bounded copy and its early `return` are inside the `using (await _lock…)` block - the lock releases on return; correct. The ceiling check happens before any `.tmp` is written, so an over-limit request never creates a partial cache file.
 
 **Scope:** One task. Only the docs step remains after this.

@@ -12,7 +12,7 @@
 
 - **No AOT.** .NET 10, ASP.NET Core Razor Pages for HTML, minimal APIs for streams/actions.
 - **Near-zero client JS.** No new JavaScript. Plain `<form>` and `<a>` only.
-- **Defensive CSS only** — no `object-fit`, no flex `gap` (old e-reader engines).
+- **Defensive CSS only** - no `object-fit`, no flex `gap` (old e-reader engines).
 - **Cookie `Secure` rule:** every cookie writer uses `Secure = ForceSecureCookies || Request.IsHttps` (never bare `Request.IsHttps`). Read `ForceSecureCookies` from `AbsOptions` via `RequestServices`, exactly as `Favorites.Set` does.
 - **Conventional Commits**, imperative lowercase subject. **No** `Co-Authored-By` / "Generated with" lines.
 - `dotnet test` from the repo root (inside the devcontainer) must stay green after every task.
@@ -128,7 +128,7 @@ public class DeviceSettingsTests
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --filter DeviceSettingsTests`
-Expected: FAIL — `DeviceSettings` does not exist (compile error).
+Expected: FAIL - `DeviceSettings` does not exist (compile error).
 
 - [ ] **Step 3: Write the implementation**
 
@@ -141,7 +141,7 @@ namespace Inkshelf.Auth;
 
 // Per-device rendering preferences, stored in a server-written cookie. Modeled
 // on Favorites: static Read/Set, same cookie-flag rules. Distinct from the
-// JS-written "scr" device probe — this is user CHOICE, scr is device TRUTH; the
+// JS-written "scr" device probe - this is user CHOICE, scr is device TRUTH; the
 // two are read together where conversion happens.
 public sealed record DeviceSettings(bool Retina, bool Grayscale)
 {
@@ -198,7 +198,7 @@ git commit -m "feat: add DeviceSettings per-device settings cookie"
 
 ### Task 2: `RenderTarget` record + `ScreenTarget` rework + dpr-clamp fix
 
-Replace the `const bool Retina` with a `retina` parameter, add a `grayscale` passthrough, return a `RenderTarget` record, and fix the security bug: clamp dimensions **after** multiplying by `dpr`, and bound `dpr`. Update the two call sites to consume the record (still passing `retina:false, grayscale:false` — behavior stays identical this task; the cookie is wired in Task 6).
+Replace the `const bool Retina` with a `retina` parameter, add a `grayscale` passthrough, return a `RenderTarget` record, and fix the security bug: clamp dimensions **after** multiplying by `dpr`, and bound `dpr`. Update the two call sites to consume the record (still passing `retina:false, grayscale:false` - behavior stays identical this task; the cookie is wired in Task 6).
 
 **Files:**
 - Create: `src/Inkshelf/Convert/RenderTarget.cs`
@@ -314,7 +314,7 @@ public class ScreenTargetTests
 - [ ] **Step 3: Run the tests to verify they fail**
 
 Run: `dotnet test --filter ScreenTargetTests`
-Expected: FAIL — `FromCookie` signature/return type and `MaxDpr` don't exist yet (compile error).
+Expected: FAIL - `FromCookie` signature/return type and `MaxDpr` don't exist yet (compile error).
 
 - [ ] **Step 4: Rewrite `ScreenTarget`**
 
@@ -332,7 +332,7 @@ public static class ScreenTarget
     public const int MaxDimension = 4096;
 
     // Upper bound on the client-supplied device-pixel-ratio. Bounded because it
-    // multiplies the page dimensions under retina — an unbounded dpr would blow
+    // multiplies the page dimensions under retina - an unbounded dpr would blow
     // past MaxDimension's intent.
     public const double MaxDpr = 4.0;
 
@@ -426,7 +426,7 @@ git commit -m "feat: introduce RenderTarget and parameterize ScreenTarget retina
 
 ### Task 3: Grayscale marker in the EPUB cache key
 
-Colour and grayscale variants at the same dimensions must not collide on disk. Add an optional `grayscale` parameter to `EpubCache.PathFor`/`TryGet` (default `false` keeps existing callers compiling; wired for real in Tasks 5–6).
+Colour and grayscale variants at the same dimensions must not collide on disk. Add an optional `grayscale` parameter to `EpubCache.PathFor`/`TryGet` (default `false` keeps existing callers compiling; wired for real in Tasks 5-6).
 
 **Files:**
 - Modify: `src/Inkshelf/Convert/EpubCache.cs`
@@ -463,7 +463,7 @@ public void PathFor_grayscale_uses_g_marker()
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --filter EpubCacheTests`
-Expected: FAIL — `PathFor` has no `grayscale` parameter (compile error).
+Expected: FAIL - `PathFor` has no `grayscale` parameter (compile error).
 
 - [ ] **Step 3: Implement the marker**
 
@@ -483,11 +483,11 @@ public bool TryGet(string itemId, long size, long mtimeMs, int maxW, int maxH, b
 }
 ```
 
-(`RemoveForItem` still matches `{itemId}-*.epub`, which covers the `-g` variants — no change.)
+(`RemoveForItem` still matches `{itemId}-*.epub`, which covers the `-g` variants - no change.)
 
 - [ ] **Step 4: Fix the existing `TryGet` call sites**
 
-`TryGet`'s new `grayscale` parameter is **required** (an optional parameter can't precede the `out` parameter). Update the three existing calls in `tests/Inkshelf.Tests/EpubCacheTests.cs` (lines ~52–54) to pass `false`:
+`TryGet`'s new `grayscale` parameter is **required** (an optional parameter can't precede the `out` parameter). Update the three existing calls in `tests/Inkshelf.Tests/EpubCacheTests.cs` (lines ~52-54) to pass `false`:
 
 ```csharp
 Assert.False(c.TryGet("i1", 1, 1, 0, 0, false, out _));
@@ -495,7 +495,7 @@ Assert.False(c.TryGet("i1", 2, 2, 800, 1000, false, out _));
 Assert.True(c.TryGet("i2", 1, 1, 0, 0, false, out _));
 ```
 
-(The `PathFor` calls in that file are unaffected — its `grayscale` parameter defaults to `false`.)
+(The `PathFor` calls in that file are unaffected - its `grayscale` parameter defaults to `false`.)
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
@@ -513,11 +513,11 @@ git commit -m "feat: key the EPUB cache on grayscale"
 
 ### Task 4: Grayscale desaturation in `PageImageProcessor`
 
-When grayscale is requested, every page is decoded, desaturated, and re-encoded as JPEG — including in-bounds non-WebP images that would otherwise pass through untouched.
+When grayscale is requested, every page is decoded, desaturated, and re-encoded as JPEG - including in-bounds non-WebP images that would otherwise pass through untouched.
 
 **Files:**
 - Modify: `src/Inkshelf/Convert/PageImageProcessor.cs`
-- Modify: `src/Inkshelf/Convert/EpubConverter.cs` (caller — pass `grayscale: false` literal for now; wired in Task 5)
+- Modify: `src/Inkshelf/Convert/EpubConverter.cs` (caller - pass `grayscale: false` literal for now; wired in Task 5)
 - Test: `tests/Inkshelf.Tests/PageImageProcessorTests.cs` (add cases)
 
 **Interfaces:**
@@ -572,7 +572,7 @@ var r = await PageImageProcessor.ProcessAsync(bytes, ".jpg", 0, 0, grayscale: fa
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --filter PageImageProcessorTests`
-Expected: FAIL — `ProcessAsync` has no `grayscale` parameter (compile error).
+Expected: FAIL - `ProcessAsync` has no `grayscale` parameter (compile error).
 
 - [ ] **Step 3: Implement grayscale**
 
@@ -637,7 +637,7 @@ Carry the full render target (incl. grayscale) from the endpoint down to the cac
 - Modify: `src/Inkshelf/Convert/ConvertWorker.cs`
 - Modify: `src/Inkshelf/Convert/EpubConverter.cs`
 - Modify: `src/Inkshelf/Endpoints/ConvertEndpoints.cs`
-- Test (adjust call sites — see Step 6): `tests/Inkshelf.Tests/ConvertServiceTests.cs`, `tests/Inkshelf.Tests/EpubConverterTests.cs`, `tests/Inkshelf.Tests/ConvertWorkerTests.cs`, `tests/Inkshelf.Tests/ListingRenderTests.cs`
+- Test (adjust call sites - see Step 6): `tests/Inkshelf.Tests/ConvertServiceTests.cs`, `tests/Inkshelf.Tests/EpubConverterTests.cs`, `tests/Inkshelf.Tests/ConvertWorkerTests.cs`, `tests/Inkshelf.Tests/ListingRenderTests.cs`
 
 **Interfaces:**
 - Consumes: `RenderTarget` (Task 2), `EpubCache.PathFor(..., grayscale)` (Task 3), `PageImageProcessor.ProcessAsync(..., grayscale, ct)` (Task 4).
@@ -761,7 +761,7 @@ var result = await convert.KickAsync(id, fresh is "1" or "true", t, ct);
 
 The `ConvertJob`, `ConvertService`, and `EpubConverter.ConvertAsync` signature changes break several existing test files. Update every one so the tree compiles (add `using Inkshelf.Convert;` where missing):
 
-**`tests/Inkshelf.Tests/ConvertServiceTests.cs`** — every `KickAsync`/`StatusAsync` call (lines ~55, 67, 83, 96, 109):
+**`tests/Inkshelf.Tests/ConvertServiceTests.cs`** - every `KickAsync`/`StatusAsync` call (lines ~55, 67, 83, 96, 109):
 
 ```csharp
 // before: await svc.KickAsync("item1", fresh: false, 100, 200, 1.0, default);
@@ -772,7 +772,7 @@ await svc.KickAsync("item1", fresh: false, new RenderTarget(100, 200, 1.0, false
 await svc.StatusAsync("item1", new RenderTarget(100, 200, 1.0, false), default);
 ```
 
-**`tests/Inkshelf.Tests/EpubConverterTests.cs`** — the three `ConvertAsync` calls (lines ~37, 78, 100), replacing the trailing `maxW, maxH, dpr` with a `RenderTarget`:
+**`tests/Inkshelf.Tests/EpubConverterTests.cs`** - the three `ConvertAsync` calls (lines ~37, 78, 100), replacing the trailing `maxW, maxH, dpr` with a `RenderTarget`:
 
 ```csharp
 // before: ...ConvertAsync(Cbz(), new EbookMeta("Vol 1","Artist","Saga","1"), outPath, 0, 0, 1, default);
@@ -787,14 +787,14 @@ await new EpubConverter().ConvertAsync(ms, new EbookMeta("T", "A", null, null), 
 await new EpubConverter().ConvertAsync(ms, new EbookMeta("T", "A", null, null), outPath, new RenderTarget(0, 0, 2, false), default);
 ```
 
-**`tests/Inkshelf.Tests/ConvertWorkerTests.cs`** — the `Job` helper (line ~51):
+**`tests/Inkshelf.Tests/ConvertWorkerTests.cs`** - the `Job` helper (line ~51):
 
 ```csharp
 private static ConvertJob Job(string path) =>
     new("item1", "tok", path, new EbookMeta("T", "A", null, null, "item1"), new RenderTarget(0, 0, 1.0, false));
 ```
 
-**`tests/Inkshelf.Tests/ListingRenderTests.cs`** — the `new ConvertJob(...)` at line ~115:
+**`tests/Inkshelf.Tests/ListingRenderTests.cs`** - the `new ConvertJob(...)` at line ~115:
 
 ```csharp
 queue.Enqueue(new ConvertJob(ItemId, "tok", path, new EbookMeta("T", "A", null, null, ItemId), new RenderTarget(W, H, 1.0, false)));
@@ -823,7 +823,7 @@ Activate the feature end-to-end: build the `RenderTarget` from **both** the `scr
 **Files:**
 - Modify: `src/Inkshelf/Endpoints/ConvertEndpoints.cs`
 - Modify: `src/Inkshelf/Pages/Library.cshtml.cs` (`ComputeConvertStates` + `RowState`)
-- Test: `tests/Inkshelf.Tests/ListingRenderTests.cs` (add a grayscale-variant cache-hit assertion — see Step 3)
+- Test: `tests/Inkshelf.Tests/ListingRenderTests.cs` (add a grayscale-variant cache-hit assertion - see Step 3)
 
 **Interfaces:**
 - Consumes: `DeviceSettings.Read` (Task 1), `ScreenTarget.FromCookie(scr, retina, grayscale)` (Task 2), `EpubCache.PathFor(..., grayscale)` (Task 3).
@@ -838,7 +838,7 @@ var s = DeviceSettings.Read(httpContext.Request);
 var t = ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"], s.Retina, s.Grayscale);
 ```
 
-(The rest of the handler — `StatusAsync(id, t, ct)`, `KickAsync(id, …, t, ct)` — is unchanged from Task 5.)
+(The rest of the handler - `StatusAsync(id, t, ct)`, `KickAsync(id, …, t, ct)` - is unchanged from Task 5.)
 
 - [ ] **Step 2: Update `Library.cshtml.cs` to match**
 
@@ -954,7 +954,7 @@ public async Task Settings_post_without_antiforgery_returns_bad_request()
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --filter EndpointTests`
-Expected: FAIL — `/settings` returns 404 (route not mapped).
+Expected: FAIL - `/settings` returns 404 (route not mapped).
 
 - [ ] **Step 3: Implement the endpoint**
 
@@ -1065,7 +1065,7 @@ public async Task Settings_get_checks_boxes_from_cookie()
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --filter EndpointTests`
-Expected: FAIL — `/settings` GET returns 404 (no page).
+Expected: FAIL - `/settings` GET returns 404 (no page).
 
 - [ ] **Step 3: Write the page model**
 
@@ -1127,7 +1127,7 @@ Create `src/Inkshelf/Pages/Settings.cshtml`:
     <p>
         <label>
             <input type="checkbox" name="retina" value="on" @(Model.Settings.Retina ? "checked" : "") />
-            Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)
+            Retina pages (full-resolution; crisper but heavier - may strain low-memory readers)
         </label>
     </p>
     <p>
@@ -1194,7 +1194,7 @@ git commit -m "feat: add Settings page and cog entry links"
 
 ---
 
-### Task 9: Documentation — ARCHITECTURE + ROADMAP
+### Task 9: Documentation - ARCHITECTURE + ROADMAP
 
 Record the new structure and move the shipped items to Done.
 
@@ -1206,7 +1206,7 @@ Record the new structure and move the shipped items to Done.
 
 In the layout map (`Auth/` and `Convert/` and `Endpoints/` and `Pages/` sections), add:
 - `Auth/` line: mention `DeviceSettings` (the per-device settings cookie) alongside `TokenStore` / `Favorites`.
-- `Convert/ScreenTarget.cs` description: "parses the `scr` probe + settings flags into a `RenderTarget`"; add `Convert/RenderTarget.cs` — "resolved per-device render knobs (cap, dpr, grayscale)".
+- `Convert/ScreenTarget.cs` description: "parses the `scr` probe + settings flags into a `RenderTarget`"; add `Convert/RenderTarget.cs` - "resolved per-device render knobs (cap, dpr, grayscale)".
 - `Endpoints/` line: add `Settings` to the list of endpoint groups.
 - `Pages/` line: add `Settings`.
 
@@ -1215,8 +1215,8 @@ Add one load-bearing convention bullet under "Load-bearing conventions":
 ```markdown
 - **Two device cookies, two purposes.** `scr` is JS-written device *truth* (the
   screen probe); `inkshelf_settings` (`DeviceSettings`) is server-written user
-  *choice* (retina, grayscale). Wherever conversion is computed —
-  `ConvertEndpoints` and the Library row-state — read **both** and combine them
+  *choice* (retina, grayscale). Wherever conversion is computed -
+  `ConvertEndpoints` and the Library row-state - read **both** and combine them
   via `ScreenTarget.FromCookie(scr, retina, grayscale)` into a `RenderTarget`, so
   a real conversion and the "✓ converted" badge agree. Grayscale is part of the
   cache key (`-g` marker); retina already changes `maxW/maxH`.
@@ -1230,7 +1230,7 @@ Add one load-bearing convention bullet under "Load-bearing conventions":
 - **Done section:** add:
 
 ```markdown
-- **Per-device settings + retina/grayscale** — a server-written
+- **Per-device settings + retina/grayscale** - a server-written
   `inkshelf_settings` cookie (`DeviceSettings`) with a plain-`<form>` Settings
   page (cog link in the Index/Library heads) exposing a **retina** toggle
   (replaces the hard-coded `ScreenTarget.Retina`) and a **grayscale** toggle.

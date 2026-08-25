@@ -1,6 +1,6 @@
 # Idea: CBZ → EPUB conversion for Tolino manga delivery
 
-> **Status:** Deferred / future (post-v1). Captured for later design — not yet
+> **Status:** Deferred / future (post-v1). Captured for later design - not yet
 > brainstormed into a spec. When picked up, run it through the normal
 > brainstorming → spec → plan flow.
 
@@ -29,7 +29,7 @@ series). The CBZ contributes **page images only**.
 
 - CBZ = ZIP of images; a manga EPUB = ZIP of one-image-per-page XHTML + an OPF
   manifest. Both handled by `System.IO.Compression.ZipArchive`. If no image
-  re-encoding is needed, it's a repackage job — a few hundred lines, no heavy
+  re-encoding is needed, it's a repackage job - a few hundred lines, no heavy
   deps.
 - **Critical EPUB footgun:** the `mimetype` entry MUST be the first entry in
   the archive AND stored uncompressed (`CompressionLevel.NoCompression`). Some
@@ -52,7 +52,7 @@ pass through otherwise.
 ## Performance & caching
 
 - Pure repackage: I/O-bound, ~1s for a 200-page volume.
-- With re-encoding: ~30–100ms/page single-threaded ImageSharp, so tens of
+- With re-encoding: ~30-100ms/page single-threaded ImageSharp, so tens of
   seconds per volume (less if parallelized across cores).
 - **Cache the converted EPUB keyed by source file hash.** First download slow,
   rest served from cache. Never convert live on every request. Makes "live"
@@ -66,7 +66,7 @@ pass through otherwise.
   to KCC for quality, but it's a Python dep that weighs down the light sidecar;
   only if hand-rolled isn't good enough.
 
-## Download UX — verified working (2026-07-12)
+## Download UX - verified working (2026-07-12)
 
 Confirmed on the actual Tolino via a throwaway Inkshelf build: a
 browser-initiated download of an EPUB/PDF **completes and the ebook is usable
@@ -78,6 +78,6 @@ the native reader.
 
 The throwaway was reverted; the proper download feature (ebook button +
 filename scheme) is to be built for real. That build should re-confirm the
-finer point — whether the download **auto-appears** in the reading library vs.
-needs a manual import step (firmware/model-dependent) — but the core path is
+finer point - whether the download **auto-appears** in the reading library vs.
+needs a manual import step (firmware/model-dependent) - but the core path is
 proven.

@@ -34,8 +34,8 @@ if (string.IsNullOrWhiteSpace(absOptions.AbsUrl))
     throw new InvalidOperationException("ABS_URL is required.");
 // Both URLs are parsed lazily (BaseAddress on first use, AbsPublicBase on the
 // first SSO attempt), so a typo would otherwise surface as a 500 much later. The
-// scheme check is the point: "abs.local:13378" IS a valid absolute URI — scheme
-// "abs.local", path "13378" — so TryCreate alone waves the common typo through.
+// scheme check is the point: "abs.local:13378" IS a valid absolute URI - scheme
+// "abs.local", path "13378" - so TryCreate alone waves the common typo through.
 static bool IsHttpUrl(string s) =>
     Uri.TryCreate(s, UriKind.Absolute, out var u)
     && (u.Scheme == Uri.UriSchemeHttp || u.Scheme == Uri.UriSchemeHttps);
@@ -69,7 +69,7 @@ void ConfigureAbs(HttpClient c)
     c.DefaultRequestHeaders.UserAgent.ParseAdd(absUserAgent);
 }
 builder.Services.AddHttpClient<AbsAuthClient>(ConfigureAbs)
-    // OIDC leg 1 needs the raw 302 — following it loses the Location we want.
+    // OIDC leg 1 needs the raw 302 - following it loses the Location we want.
     // And this handler is shared process-wide, so a CookieContainer would pool
     // every user's ABS session in one jar; cookies are passed as headers.
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
@@ -78,13 +78,13 @@ builder.Services.AddHttpClient<AbsAuthClient>(ConfigureAbs)
         UseCookies = false,
     });
 builder.Services.AddHttpClient<AbsApiClient>(ConfigureAbs).AddHttpMessageHandler<AbsAuthHandler>();
-// Handler-FREE (no AbsAuthHandler) — the worker supplies the bearer; ConfigureAbs
+// Handler-FREE (no AbsAuthHandler) - the worker supplies the bearer; ConfigureAbs
 // gives it the BaseAddress + required User-Agent. See AbsDownloadClient.
 builder.Services.AddHttpClient<AbsDownloadClient>(ConfigureAbs);
 builder.Services.AddSingleton(new EpubCache(cachePath));
 // Marks live in a SUBDIRECTORY of the cache dir on purpose: every cache glob is
 // extension-scoped (*.epub, *.tmp) and a valid device id can't contain a dot,
-// so eviction never matches a marks file — see EpubCacheTests for the guard.
+// so eviction never matches a marks file - see EpubCacheTests for the guard.
 builder.Services.AddSingleton(new DownloadMarks(Path.Combine(cachePath, "marks")));
 builder.Services.AddSingleton(new DownloadTickets());
 builder.Services.AddSingleton<EpubConverter>();

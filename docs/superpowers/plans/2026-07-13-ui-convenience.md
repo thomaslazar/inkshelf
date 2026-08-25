@@ -1,16 +1,16 @@
-# UI polish + convenience features — Implementation Plan
+# UI polish + convenience features - Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans or subagent-driven-development. Steps use checkbox (`- [ ]`) syntax.
 
 **Goal:** Integrate the logo/favicon assets, add a favorite-library shortcut, tighten the item listing (10/page, top pager, clickable author/series), and add per-library grouped search.
 
-**Architecture:** The library page (`/library/{id}`) gains three modes chosen by query params — default paged listing, `?q=` grouped search, `?filter=<group>.<b64>` filtered listing. Author/series become filter links everywhere. Favorite library is a plain cookie with an auto-redirect from `/`. Logo/favicon are static assets wired into the layout and README.
+**Architecture:** The library page (`/library/{id}`) gains three modes chosen by query params - default paged listing, `?q=` grouped search, `?filter=<group>.<b64>` filtered listing. Author/series become filter links everywhere. Favorite library is a plain cookie with an auto-redirect from `/`. Logo/favicon are static assets wired into the layout and README.
 
 **Tech Stack:** ASP.NET Core Razor Pages (.NET 10), static assets, `System.Text.Json`. Near-zero JS: `<form>`/`<a>` only.
 
 ## Global Constraints
 
-- Near-zero JavaScript — plain `<form>`/`<a>`/`<img>` only.
+- Near-zero JavaScript - plain `<form>`/`<a>`/`<img>` only.
 - Page size **10**; pager at the **top** only.
 - Search limit **25**, not paged; per-library (`GET /api/libraries/{id}/search?q=`).
 - Filter encoding: `<group>.<base64(id)>` where base64 = `Convert.ToBase64String(Encoding.UTF8.GetBytes(id))`; URL-encode the whole value when it goes into a link href or the ABS query.
@@ -27,7 +27,7 @@
 
 ---
 
-## Task 0: Transient seeded ABS (integration harness) — do this first
+## Task 0: Transient seeded ABS (integration harness) - do this first
 
 **Files:**
 - Create: `docker/docker-compose.yml`, `docker/seed.sh`, `docker/smoke-test.sh`
@@ -37,7 +37,7 @@
 - Produces a disposable ABS at host port **13379** with a seeded book library
   (~15 items across several authors/series) and root `root`/`root`; and
   `docker/smoke-test.sh` driving Inkshelf's routes.
-- **Isolation:** compose project `inkshelf-it`, port 13379, prefixed volumes —
+- **Isolation:** compose project `inkshelf-it`, port 13379, prefixed volumes -
   never touches abs-cli's stack (project `docker`, port 13378).
 
 - [ ] **Step 1: `docker/docker-compose.yml`**
@@ -114,7 +114,7 @@ upload() { # title author series
         -F "title=$1" -F "author=$2" ${3:+-F "series=$3"} \
         -F "library=$LIBRARY_ID" -F "folder=$FOLDER_ID" \
         -F "0=@$TMP/book.epub;filename=book.epub" >/dev/null
-    echo "  + $2 — $1${3:+ ($3)}"
+    echo "  + $2 - $1${3:+ ($3)}"
 }
 
 echo "Uploading items (EPUB media; the file just makes ABS create a book item)..."
@@ -202,13 +202,13 @@ echo "SMOKE PASS"
 cd /workspaces/inkshelf
 chmod +x docker/seed.sh docker/smoke-test.sh
 docker compose -f docker/docker-compose.yml up -d
-# host.docker.internal is unreliable in the dev container — resolve the IP:
+# host.docker.internal is unreliable in the dev container - resolve the IP:
 ABS_IP=$(docker inspect inkshelf-it-audiobookshelf-1 -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
 echo "seeded ABS at http://$ABS_IP:80"
 ABS_URL="http://$ABS_IP:80" bash docker/seed.sh
 ```
 
-Record `ABS_IP` — subsequent tasks run Inkshelf with `ABS_URL=http://$ABS_IP:80`.
+Record `ABS_IP` - subsequent tasks run Inkshelf with `ABS_URL=http://$ABS_IP:80`.
 
 - [ ] **Step 5: Commit**
 
@@ -283,7 +283,7 @@ git commit -m "feat: add logo, favicon set, and web manifest"
 - Modify: `src/Inkshelf/wwwroot/app.css`
 
 **Interfaces:**
-- Produces: a header partial rendered on authenticated pages with `[icon] Libraries`; login page shows the wordmark. Individual pages add their own page-specific header bits (favorite star, search) — see later tasks.
+- Produces: a header partial rendered on authenticated pages with `[icon] Libraries`; login page shows the wordmark. Individual pages add their own page-specific header bits (favorite star, search) - see later tasks.
 
 - [ ] **Step 1: Header markup in `_Layout.cshtml`**
 
@@ -505,7 +505,7 @@ public record AbsSeriesMatch(
     [property: JsonPropertyName("series")] AbsSeriesRef Series);
 ```
 
-(No ebook/download DTOs — that feature is not part of this iteration. Unmapped
+(No ebook/download DTOs - that feature is not part of this iteration. Unmapped
 full-item JSON fields like `ebookFile`/`audioFiles` are ignored by
 `System.Text.Json`.)
 
@@ -542,7 +542,7 @@ call site in `Library.cshtml.cs` (Task 6 rewrites it anyway) and any test.
 
 Run: `dotnet test tests/Inkshelf.Tests`
 Expected: PASS. Fix any call-site/signature breaks (e.g. the existing
-`GetItemsAsync_builds_query_and_parses` test asserted `minified=1` — update it
+`GetItemsAsync_builds_query_and_parses` test asserted `minified=1` - update it
 to assert no `minified` and keep `filter` absent).
 
 - [ ] **Step 8: Commit**
@@ -608,7 +608,7 @@ public async Task Index_with_favorite_and_all_bypasses_redirect()
 }
 ```
 
-- [ ] **Step 2: Run, verify fail** (`--filter EndpointTests`) — the favorite cases fail.
+- [ ] **Step 2: Run, verify fail** (`--filter EndpointTests`) - the favorite cases fail.
 
 - [ ] **Step 3: Implement `Favorites.cs`**
 
@@ -679,7 +679,7 @@ git commit -m "feat: favorite library cookie with auto-redirect"
 
 ---
 
-## Task 6: Library page — 10/page, top pager, clickable author/series, search modes, favorite star
+## Task 6: Library page - 10/page, top pager, clickable author/series, search modes, favorite star
 
 **Files:**
 - Modify: `src/Inkshelf/Pages/Library.cshtml.cs`
@@ -906,9 +906,9 @@ docker compose -f docker/docker-compose.yml down -v   # removes the transient AB
 ## Self-Review notes
 
 - **Spec coverage:** transient seeded ABS + smoke harness, isolated from abs-cli (T0), assets+favicon+manifest (T1), header+login wordmark (T2), README (T3), full-metadata/filter/search client + encode (T4), favorite cookie+redirect+endpoint (T5), 10/page+top pager+clickable author/series+search modes+star (T6), seeded-ABS verify + smoke + real-ABS smoke + teardown (T7). All covered.
-- **Isolation:** T0 uses compose project `inkshelf-it`, port 13379, prefixed volumes — abs-cli's stack (project `docker`, port 13378) is untouched, so both run simultaneously.
+- **Isolation:** T0 uses compose project `inkshelf-it`, port 13379, prefixed volumes - abs-cli's stack (project `docker`, port 13378) is untouched, so both run simultaneously.
 - **Seeded ABS reachability:** resolve the container IP (`docker inspect`), not `host.docker.internal`, from the dev container.
-- **`minified` removal:** the existing `GetItemsAsync_builds_query_and_parses` test asserts `minified=1` — Task 4 Step 7 updates it. Flagged so it isn't missed.
+- **`minified` removal:** the existing `GetItemsAsync_builds_query_and_parses` test asserts `minified=1` - Task 4 Step 7 updates it. Flagged so it isn't missed.
 - **No download/ebook features** in this iteration (scrapped earlier). Dropping `minified=1` is solely to obtain author/series ids for clickable filters; unmapped full-item fields are ignored by the deserializer.
 - **Razor row rendering:** if the local-function-with-markup form fights the compiler, fall back to a `_ItemRow.cshtml` partial (called out in T6).
 - **Filter link encoding:** `Uri.EscapeDataString` on the whole `group.<b64>` value in hrefs and when passing to ABS; pager links carry the filter forward.

@@ -6,7 +6,7 @@ namespace Inkshelf.Auth;
 // ABS cookies from leg 1 that the token exchange refuses to work without.
 public record OidcFlow(string State, string Verifier, string Cookies);
 
-// Same shape as TokenStore — the flow lives in an encrypted cookie so the app
+// Same shape as TokenStore - the flow lives in an encrypted cookie so the app
 // stays stateless, and expires on its own if the login is abandoned.
 public class OidcFlowStore
 {
@@ -27,7 +27,7 @@ public class OidcFlowStore
 
     public void Save(OidcFlow flow)
     {
-        // state \n verifier \n cookies — none of the three can contain a newline
+        // state \n verifier \n cookies - none of the three can contain a newline
         // (base64url, base64url, and a Cookie header value).
         var payload = _protector.Protect($"{flow.State}\n{flow.Verifier}\n{flow.Cookies}");
         Ctx.Response.Cookies.Append(CookieName, payload, new CookieOptions

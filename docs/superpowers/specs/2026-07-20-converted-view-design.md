@@ -1,4 +1,4 @@
-# Converted (this device) view — design
+# Converted (this device) view - design
 
 ## Problem
 
@@ -10,7 +10,7 @@ an EPUB on this device.
 
 ## Goal
 
-A single combined page — `/converted` — listing every comic already converted
+A single combined page - `/converted` - listing every comic already converted
 **and cached for the current device**, across all libraries, so the user can
 spot "already have that", jump to the series to grab the next volume, or
 re-download. Reachable from a link on the Index (home) page.
@@ -19,14 +19,14 @@ re-download. Reachable from a link on the Index (home) page.
 
 - **Single combined view**, not per-library. The cache stores no library id, and
   `POST /api/items/batch/get` is not library-scoped (it queries purely by id), so
-  one call returns items spanning every library — and carries `libraryId` per
+  one call returns items spanning every library - and carries `libraryId` per
   item anyway, so rows can still link into the right library.
 - **Reuse the existing listing row** (`_ItemRow`) and all its controls
   (Download / EPUB ✓ / ↻ regen / read-toggle). No new row UI. The converted page
   is "the listing rows, but only for items with something cached for this
   device."
 - **Reverse-parse the cache filename** to recover item ids; no sidecar index
-  (keeps the "no dual source of truth / done = File.Exists" principle — an index
+  (keeps the "no dual source of truth / done = File.Exists" principle - an index
   would drift from the actual files).
 - **Entry point:** a dedicated line on the Index body, above the library list
   (`↓ Converted on this device →`), not in the header.
@@ -34,7 +34,7 @@ re-download. Reachable from a link on the Index (home) page.
 ## Data flow
 
 1. **Enumerate the cache.** A new `EpubCache` method parses every `*.epub`
-   filename **right-to-left** — strip `.epub`, optional `-g` (grayscale), then
+   filename **right-to-left** - strip `.epub`, optional `-g` (grayscale), then
    `{maxW}x{maxH}`, then `-{mtimeMs}`, then `-{size}`; the remainder is the item
    id. Right-to-left parsing is robust even when the item id contains hyphens
    (ABS ids can be UUIDs). Yields `(itemId, size, mtimeMs, maxW, maxH, grayscale,
@@ -54,21 +54,21 @@ re-download. Reachable from a link on the Index (home) page.
 
 ## Components
 
-### `EpubCache` — cache enumeration
+### `EpubCache` - cache enumeration
 Add a method (e.g. `ListVariants()`) returning a small record per `.epub` file:
 `CachedVariant(string ItemId, long Size, long MtimeMs, int MaxW, int MaxH, bool
 Grayscale, string Path)`. Parses right-to-left as above; skips any filename that
-doesn't match the scheme. This mirrors `PathFor` — the two must stay in sync
+doesn't match the scheme. This mirrors `PathFor` - the two must stay in sync
 (a test round-trips `PathFor` → parse).
 
-### ABS batch fetch — expose id + libraryId + title + coverPath
+### ABS batch fetch - expose id + libraryId + title + coverPath
 The batch response already contains these; our DTOs and fetch drop them.
 
 - `AbsBatchMetadata` gains `title` (`[JsonPropertyName("title")] string? Title`).
 - `AbsBatchMedia` gains `coverPath` (`string? CoverPath`).
 - `AbsBatchItem` gains `libraryId` (`string? LibraryId`).
 
-All additive — safe under the "three separate metadata shapes" convention (that
+All additive - safe under the "three separate metadata shapes" convention (that
 rule forbids declaring `series` as an array on `AbsMetadata`; it does not forbid
 adding scalar fields to the batch shape).
 
@@ -78,17 +78,17 @@ Refactor the ABS client so the raw items are reachable:
 - Reimplement the existing `GetItemsMetadataBatchAsync` on top of it (build the
   `id → AbsBatchMedia` dict from the list) so the listing is unchanged.
 
-### Convert-state helper — extract for reuse
+### Convert-state helper - extract for reuse
 `LibraryModel.RowState(AbsItem, AbsBatchMedia?, RenderTarget)` and the format/
 cache/queue logic it uses are currently private to `LibraryModel`. Extract the
-per-item state computation into a shared **static** helper both pages call —
+per-item state computation into a shared **static** helper both pages call -
 `ConvertRowStateResolver.Resolve(AbsItem item, AbsBatchMedia? media,
 RenderTarget target, EpubCache cache, ConvertQueue queue)` returning
-`ConvertRowState` — so `ConvertedModel` and `LibraryModel` share one
+`ConvertRowState` - so `ConvertedModel` and `LibraryModel` share one
 implementation (DRY). `LibraryModel.RowState` becomes a thin call into it;
 behaviour is unchanged for the listing.
 
-### `/converted` — new Razor Page + `ConvertedModel`
+### `/converted` - new Razor Page + `ConvertedModel`
 Injects `AbsApiClient`, `EpubCache`, `ConvertQueue` (same as `LibraryModel`).
 `OnGetAsync`:
 1. Compute the current `RenderTarget`.
@@ -103,7 +103,7 @@ Injects `AbsApiClient`, `EpubCache`, `ConvertQueue` (same as `LibraryModel`).
 5. Render each via the existing `_ItemRow` partial.
 
 Sort rows **series → sequence → title** (directly serves the "next volume" use
-case). No sort bar, no pager — the cache is size-bounded (`MaxCacheBytes`, ~dozens
+case). No sort bar, no pager - the cache is size-bounded (`MaxCacheBytes`, ~dozens
 of items), so v1 shows all.
 
 An expired session lets `AbsAuthException` propagate → `/login` (existing
@@ -111,15 +111,15 @@ middleware). A batch `HttpRequestException` (including the all-or-nothing 403,
 see below) degrades to a notice ("Couldn't load details from ABS") rather than a
 500.
 
-### Index page — entry point
+### Index page - entry point
 Add a line to `Index.cshtml` between the head and the library `<ul>`:
 `↓ Converted on this device →` linking to `/converted`. No JS, plain `<a>`.
 
 ## UI
 
-Rows are the existing `_ItemRow` — cover thumbnail, title, author link(s),
+Rows are the existing `_ItemRow` - cover thumbnail, title, author link(s),
 series link(s), Download, the convert action (EPUB ✓ for current cached items),
-↻ regen, and read-toggle — visually identical to the library listing. The page
+↻ regen, and read-toggle - visually identical to the library listing. The page
 head mirrors the others (title + a crumb back to Libraries + settings gear).
 
 ## Edge cases
@@ -127,7 +127,7 @@ head mirrors the others (title + a crumb back to Libraries + settings gear).
 - **Deleted-from-ABS items** aren't returned by `batch/get` → silently dropped.
 - **Stale cache entry** (ebook changed since conversion): the row is built from
   the *current* ebook file, so the shared state helper computes `Convert` (the
-  stale variant doesn't match the current cache key). The row still shows —
+  stale variant doesn't match the current cache key). The row still shows -
   slightly odd for a "converted" list, but correct; the plain convert link will
   produce a fresh EPUB. Acceptable for v1.
 - **Batch 403 (permission all-or-nothing):** if the user can't access any one
@@ -149,7 +149,7 @@ head mirrors the others (title + a crumb back to Libraries + settings gear).
 ## Non-goals (v1)
 
 - No per-library split, no sidecar index, no pagination, no sort controls.
-- No new row partial or new download endpoint — reuse `_ItemRow` and
+- No new row partial or new download endpoint - reuse `_ItemRow` and
   `/convert/{id}` / `/download/{id}`.
 - No change to the cache key or the conversion path.
 

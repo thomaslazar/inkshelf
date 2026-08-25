@@ -2,7 +2,7 @@
 
 **Status:** design approved, ready for implementation plan
 **Date:** 2026-07-20
-**Roadmap item:** Browsing & reading — "Read-state toggle"
+**Roadmap item:** Browsing & reading - "Read-state toggle"
 
 ## Goal
 
@@ -18,10 +18,10 @@ past what a cookie could hold.
 backed by the ABS media-progress API.
 
 **Out (for now):**
-- **Detail page** read toggle — the item detail page is a separate, unbuilt
+- **Detail page** read toggle - the item detail page is a separate, unbuilt
   roadmap item; it gets its own read control when built.
-- **Filtering** by read/unread — deferred (YAGNI); easy follow-up later.
-- **Partial/“in progress”** state — reading is offline, so the flag is binary
+- **Filtering** by read/unread - deferred (YAGNI); easy follow-up later.
+- **Partial/“in progress”** state - reading is offline, so the flag is binary
   (finished / not).
 
 ## ABS API (verified against the ABS v2.35.1 source)
@@ -31,7 +31,7 @@ backed by the ABS media-progress API.
   The URL takes the library-item id (our `item.Id`); ABS resolves it to the
   media and sets `isFinished` + `finishedAt`. (`MeController.createUpdateMediaProgress`
   → `User.createUpdateMediaProgressFromPayload`.)
-  - Unmark uses `PATCH isFinished:false` (not `DELETE /api/me/progress/{id}`) —
+  - Unmark uses `PATCH isFinished:false` (not `DELETE /api/me/progress/{id}`) -
     symmetric, one endpoint, no need to know the progress-row id. It leaves a
     harmless `isFinished:false` progress row.
 - **Read:** `GET /api/me` returns the user with a `mediaProgress[]` array
@@ -46,23 +46,23 @@ backed by the ABS media-progress API.
 
 ## Design
 
-### A. `AbsApiClient` — two new methods + one DTO
+### A. `AbsApiClient` - two new methods + one DTO
 
 Following the "new ABS call = new method on `AbsApiClient`, no `accessToken`
 param (the handler injects the Bearer), new DTO rather than widening an
 existing one" convention.
 
-- `Task<HashSet<string>> GetFinishedItemIdsAsync(CancellationToken ct)` —
+- `Task<HashSet<string>> GetFinishedItemIdsAsync(CancellationToken ct)` -
   `GET /api/me`, deserialize into a new `AbsMe` DTO, return the finished
   `libraryItemId` set.
-- `Task SetReadAsync(string itemId, bool finished, CancellationToken ct)` —
+- `Task SetReadAsync(string itemId, bool finished, CancellationToken ct)` -
   `PATCH /api/me/progress/{Uri.EscapeDataString(itemId)}` with a JSON body
   `{"isFinished": finished}`.
 - New DTO: `record AbsMe([JsonPropertyName("mediaProgress")] List<AbsMediaProgress> MediaProgress)`
   and `record AbsMediaProgress(string? LibraryItemId, bool IsFinished)` with the
   matching `[JsonPropertyName]` attributes (`libraryItemId`, `isFinished`).
 
-### B. Row UI — `ItemRowModel` + `_ItemRow.cshtml`
+### B. Row UI - `ItemRowModel` + `_ItemRow.cshtml`
 
 - Add `bool Read = false` to the `ItemRowModel` record.
 - In `_ItemRow.cshtml`, inside the existing `<div class="actions">` block
@@ -75,16 +75,16 @@ existing one" convention.
     `title="Mark as read"`.
   - read (`Read == true`): button text **"✓ Read"**, hidden `read=0`,
     `title="Mark as unread"`.
-- Text labels (not glyphs) — e-ink-safe. Styled to match the existing actions
+- Text labels (not glyphs) - e-ink-safe. Styled to match the existing actions
   (a borderless button, like the favorite star / convert links). Defensive CSS
   only.
 - Renders identically on listing and search rows (both go through `_ItemRow`).
 
-### C. Write endpoint — `MapReadEndpoints` in `Endpoints/`
+### C. Write endpoint - `MapReadEndpoints` in `Endpoints/`
 
 Mirrors the `/favorite` + `/logout` convention exactly:
 
-- `POST /read/{id}` — `HttpContext`, `IAntiforgery`, `AbsApiClient`, `[FromForm]`.
+- `POST /read/{id}` - `HttpContext`, `IAntiforgery`, `AbsApiClient`, `[FromForm]`.
   `try { await antiforgery.ValidateRequestAsync(ctx); } catch (AntiforgeryValidationException) { return Results.BadRequest(); }` then read the
   form's `read` field (`"1"` → finished true, else false), call
   `SetReadAsync(id, finished, ct)`, and `Results.Redirect` back to a local-only
@@ -92,10 +92,10 @@ Mirrors the `/favorite` + `/logout` convention exactly:
   `.DisableAntiforgery()` on the route.
 - Mapped in `Program.cs` next to `app.MapSessionEndpoints();`.
 - An expired session surfaces `AbsAuthException` from `SetReadAsync`, which the
-  `Program.cs` middleware turns into a `/login` redirect — consistent with the
+  `Program.cs` middleware turns into a `/login` redirect - consistent with the
   rest of the app.
 
-### D. Wiring — `LibraryModel`
+### D. Wiring - `LibraryModel`
 
 - Add `GetFinishedItemIdsAsync` to **both** branches of `OnGetAsync`:
   - Listing branch: after fetching `Items` (alongside `FetchStructuredAsync` /
@@ -103,10 +103,10 @@ Mirrors the `/favorite` + `/logout` convention exactly:
   - Search branch: after fetching the search books.
 - Store the result in a private `HashSet<string> _finished`. Wrap the call so a
   failure degrades to an empty set (rows render as unread) rather than throwing
-  the page — `GET /api/me` failing shouldn't blank the listing.
+  the page - `GET /api/me` failing shouldn't blank the listing.
 - `RowFor(item)` sets `Read = _finished.Contains(item.Id)` on the returned
   `ItemRowModel`.
-- One extra `GET /api/me` per listing/search render (accepted — single-user
+- One extra `GET /api/me` per listing/search render (accepted - single-user
   sidecar; the listing already issues several ABS calls).
 
 ### E. Testing + docs
@@ -125,7 +125,7 @@ Mirrors the `/favorite` + `/logout` convention exactly:
 **Docs:**
 - `ARCHITECTURE.md`: document the `/read/{id}` endpoint group, the two new
   `AbsApiClient` methods, and the `GET /api/me` read-state path (present-tense,
-  structural — no changelog/shipped-status prose).
+  structural - no changelog/shipped-status prose).
 - `ROADMAP.md`: move **Read-state toggle** out of *Browsing & reading* into
   **Done** (short bullet). The *Item detail page* backlog item keeps its own
   read-state mention for when that page is built.
@@ -146,4 +146,4 @@ row renders "Mark read" (read=1) or "✓ Read" (read=0)     ▼
 - No detail-page control (separate roadmap item).
 - No read/unread filtering or sorting.
 - No partial-progress tracking; binary finished flag only.
-- No local/cookie fallback store — state lives in ABS.
+- No local/cookie fallback store - state lives in ABS.

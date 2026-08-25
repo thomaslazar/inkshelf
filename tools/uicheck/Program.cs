@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 // NOT a substitute for the e-reader: desktop Chromium does not reproduce the old
 // e-ink engine (no object-fit, no flex gap), so device testing stays mandatory
 // for engine-specific rendering. Authenticated pages (Library/Item/Converted)
-// ARE covered — see the UICHECK_AUTHED block below, which run.sh enables against
+// ARE covered - see the UICHECK_AUTHED block below, which run.sh enables against
 // the seeded local ABS.
 //
 // To extend as features land: add Check(...) calls below (a new page, a new
@@ -50,7 +50,7 @@ async Task Check(string label, string? settingsCookie, string path,
             failures.Add($"{label}: expected to see \"{s}\" but did not");
     foreach (var s in mustNotContain)
         if (body.Contains(s, StringComparison.Ordinal))
-            failures.Add($"{label}: English leak — saw \"{s}\" (should be translated)");
+            failures.Add($"{label}: English leak - saw \"{s}\" (should be translated)");
     Console.WriteLine($"[{label}] HTTP {status}");
 }
 
@@ -86,7 +86,7 @@ await Check("settings-en", null, "/settings",
 
 // The capability probe. Its measured rows are what an engine with no CSS.supports()
 // gets asked instead, so a headless run is the only place their agreement with
-// CSS.supports() can be checked at all — on a device, one of the two is missing.
+// CSS.supports() can be checked at all - on a device, one of the two is missing.
 await Check("diag", null, "/diag.html",
     mustContain: ["measured box-sizing", "measured display: flex",
                   "measured float ignored inside flex", "measured calc()",
@@ -94,8 +94,8 @@ await Check("diag", null, "/diag.html",
     mustNotContain: []);
 
 // --- Authenticated pages (opt-in; run.sh brings up + seeds the local ABS) ---
-// These are where the real chrome lives — listings, item detail (Kategorien /
-// Schlagwörter / Erzähler), converted — plus a live Convert-button click that
+// These are where the real chrome lives - listings, item detail (Kategorien /
+// Schlagwörter / Erzähler), converted - plus a live Convert-button click that
 // exercises the JS label path.
 if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
 {
@@ -129,13 +129,13 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await page.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 15000 });
         await Shot("library-de");
         Expect("library-de", await page.InnerTextAsync("body"), "Sortierung:", "Titel", "Herunterladen");
-        // A link with no ticket is a download an e-reader's manager cannot finish —
+        // A link with no ticket is a download an e-reader's manager cannot finish -
         // the listing mints its own, so assert here too, not just on the item page.
         if (!Regex.IsMatch(await page.ContentAsync(), @"href=""/download/[^""]*(\?|&amp;)t=[A-Za-z0-9_-]{22}"""))
             failures.Add("library-de: a listing download link carries no ticket");
         var libUrl = page.Url;
 
-        // Search results — books + series + author sections, each its own layout
+        // Search results - books + series + author sections, each its own layout
         // (item rows vs .taplist), and previously the only authed page with no
         // screenshot at all.
         await page.FillAsync("input[name=q]", "Dresden");
@@ -144,7 +144,7 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await Shot("search-de");
         Expect("search-de", await page.InnerTextAsync("body"), "Ergebnisse für", "Bücher", "Serien");
 
-        // Item detail of the enriched epub — genres/tags/narrators labels.
+        // Item detail of the enriched epub - genres/tags/narrators labels.
         await page.GotoAsync(libUrl);
         await page.FillAsync("input[name=q]", "The Silent Sea");
         await page.PressAsync("input[name=q]", "Enter");
@@ -161,7 +161,7 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await Shot("converted-de");
         Expect("converted-de", await page.InnerTextAsync("body"), "Konvertiert");
 
-        // Item page of a COMIC — the only place ↻ Regenerate is offered now that
+        // Item page of a COMIC - the only place ↻ Regenerate is offered now that
         // listing rows have dropped it, so nothing else screenshots that button.
         await page.GotoAsync(libUrl);
         await page.FillAsync("input[name=q]", "Neon Blade");
@@ -190,7 +190,7 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         if (label.Contains("&#x", StringComparison.Ordinal))
             failures.Add($"convert-clicked: HTML entity leaked into JS label: \"{label}\"");
         // The JS never mints its own "done" state: it may still be converting
-        // ("Konvert...") or must land on exactly "EPUB" — never "EPUB ↓", which
+        // ("Konvert...") or must land on exactly "EPUB" - never "EPUB ↓", which
         // means "already downloaded" and must only ever come from the server.
         if (!label.Contains("Konvert", StringComparison.Ordinal) && label != "EPUB")
             failures.Add($"convert-clicked: unexpected label \"{label}\"");
@@ -220,7 +220,7 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await ConvertShouldExplain("Broken Page", "convert-converterror-de",
             "Konvertierung fehlgeschlagen", "unerwartet fehlgeschlagen", "Erneut versuchen", "Zurück");
 
-        // Failed-row layout on the LISTING — the fixed-width .actions column is
+        // Failed-row layout on the LISTING - the fixed-width .actions column is
         // where the narrow-screen overflow of the "warum?" link shows (the item
         // detail page's file-row is full-width and doesn't reproduce it). The three
         // broken comics above are now Failed; they were seeded first, so sort by
@@ -230,7 +230,7 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await Shot("failed-row-de");
         Expect("failed-row-de", await page.InnerTextAsync("body"), "warum?");
 
-        // Converted view again, now that a conversion has actually landed — this is
+        // Converted view again, now that a conversion has actually landed - this is
         // where the sortbar exists (it's hidden on the empty state). Waiting on the
         // selector doubles as "the conversion finished".
         await page.GotoAsync(baseUrl + "/converted");
@@ -260,9 +260,9 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
 Console.WriteLine();
 if (failures.Count == 0)
 {
-    Console.WriteLine($"PASS — screenshots in {outDir}, all assertions held.");
+    Console.WriteLine($"PASS - screenshots in {outDir}, all assertions held.");
     return 0;
 }
-Console.WriteLine($"FAIL — {failures.Count} issue(s):");
+Console.WriteLine($"FAIL - {failures.Count} issue(s):");
 foreach (var f in failures) Console.WriteLine("  - " + f);
 return 1;

@@ -63,7 +63,7 @@ public class ItemModel : PageModel
 
         // After every ABS call, never before: AbsAuthHandler refreshes on a 401
         // mid-request, so a bearer read earlier is the token ABS is about to
-        // reject, and the raw tickets minted from it are dead — exactly on the
+        // reject, and the raw tickets minted from it are dead - exactly on the
         // cookie-less download-manager request tickets exist for.
         var access = _tokens.Read()?.Access;
 

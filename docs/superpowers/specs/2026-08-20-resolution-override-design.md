@@ -30,7 +30,7 @@ Reading direction, spread handling and page scale are untouched.
 
 ### A. What the three numbers mean
 
-Width and height are **physical screen pixels** — the number a vendor spec
+Width and height are **physical screen pixels** - the number a vendor spec
 sheet gives. Pixel ratio is how many image pixels the reader draws per CSS
 layout pixel, which is what turns those pixels into the declared viewport:
 `viewport = px × scale ÷ dpr` (scale as a fraction), unchanged from today.
@@ -46,7 +46,7 @@ When the override is active it supplies the whole answer:
 Retina keeps its meaning under an override: the entered numbers are physical
 pixels, so retina off converts at the CSS size (numbers ÷ ratio, dpr 1). Identical
 page layout, a quarter of the pixels at ratio 2. An earlier revision ignored retina
-here and had the UI disable the checkbox instead — that cost a hidden companion
+here and had the UI disable the checkbox instead - that cost a hidden companion
 field to tell "disabled" from "unchecked", a special case in the POST handler, and
 an invariant to explain both. Making the control mean something was cheaper than
 explaining why it meant nothing.
@@ -59,7 +59,7 @@ smaller. That is the direction to move if pages come out too large or clipped.
 `ScreenTarget.FromCookie` gains the override and consults it **first**. This is
 the load-bearing part of the change: today the method returns `(0, 0, 1)` the
 moment the cookie is missing and never looks further, so an override that is
-merely "preferred over a bad value" would not help the no-probe case at all —
+merely "preferred over a bad value" would not help the no-probe case at all -
 which is one of the three reasons for the feature.
 
 With an override there is always a page box, which also closes the one gap left
@@ -69,7 +69,7 @@ without a probe it had none.
 Invalid input (zero, negative, unparseable, or outside `[1, MaxDpr]` (4) for the
 ratio / past `MaxDimension` (4096) for a dimension) is dropped to 0 on the way
 out of the cookie, which makes the override inactive and falls back to the
-probe — the same posture as a malformed `scr` cookie. The ratio's lower bound is
+probe - the same posture as a malformed `scr` cookie. The ratio's lower bound is
 1, not 0: `EpubWriter` requires `pxPerCss >= 1`, and a ratio below 1 would
 enlarge the declared viewport past the physical screen. Deliberately dropped rather than clamped: 4096 is far beyond any
 e-reader, so a bigger number is a typo, and converting at a size the user never
@@ -91,7 +91,7 @@ rather than as a misleading `0` on a device that has never had an override.
 The numbers are stored whether or not the override is on, so they survive being
 switched off and can be shown as a starting point.
 
-The ratio is parsed accepting both `1.875` and `1,875` — the UI is translated,
+The ratio is parsed accepting both `1.875` and `1,875` - the UI is translated,
 and a German-locale user typing a comma should not silently get the fallback.
 Normalise the comma, then parse with `InvariantCulture`.
 
@@ -106,7 +106,7 @@ option") keeps the fields attached to their checkbox:
 ```
 
 Fields are prefilled from the stored override when there is one, else from the
-probe, else blank. Labels stay bare — no explanatory prose beyond at most one
+probe, else blank. Labels stay bare - no explanatory prose beyond at most one
 short line. This is a setting most people should scroll past.
 
 A small inline script (ES5: `getElementById`, `onclick`, no libraries) toggles
@@ -119,17 +119,17 @@ checkbox is off.
 
 **A disabled input is not submitted.** The three number fields are disabled while
 the override is off, so the POST handler must treat an absent field as "keep what is
-stored" — otherwise switching the override off would erase numbers the user had to
+stored" - otherwise switching the override off would erase numbers the user had to
 look up.
 
 Checkboxes are deliberately never disabled, so `absent == off` keeps holding for
 them. A disabled checkbox cannot be told apart from an unchecked one without a
 hidden companion field, and the way to avoid needing that is for every checkbox to
-stay meaningful — which is what §A does for retina.
+stay meaningful - which is what §A does for retina.
 
 ### F. Cache key
 
-`Dpr` joins the key as `-d1.875`, emitted only when it is not 1 — the same
+`Dpr` joins the key as `-d1.875`, emitted only when it is not 1 - the same
 optional-suffix trick as `-s95`, so nothing already cached is invalidated by the
 suffix itself.
 
@@ -161,7 +161,7 @@ Unit:
 - cache key round-trips `Dpr`, and omits the suffix at 1
 
 Browser: extend `tools/uicheck` to assert the new controls in English and
-German. A real device pass stays with the user — the headless run cannot
+German. A real device pass stays with the user - the headless run cannot
 reproduce the e-ink engine.
 
 ## Limitations
@@ -169,6 +169,6 @@ reproduce the e-ink engine.
 The right numbers cannot be derived, only guessed and then corrected: the
 reader's usable page box is smaller than any screen size we can learn, and it
 never scales a page to fit. So the expected workflow is "enter the spec-sheet
-numbers, then adjust the pixel ratio and Page scale until nothing is cut" —
+numbers, then adjust the pixel ratio and Page scale until nothing is cut" -
 three knobs the user fiddles with, not a calculation. This is why the fields are
 plain numbers rather than a wizard.

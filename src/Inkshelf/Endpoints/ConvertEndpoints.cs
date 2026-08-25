@@ -14,7 +14,7 @@ public static class ConvertEndpoints
             // Redeem unconditionally: a poll carries the same href, and re-stamping
             // there is what keeps a long conversion's link alive.
             var tk = tickets.Redeem(t);
-            // A ticket serves bytes and nothing else — no kick, no poll, no fresh.
+            // A ticket serves bytes and nothing else - no kick, no poll, no fresh.
             // It also ignores the request's render target and file param entirely, so a
             // still-live link after a screen-settings change replays the pre-change EPUB.
             if (status is not "1" && warm is not "1" && fresh is not ("1" or "true")

@@ -70,7 +70,7 @@ public class ConvertRowStateResolverTests
     public void ResolveFor_hands_back_the_cache_path_it_keyed_on()
     {
         // The path is what a download ticket holds, so it must be the SAME path the
-        // state was decided from — not one the caller re-derives and gets wrong.
+        // state was decided from - not one the caller re-derives and gets wrong.
         var cache = new EpubCache(TempDirPath());
         var target = new RenderTarget(800, 1000, 1.0, false);
 

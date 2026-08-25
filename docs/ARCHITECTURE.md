@@ -2,7 +2,7 @@
 
 A thin, server-rendered web client for the Audiobookshelf (ABS) API, built to run
 on old e-reader browsers. This describes the steady-state structure and the
-invariants that hold it together. **Read it before adding features** — several
+invariants that hold it together. **Read it before adding features** - several
 conventions look like cleanup targets but are load-bearing.
 
 It is deliberately not a record of what shipped. See `CHANGELOG.md` for history
@@ -11,7 +11,7 @@ and `docs/ROADMAP.md` for what's left.
 ## Big picture
 
 ASP.NET Core, .NET 10. Razor Pages render HTML; minimal-API endpoints
-serve streams and actions. Stateless — the ABS JWT lives in an encrypted cookie
+serve streams and actions. Stateless - the ABS JWT lives in an encrypted cookie
 (Data Protection), so there is no server-side session to scale or persist.
 
 Near-zero client JavaScript, because the target browsers are old e-ink reader
@@ -33,7 +33,7 @@ src/Inkshelf/
     AbsAuthHandler.cs     DelegatingHandler: injects Bearer, refresh-on-401-retry.
     AbsDownloadClient.cs  Handler-free authenticated download, for callers that
                           already hold a captured bearer.
-    AbsModels.cs          Response DTOs (three separate metadata shapes — see below).
+    AbsModels.cs          Response DTOs (three separate metadata shapes - see below).
     AbsFilter.cs          Encodes ABS facet filters (authors.<b64>, series.<b64>).
     AbsExceptions.cs      Auth / Unauthorized / LoginFailed.
   Auth/                 TokenStore (encrypted session cookie), Tokens,
@@ -89,10 +89,10 @@ from the repo root (inside the devcontainer) must stay green, and
   from its first leg, which is why Inkshelf performs that leg server-side.
 - **`AbsAuthHandler` resolves scoped services inside `SendAsync`**, from
   `HttpContext.RequestServices`. It must not constructor-inject `TokenStore` or
-  `AbsAuthClient` — `IHttpClientFactory` pools the handler for longer than a
+  `AbsAuthClient` - `IHttpClientFactory` pools the handler for longer than a
   request scope.
 - **The 401 retry copies the request headers.** This preserves `User-Agent`,
-  which the reverse proxy in front of ABS requires — it 403s an empty UA. Losing
+  which the reverse proxy in front of ABS requires - it 403s an empty UA. Losing
   it is a production outage. The body is buffered so the retry re-sends
   identically, which is why streaming uploads aren't supported.
 - **Three separate metadata DTOs** (`AbsMetadata`, `AbsBatchMetadata`,
@@ -106,10 +106,10 @@ from the repo root (inside the devcontainer) must stay green, and
   view.
 - **Near-zero JS.** Only two inline scripts exist (`_Layout.cshtml`: the screen
   probe, the convert-warm XHR). Anything touching them needs a real-device test
-  before merge. CSS stays defensive — no `object-fit`, no flex `gap`.
+  before merge. CSS stays defensive - no `object-fit`, no flex `gap`.
 - **No device-class detection; layout branches on width alone.** `@media
   (monochrome)` reports 0 on e-ink, `(update: slow)` postdates the target engine,
-  and UA sniffing only ever knows the readers we enumerated — this project has
+  and UA sniffing only ever knows the readers we enumerated - this project has
   users on hardware we have never seen. The e-reader design *is* the design:
   finger-sized targets and high contrast are right everywhere, so the base layout
   is touch-first and one `max-width` breakpoint handles narrow screens. The `scr`
@@ -125,7 +125,7 @@ from the repo root (inside the devcontainer) must stay green, and
   cancel an in-flight conversion.
 - **"Done" is the atomic existence of the `.epub`** (temp file, then rename). The
   queue holds only the transient Queued/Running/Failed states, in memory and
-  never persisted — so a restart drops pending rows back to "no job" and the next
+  never persisted - so a restart drops pending rows back to "no job" and the next
   tap re-enqueues. There is nothing to reconcile.
 - **`ConvertLock` serializes one cache target**, with a double-checked
   `File.Exists`, so concurrent jobs can't double-convert or corrupt the temp file.
@@ -134,7 +134,7 @@ from the repo root (inside the devcontainer) must stay green, and
   between jobs. Don't reintroduce whole-archive or whole-book buffering.
 - **The cache key excludes the file ino.** A per-file convert
   (`/convert/{id}?file={ino}`) still keys on that file's size+mtime, so the
-  primary ebook's entry is the same one the listings write — which is why the
+  primary ebook's entry is the same one the listings write - which is why the
   "converted" badge agrees across pages.
 - **Convert-row state is computed in one place** (`ConvertRowStateResolver`), for
   the same reason.
@@ -143,7 +143,7 @@ from the repo root (inside the devcontainer) must stay green, and
   `/converted` also sorts on). This cache bridges one expensive conversion to one
   download; touch-on-serve would protect volumes already on the reader and evict
   the ones not yet fetched.
-- **String-built EPUB XML** in `EpubWriter` — verbose but dependency-free and
+- **String-built EPUB XML** in `EpubWriter` - verbose but dependency-free and
   epubcheck-clean. Don't swap in an XML library.
 - **Workstation GC, not Server GC.** `Inkshelf.csproj` pins
   `ServerGarbageCollection=false` (plus non-concurrent GC and `ConserveMemory`).
@@ -153,10 +153,10 @@ from the repo root (inside the devcontainer) must stay green, and
 **Downloads**
 
 - **A download ticket serves bytes and nothing else.** `?t=` authorises streaming
-  one already-identified file — never a conversion kick, a status poll or
+  one already-identified file - never a conversion kick, a status poll or
   `fresh=1`, and never a second item (both endpoints check the ticket's item id
-  against the route). It is additive: a ticket that does not deliver — missing,
-  expired, or one whose bearer ABS rejects — must fall through to the cookie path,
+  against the route). It is additive: a ticket that does not deliver - missing,
+  expired, or one whose bearer ABS rejects - must fall through to the cookie path,
   so a request that works today cannot start failing.
   Tickets exist because an e-reader's download manager re-requests the URL with
   no cookies, so nothing may be moved out of the URL into a cookie.
@@ -166,19 +166,19 @@ from the repo root (inside the devcontainer) must stay green, and
 - **Two device cookies, two purposes.** `scr` is JS-written device *truth* (the
   screen probe); `inkshelf_settings` is server-written user *choice*. Anywhere a
   conversion target is computed, read **both** and combine them via
-  `ScreenTarget.FromCookie` into a `RenderTarget` — otherwise a real conversion
+  `ScreenTarget.FromCookie` into a `RenderTarget` - otherwise a real conversion
   and the badge that describes it disagree. **Every knob that changes the bytes is
-  part of the cache key** — size cap, grayscale, spread mode, page scale, dpr — or
+  part of the cache key** - size cap, grayscale, spread mode, page scale, dpr - or
   the user flips a setting and is handed the old file, which reads as "the setting
   is broken".
 - **A hand-set screen override wins over the probe, and is consulted first.**
   `ScreenTarget.FromCookie` returns early when the `scr` cookie is missing, so an
   override checked later would never be reached in exactly the case it exists for.
-  `retina` is not consulted while an override is active — it only chooses between
+  `retina` is not consulted while an override is active - it only chooses between
   the CSS size and CSS × dpr, and both are explicit.
 - **A disabled input is not submitted.** The settings form disables the override's
   number fields while the override is off, so the POST handler treats an absent one
-  as "keep what is stored" — otherwise saving would silently zero numbers the user
+  as "keep what is stored" - otherwise saving would silently zero numbers the user
   had to look up. Checkboxes are never disabled, so `absent == off` still holds for
   them; keep it that way, because a disabled checkbox is indistinguishable from an
   unchecked one and disambiguating it costs a hidden companion field.
@@ -189,13 +189,13 @@ from the repo root (inside the devcontainer) must stay green, and
 - **The declared viewport is scaled up to the cap, never taken from the image
   alone.** The reader draws a page at its declared CSS size and never scales it UP,
   so a book whose scans are smaller than the screen (`image px ÷ dpr` below the CSS
-  screen size) is drawn small with dead margin around it — measured on device at 78%
+  screen size) is drawn small with dead margin around it - measured on device at 78%
   of the width for 1125×1600 scans. `EpubConverter.Viewport` scales the box to the
   cap; the image keeps its own pixels and the reader upscales it, so this costs no
   bytes and no decode memory.
 - **The reader cuts a strip off the page and we cannot measure it.** Its usable box
   is smaller than the screen the `scr` probe reports, it never scales a page to
-  fit, and nothing in the EPUB reaches a fixed-layout path — a commercially
+  fit, and nothing in the EPUB reaches a fixed-layout path - a commercially
   produced fixed-layout comic renders just as clipped. Hence `Scale`: a per-device
   percentage the user dials down until nothing is cut. Do not try to derive it;
   it is not derivable from the browser.
@@ -211,18 +211,18 @@ from the repo root (inside the devcontainer) must stay green, and
   never a fallback name that would pool devices into one bucket.
 - **Download marks live in a `marks/` subdirectory of the EPUB cache.** That is
   safe because every cache glob is extension-scoped (`*.epub`, `*.tmp`) and a
-  device id can't contain a dot — don't widen one of those patterns.
+  device id can't contain a dot - don't widen one of those patterns.
 
 ## Adding a new X
 
 - **Endpoint (stream/action):** a `MapXxxEndpoints` extension in `Endpoints/`,
-  injecting `AbsApiClient` — no token handling, the handler does it — mapped from
+  injecting `AbsApiClient` - no token handling, the handler does it - mapped from
   `Program.cs`.
 - **ABS call:** a method on `AbsApiClient`, no `accessToken` parameter. If the
   response introduces yet another metadata shape, add a DTO rather than widening
   an existing one.
 - **Page:** a Razor Page under `Pages/`, building library URLs through
-  `LibraryLinks`. Let `AbsAuthException` propagate — the middleware in
+  `LibraryLinks`. Let `AbsAuthException` propagate - the middleware in
   `Program.cs` redirects to `/login`.
 - **Setting:** one key in the `inkshelf_settings` value; absent keys must fall
   back to that setting's own default.
@@ -230,7 +230,7 @@ from the repo root (inside the devcontainer) must stay green, and
 ## Configuration
 
 Every key is read once into `AbsOptions` at startup. **`README.md` is the
-reference** for names, defaults and meanings — it's the operator-facing doc, and
+reference** for names, defaults and meanings - it's the operator-facing doc, and
 duplicating it here has already produced a wrong default once.
 
 ## Security
@@ -244,7 +244,7 @@ client can influence:
   cookie whose `Secure` flag is pinnable via config.
 - State-changing requests are antiforgery-protected.
 - User-supplied ids are URL-escaped; EPUB metadata is XML-escaped.
-- Client-influenced sizes — archive bytes, total cache bytes, `scr` dimensions —
+- Client-influenced sizes - archive bytes, total cache bytes, `scr` dimensions -
   are all bounded, because each one is an OOM or disk-exhaustion vector.
 - The unauthenticated `/diag` probe is bounded, sanitized, and gateable.
 

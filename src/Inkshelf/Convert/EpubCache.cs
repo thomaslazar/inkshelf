@@ -9,13 +9,13 @@ public class EpubCache
 
     // EVERY knob that changes the bytes we write is part of the key: the downscale
     // target (maxW×maxH), grayscale, the spread mode, and the page scale. Two devices
-    // with different screens — or the same device before and after the user changes a
-    // setting — must never be served each other's variant.
+    // with different screens - or the same device before and after the user changes a
+    // setting - must never be served each other's variant.
     //
     // The spread letter is emitted ALWAYS, including for the default, so that files
     // cached by an older build (which had no spread handling at all) can never be
     // mistaken for a current one. Scale is emitted only when it is not 100.
-    // Dpr is emitted only when it is not 1 — see the dpr test for why it has to be
+    // Dpr is emitted only when it is not 1 - see the dpr test for why it has to be
     // in the key at all.
     public string PathFor(string itemId, long size, long mtimeMs, int maxW, int maxH,
         bool grayscale = false, SpreadMode spread = SpreadMode.Fit, int scale = 100, double dpr = 1) =>
@@ -26,7 +26,7 @@ public class EpubCache
     // One letter per spread mode. Deliberately NOT reusing the letters an earlier
     // build wrote ('h' for split, 'r' for rotate): those files were laid out
     // differently, so they must fall out as unrecognised rather than be misread as a
-    // mode that now means something else. 's' is avoided too — it would be ambiguous
+    // mode that now means something else. 's' is avoided too - it would be ambiguous
     // with the "-s95" scale suffix parsed alongside this letter.
     private static char Letter(SpreadMode m) => m switch
     {
@@ -68,7 +68,7 @@ public class EpubCache
     // Evict oldest-by-conversion-time entries until total cache bytes are under the
     // cap. FIFO, not LRU, and deliberately so: this cache bridges one expensive
     // conversion to one download, after which the EPUB lives on the reader. Nothing
-    // re-stamps a served file, so write time stays the conversion time — which is
+    // re-stamps a served file, so write time stays the conversion time - which is
     // also what /converted sorts on. No-op when maxBytes <= 0 or already under.
     // Best-effort (ignores IO races).
     public void EnforceCap(long maxBytes)
@@ -120,7 +120,7 @@ public class EpubCache
         if (si > 0 && int.TryParse(name[(si + 2)..], out var parsedScale))
         { scale = parsedScale; name = name[..si]; }
 
-        // The spread letter is mandatory — a name without one was written by a build
+        // The spread letter is mandatory - a name without one was written by a build
         // that predates spread handling, and its pages are laid out differently.
         if (name.Length < 2 || name[^2] != '-' || ModeOf(name[^1]) is not { } spread) return null;
         name = name[..^2];

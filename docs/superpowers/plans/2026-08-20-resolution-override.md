@@ -12,9 +12,9 @@
 
 - .NET 10, **no AOT**. Plain server-rendered HTML.
 - JS is a guideline, not a hard rule: **one** ES5 inline script is in scope for this feature (`getElementById`, `onclick`, no libraries). The page must still work with JS off.
-- `dotnet test` from the repo root must pass. `dotnet format --verify-no-changes` must pass — CI enforces it.
+- `dotnet test` from the repo root must pass. `dotnet format --verify-no-changes` must pass - CI enforces it.
 - Conventional Commits: `type: subject`, imperative, lowercase, no period. **No** `Co-Authored-By` or "Generated with" lines.
-- **Never** edit `CHANGELOG.md` — that belongs to the release skill only.
+- **Never** edit `CHANGELOG.md` - that belongs to the release skill only.
 - `docs/ARCHITECTURE.md` is a map, not a diary: add invariants only, no per-feature entries.
 - Commits per task are pre-authorised for this plan (the user asked for subagent-driven implementation). Do not push and do not open a PR.
 - Existing bounds to reuse, do not redefine: `ScreenTarget.MaxDimension` = 4096, `ScreenTarget.MaxDpr` = 4.0.
@@ -22,7 +22,7 @@
 
 ---
 
-### Task 1: Storage — the four fields in the settings cookie
+### Task 1: Storage - the four fields in the settings cookie
 
 **Files:**
 - Modify: `src/Inkshelf/Convert/RenderTarget.cs` (append the new type)
@@ -114,7 +114,7 @@ Append inside the existing `DeviceSettingsTests` class in `tests/Inkshelf.Tests/
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --nologo -v q --filter DeviceSettingsTests`
-Expected: FAIL — compile errors, `DeviceSettings` has no `OverrideScreen` / `ActiveOverride`, and `ScreenOverride` does not exist.
+Expected: FAIL - compile errors, `DeviceSettings` has no `OverrideScreen` / `ActiveOverride`, and `ScreenOverride` does not exist.
 
 - [ ] **Step 3: Add the `ScreenOverride` type**
 
@@ -126,7 +126,7 @@ Append to `src/Inkshelf/Convert/RenderTarget.cs`:
 // reader draws per CSS layout pixel, so viewport = px × scale ÷ Dpr.
 //
 // Only ever constructed from already-sanitised values (DeviceSettings clamps them
-// on the way out of the cookie), but ScreenTarget clamps again — the numbers cross
+// on the way out of the cookie), but ScreenTarget clamps again - the numbers cross
 // a trust boundary and clamping twice is cheaper than trusting once.
 public readonly record struct ScreenOverride(int W, int H, double Dpr);
 ```
@@ -162,7 +162,7 @@ Add the sanitisers next to `SanitizeScale`:
     // bound: a typo'd 99999 is not a request for 4096, it is a mistake, and
     // silently converting at a size the user never asked for is worse than
     // falling back to the probe.
-    // NOT `Convert.ScreenTarget…` — `Convert` binds to System.Convert here, which is
+    // NOT `Convert.ScreenTarget…` - `Convert` binds to System.Convert here, which is
     // why this file already fully-qualifies System.Convert.ToHexString. The file's
     // `using Inkshelf.Convert;` makes the bare type name work.
     public static int SanitizeDim(int px) => px > 0 && px <= ScreenTarget.MaxDimension ? px : 0;
@@ -199,7 +199,7 @@ And in `Read`'s object initialiser, after the `Scale = …` line:
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `dotnet test --nologo -v q --filter DeviceSettingsTests`
-Expected: PASS. Then `dotnet test --nologo -v q` — the whole suite must still pass. `Serialize_emits_keyed_pairs` and `Fav_is_sanitized_on_the_way_into_the_cookie` assert the **exact** cookie string, so append `&ovr=0&ovrw=0&ovrh=0&ovrd=0` to their expected values.
+Expected: PASS. Then `dotnet test --nologo -v q` - the whole suite must still pass. `Serialize_emits_keyed_pairs` and `Fav_is_sanitized_on_the_way_into_the_cookie` assert the **exact** cookie string, so append `&ovr=0&ovrw=0&ovrh=0&ovrd=0` to their expected values.
 
 - [ ] **Step 6: Verify formatting and commit**
 
@@ -219,7 +219,7 @@ git commit -m "feat: store a hand-entered screen override in the settings cookie
 
 **Interfaces:**
 - Consumes: `ScreenOverride` and `DeviceSettings.ActiveOverride` from Task 1.
-- Produces: `ScreenTarget.FromCookie(string? scr, bool retina = false, bool grayscale = false, SpreadMode spread = SpreadMode.Fit, int scale = 100, ScreenOverride? over = null)` — the new parameter is last and optional, so existing call sites keep compiling.
+- Produces: `ScreenTarget.FromCookie(string? scr, bool retina = false, bool grayscale = false, SpreadMode spread = SpreadMode.Fit, int scale = 100, ScreenOverride? over = null)` - the new parameter is last and optional, so existing call sites keep compiling.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -239,7 +239,7 @@ Append inside the existing `ScreenTargetTests` class:
     public void An_override_works_with_no_probe_at_all()
     {
         // The whole point: FromCookie used to return (0,0,1) the moment the cookie
-        // was missing and never look further, so there was no cap — no downscaling,
+        // was missing and never look further, so there was no cap - no downscaling,
         // and SpreadMode.Fit had no box to letterbox a spread onto.
         var t = ScreenTarget.FromCookie(null, over: new ScreenOverride(1000, 2000, 1));
         Assert.Equal(1000, t.MaxW);
@@ -287,7 +287,7 @@ Append inside the existing `ScreenTargetTests` class:
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --nologo -v q --filter ScreenTargetTests`
-Expected: FAIL — `FromCookie` has no `over` parameter.
+Expected: FAIL - `FromCookie` has no `over` parameter.
 
 - [ ] **Step 3: Implement it**
 
@@ -300,7 +300,7 @@ In `src/Inkshelf/Convert/ScreenTarget.cs`, change the signature and add the over
         // FIRST, before the cookie is even looked at. Being merely "preferred over a
         // bad value" would not help: the no-probe case returns at the bottom of this
         // method, so an override consulted later would never be reached when the
-        // cookie is absent — which is one of the reasons the override exists.
+        // cookie is absent - which is one of the reasons the override exists.
         //
         // retina is deliberately not consulted: it only chooses between the CSS size
         // and CSS × dpr, and both numbers are explicit here.
@@ -407,17 +407,17 @@ Then append this test to the class:
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `dotnet test --nologo -v q --filter An_override_supplies_the_target_when_there_is_no_probe`
-Expected: FAIL — the override is not wired into `Library.cshtml.cs`, so the row renders as not-converted in both halves.
+Expected: FAIL - the override is not wired into `Library.cshtml.cs`, so the row renders as not-converted in both halves.
 
 - [ ] **Step 3: Wire all five call sites**
 
 Add `, ds.ActiveOverride` (or `s.` / `settings.`, matching each site's local variable name) as the last argument:
 
-- `src/Inkshelf/Endpoints/ConvertEndpoints.cs:14` — `ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"], ds.Retina, ds.Grayscale, ds.Spread, ds.Scale, ds.ActiveOverride)`
-- `src/Inkshelf/Pages/Item.cshtml.cs:55` — `…, ds.Spread, ds.Scale, ds.ActiveOverride)`
-- `src/Inkshelf/Pages/ConvertWhy.cshtml.cs:36` — `…, ds.Spread, ds.Scale, ds.ActiveOverride)`
-- `src/Inkshelf/Pages/Library.cshtml.cs:142` — `…, s.Spread, s.Scale, s.ActiveOverride)`
-- `src/Inkshelf/Pages/Converted.cshtml.cs:66` — `…, settings.Spread, settings.Scale, settings.ActiveOverride)`
+- `src/Inkshelf/Endpoints/ConvertEndpoints.cs:14` - `ScreenTarget.FromCookie(httpContext.Request.Cookies["scr"], ds.Retina, ds.Grayscale, ds.Spread, ds.Scale, ds.ActiveOverride)`
+- `src/Inkshelf/Pages/Item.cshtml.cs:55` - `…, ds.Spread, ds.Scale, ds.ActiveOverride)`
+- `src/Inkshelf/Pages/ConvertWhy.cshtml.cs:36` - `…, ds.Spread, ds.Scale, ds.ActiveOverride)`
+- `src/Inkshelf/Pages/Library.cshtml.cs:142` - `…, s.Spread, s.Scale, s.ActiveOverride)`
+- `src/Inkshelf/Pages/Converted.cshtml.cs:66` - `…, settings.Spread, settings.Scale, settings.ActiveOverride)`
 
 Verify none were missed:
 
@@ -465,8 +465,8 @@ Append to `EpubCacheTests`:
     {
         // Dpr got away with being absent from the key while it was always implied by
         // WxH: under retina the cap IS css × dpr, and without retina it is always 1.
-        // An explicit override breaks that — 1000x2000 at dpr 1 and at dpr 2 are
-        // different EPUBs — so the second device would be served the first one's file.
+        // An explicit override breaks that - 1000x2000 at dpr 1 and at dpr 2 are
+        // different EPUBs - so the second device would be served the first one's file.
         var c = new EpubCache(TempDirPath());
         Assert.EndsWith("i1-1-2-800x1000-f.epub", c.PathFor("i1", 1, 2, 800, 1000));
         Assert.EndsWith("i1-1-2-800x1000-f-d1.875.epub", c.PathFor("i1", 1, 2, 800, 1000, dpr: 1.875));
@@ -492,7 +492,7 @@ Append to `EpubCacheTests`:
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --nologo -v q --filter EpubCacheTests`
-Expected: FAIL — `PathFor` has no `dpr` parameter.
+Expected: FAIL - `PathFor` has no `dpr` parameter.
 
 - [ ] **Step 3: Implement it**
 
@@ -513,7 +513,7 @@ In `EpubCache.cs`, add `using System.Globalization;`, then change `PathFor` and 
     }
 ```
 
-Extend the `PathFor` doc comment with: `// Dpr is emitted only when it is not 1 — see the dpr test for why it has to be in the key at all.`
+Extend the `PathFor` doc comment with: `// Dpr is emitted only when it is not 1 - see the dpr test for why it has to be in the key at all.`
 
 Add `Dpr` to the record:
 
@@ -618,7 +618,7 @@ Append to `EndpointTests`:
     public async Task Saving_with_the_override_off_keeps_the_numbers()
     {
         // The three fields are disabled while the override is off, so they submit
-        // nothing — and must not be zeroed, or switching the override off would
+        // nothing - and must not be zeroed, or switching the override off would
         // throw away numbers the user had to look up.
         using var factory = CreateFactory();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -650,7 +650,7 @@ Append to `EndpointTests`:
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --nologo -v q --filter Saving_with_the_override`
-Expected: FAIL — the endpoint does not read `ovr` at all, so no `ovr%3D1` appears.
+Expected: FAIL - the endpoint does not read `ovr` at all, so no `ovr%3D1` appears.
 
 - [ ] **Step 3: Implement the endpoint rules**
 
@@ -661,7 +661,7 @@ Replace the body of the POST handler in `src/Inkshelf/Endpoints/SettingsEndpoint
             // Unchecked checkboxes send no field → absent == off. lang comes from
             // the <select>; DeviceSettings sanitises it on both write (Serialize)
             // and read.
-            // `with`, NOT a fresh instance — the favorite lives in this same cookie
+            // `with`, NOT a fresh instance - the favorite lives in this same cookie
             // and constructing a new record would wipe it.
             var stored = DeviceSettings.Read(ctx.Request);
             var overriding = form.ContainsKey("ovr");
@@ -669,7 +669,7 @@ Replace the body of the POST handler in `src/Inkshelf/Endpoints/SettingsEndpoint
             {
                 // A DISABLED input is not submitted, and the page disables retina
                 // while the override is on. So "absent" only means "off" here when
-                // the override is off — otherwise saving the override would quietly
+                // the override is off - otherwise saving the override would quietly
                 // switch retina off.
                 Retina = overriding ? stored.Retina : form.ContainsKey("retina"),
                 Grayscale = form.ContainsKey("grayscale"),
@@ -762,7 +762,7 @@ In `src/Inkshelf/Pages/Settings.cshtml`, insert a new `<p>` immediately **after*
     </p>
 ```
 
-Give the retina checkbox an id so the script can reach it — change its input to:
+Give the retina checkbox an id so the script can reach it - change its input to:
 
 ```html
             <input type="checkbox" name="retina" id="retina" value="on" @(Model.Settings.Retina ? "checked" : "") />
@@ -799,7 +799,7 @@ In `src/Inkshelf/wwwroot/app.css`, after the existing `.settings-form select` ru
 
 ```css
 /* Narrow, so three of them read as one row of numbers rather than three settings.
-   A disabled field must LOOK disabled — the whole point of disabling it is to stop
+   A disabled field must LOOK disabled - the whole point of disabling it is to stop
    it implying it affects anything. */
 .settings-form input[type=number], .settings-form input[type=text] { font: inherit; padding: .4rem; width: 6rem; }
 .settings-form input:disabled { color: #888; background: #eee; }
@@ -867,7 +867,7 @@ Then **read** `tools/uicheck/shots/settings-en.png` and confirm: the three field
 Delete the `**Resolution override.**` bullet from `## Settings` in `docs/ROADMAP.md` and add to `## Done`:
 
 ```markdown
-- **Resolution override** — width, height and pixel ratio can be set by hand when
+- **Resolution override** - width, height and pixel ratio can be set by hand when
   the `scr` probe is missing, wrong, or simply not what the user wants. It takes
   precedence over the probe entirely, including when the probe is absent, which is
   also what finally gives `SpreadMode.Fit` a page box on a device with no
@@ -883,11 +883,11 @@ In `docs/ARCHITECTURE.md`, in the **Per-device state** section, extend the exist
 - **A hand-set screen override wins over the probe, and is consulted first.**
   `ScreenTarget.FromCookie` returns early when the `scr` cookie is missing, so an
   override checked later would never be reached in exactly the case it exists for.
-  `retina` is not consulted while an override is active — it only chooses between
+  `retina` is not consulted while an override is active - it only chooses between
   the CSS size and CSS × dpr, and both are explicit.
 - **A disabled input is not submitted.** The settings form disables fields it does
   not want used, so the POST handler treats an absent field as "keep what is
-  stored" for those — otherwise saving would silently zero the override numbers, or
+  stored" for those - otherwise saving would silently zero the override numbers, or
   turn retina off, since absent normally means off for a checkbox.
 ```
 
@@ -913,4 +913,4 @@ git commit -m "docs: record the resolution override"
 - An override with **no** `scr` cookie produces a real cap, so `Fit` has a box.
 - Retina cannot be changed while the override is on, and is not lost by saving.
 - Switching the override off keeps the numbers.
-- A real device pass stays with the user — the headless run cannot reproduce the e-ink engine.
+- A real device pass stays with the user - the headless run cannot reproduce the e-ink engine.

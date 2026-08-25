@@ -126,7 +126,7 @@ public class PageImageProcessorTests
     [Fact]
     public async Task ProcessAsync_split_takes_the_left_half_first()
     {
-        // Left half red, right half blue — the first emitted page must be the red one.
+        // Left half red, right half blue - the first emitted page must be the red one.
         using var img = new Image<Rgba32>(400, 300, new Rgba32(255, 0, 0));
         for (var x = 200; x < 400; x++)
             for (var y = 0; y < 300; y++) img[x, y] = new Rgba32(0, 0, 255);

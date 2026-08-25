@@ -73,7 +73,7 @@ public sealed class DownloadMarks
     }
 
     // The device id comes from a client cookie and becomes a FILE NAME, so it is a
-    // trust boundary. A blank or invalid id means "no marks" — never a fallback
+    // trust boundary. A blank or invalid id means "no marks" - never a fallback
     // name, which would pool every malformed device into one shared bucket.
     private string? PathFor(string did) =>
         Auth.DeviceSettings.IsValidDid(did) ? Path.Combine(_dir, did) : null;

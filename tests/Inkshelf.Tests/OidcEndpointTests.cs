@@ -157,7 +157,7 @@ public class OidcEndpointTests
         var res = await c.GetAsync("/oidc/callback?code=the-code&state=not-the-state");
 
         Assert.Equal("/login?error=sso", res.Headers.Location?.ToString());
-        Assert.Single(abs.Requests); // leg 1 only — no exchange was attempted
+        Assert.Single(abs.Requests); // leg 1 only - no exchange was attempted
     }
 
     [Fact]

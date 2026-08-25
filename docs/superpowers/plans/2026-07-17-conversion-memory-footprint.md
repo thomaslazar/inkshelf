@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Cut the sidecar's post-conversion memory — resting idle back near fresh and the transient peak to low-hundreds MiB — without changing EPUB output.
+**Goal:** Cut the sidecar's post-conversion memory - resting idle back near fresh and the transient peak to low-hundreds MiB - without changing EPUB output.
 
 **Architecture:** Four changes. (1) Bake Workstation GC + conserve into the csproj. (2) In `ConvertWorker`, spool the downloaded archive to a temp file instead of a `MemoryStream` and release ImageSharp's unmanaged pool after each job. (3) Stream pages into the EPUB one at a time (`EpubWriter.WriteAsync(IAsyncEnumerable<Page>)`) instead of holding all ~280 in a `List`. (4) Document a container memory ceiling.
 
@@ -13,28 +13,28 @@
 ## Global Constraints
 
 - **No AOT; no new NuGet dependency.**
-- **EPUB output must stay byte-identical** — same zip entries in the same order, same OPF/NCX. `EpubConverterTests` + `EpubWriterTests` are the guard.
+- **EPUB output must stay byte-identical** - same zip entries in the same order, same OPF/NCX. `EpubConverterTests` + `EpubWriterTests` are the guard.
 - **String-built EPUB XML and the file-backed zip stay** (load-bearing conventions). Do not introduce an XML library.
 - **Page processing stays serial**; do NOT parallelise (it fights the memory goal). `MaxConcurrentConversions` stays default 1.
 - `dotnet test` green after every task. Conventional Commits; **no** `Co-Authored-By` / "Generated with" lines. Ask before committing (per-task commit steps are the plan's intent; confirm with the owner).
 - Server-only change: near-zero client JS untouched → no device re-test.
-- Final GC-conserve level and container-limit value are tuned by re-measuring on the Zimaboard after this lands — not pinned here.
+- Final GC-conserve level and container-limit value are tuned by re-measuring on the Zimaboard after this lands - not pinned here.
 
 ---
 
 ## File Structure
 
 **Modify:**
-- `src/Inkshelf/Inkshelf.csproj` — GC properties.
-- `src/Inkshelf/Convert/ConvertWorker.cs` — temp-file archive spool + ImageSharp release.
-- `src/Inkshelf/Convert/EpubWriter.cs` — `WriteAsync(IAsyncEnumerable<Page>)` + `PageMeta`; remove `Write`.
-- `src/Inkshelf/Convert/EpubConverter.cs` — lazy `IAsyncEnumerable<Page>` producer.
-- `tests/Inkshelf.Tests/EpubWriterTests.cs` — migrate to `WriteAsync`.
-- `tests/Inkshelf.Tests/ConvertWorkerTests.cs` — temp-spool + sweep assertions.
-- `docker-compose.example.yml`, `README.md` — memory ceiling.
-- `docs/ARCHITECTURE.md`, `docs/ROADMAP.md` — docs.
+- `src/Inkshelf/Inkshelf.csproj` - GC properties.
+- `src/Inkshelf/Convert/ConvertWorker.cs` - temp-file archive spool + ImageSharp release.
+- `src/Inkshelf/Convert/EpubWriter.cs` - `WriteAsync(IAsyncEnumerable<Page>)` + `PageMeta`; remove `Write`.
+- `src/Inkshelf/Convert/EpubConverter.cs` - lazy `IAsyncEnumerable<Page>` producer.
+- `tests/Inkshelf.Tests/EpubWriterTests.cs` - migrate to `WriteAsync`.
+- `tests/Inkshelf.Tests/ConvertWorkerTests.cs` - temp-spool + sweep assertions.
+- `docker-compose.example.yml`, `README.md` - memory ceiling.
+- `docs/ARCHITECTURE.md`, `docs/ROADMAP.md` - docs.
 
-**No change needed:** `EpubCache.SweepTemp()` already globs `*.tmp` (covers `.dl.tmp`); `EpubConverterTests` (call `ConvertAsync`, unchanged signature — the primary output-equality guard).
+**No change needed:** `EpubCache.SweepTemp()` already globs `*.tmp` (covers `.dl.tmp`); `EpubConverterTests` (call `ConvertAsync`, unchanged signature - the primary output-equality guard).
 
 ---
 
@@ -90,7 +90,7 @@ git commit -m "perf: use Workstation GC + conserve memory for the sidecar"
 
 ---
 
-## Task 2: `ConvertWorker` — temp-file archive spool + ImageSharp pool release
+## Task 2: `ConvertWorker` - temp-file archive spool + ImageSharp pool release
 
 **Files:**
 - Modify: `src/Inkshelf/Convert/ConvertWorker.cs` (the `ProcessAsync` body)
@@ -139,9 +139,9 @@ Add to `tests/Inkshelf.Tests/ConvertWorkerTests.cs` (reuse its existing `Cbz()`,
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `dotnet test --filter ConvertWorkerTests`
-Expected: `Deletes_the_archive_temp_file…` FAILS (a `.dl.tmp` doesn't exist yet / no temp file is created — the assertion on `*.dl.tmp` being empty may pass trivially, so this test only becomes meaningful after Step 3; if it passes now, that's fine — it's a guard). `SweepTemp_also_removes_orphaned_dl_tmp` PASSES already (the `*.tmp` glob covers `.dl.tmp`) — keep it as a regression guard that the glob stays broad.
+Expected: `Deletes_the_archive_temp_file…` FAILS (a `.dl.tmp` doesn't exist yet / no temp file is created - the assertion on `*.dl.tmp` being empty may pass trivially, so this test only becomes meaningful after Step 3; if it passes now, that's fine - it's a guard). `SweepTemp_also_removes_orphaned_dl_tmp` PASSES already (the `*.tmp` glob covers `.dl.tmp`) - keep it as a regression guard that the glob stays broad.
 
-(Note: the meaningful RED here is behavioral — after Step 3 the worker actually creates and cleans a `.dl.tmp`. If you want a strict RED, temporarily assert `Directory.GetFiles(dir.Path,"*.dl.tmp").Length >= 0` is not enough; rely on the code review that the spool path is exercised.)
+(Note: the meaningful RED here is behavioral - after Step 3 the worker actually creates and cleans a `.dl.tmp`. If you want a strict RED, temporarily assert `Directory.GetFiles(dir.Path,"*.dl.tmp").Length >= 0` is not enough; rely on the code review that the spool path is exercised.)
 
 - [ ] **Step 3: Rewrite `ProcessAsync` to spool + release**
 
@@ -172,7 +172,7 @@ In `src/Inkshelf/Convert/ConvertWorker.cs`, replace the body of `ProcessAsync` (
                 {
                     if (!await CopyWithLimitAsync(archive, spool, _options.MaxArchiveBytes, ct))
                     {
-                        _logger.LogWarning("Archive for {Id} exceeds {Limit} bytes — refusing.", job.ItemId, _options.MaxArchiveBytes);
+                        _logger.LogWarning("Archive for {Id} exceeds {Limit} bytes - refusing.", job.ItemId, _options.MaxArchiveBytes);
                         _queue.MarkFailed(job.CachePath);
                         return;
                     }
@@ -188,7 +188,7 @@ In `src/Inkshelf/Convert/ConvertWorker.cs`, replace the body of `ProcessAsync` (
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw; // app stopping — leave .tmp for the next startup sweep, don't mark Failed
+            throw; // app stopping - leave .tmp for the next startup sweep, don't mark Failed
         }
         catch (Exception ex)
         {
@@ -199,7 +199,7 @@ In `src/Inkshelf/Convert/ConvertWorker.cs`, replace the body of `ProcessAsync` (
         {
             try { if (File.Exists(dlTmp)) File.Delete(dlTmp); } catch (IOException) { }
             // Return ImageSharp's retained UNMANAGED pool to the OS between jobs
-            // (GC config can't reclaim it). Safe across jobs — trims free buffers,
+            // (GC config can't reclaim it). Safe across jobs - trims free buffers,
             // not ones a concurrent convert is renting.
             SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.ReleaseRetainedResources();
         }
@@ -237,8 +237,8 @@ git commit -m "perf: spool archive to temp file and release ImageSharp pool per 
 **Interfaces:**
 - Consumes: `ComicArchiveReader.ReadAsync`, `PageImageProcessor.ProcessAsync` (unchanged).
 - Produces:
-  - `EpubWriter.WriteAsync(string outPath, EbookMeta meta, IAsyncEnumerable<Page> pages, double dpr, CancellationToken ct) : Task` — the old `Write(...)` is removed.
-  - `EpubConverter.ConvertAsync(...)` — same signature; internally streams.
+  - `EpubWriter.WriteAsync(string outPath, EbookMeta meta, IAsyncEnumerable<Page> pages, double dpr, CancellationToken ct) : Task` - the old `Write(...)` is removed.
+  - `EpubConverter.ConvertAsync(...)` - same signature; internally streams.
 
 - [ ] **Step 1: Migrate `EpubWriterTests` to the streaming API (write the failing tests first)**
 
@@ -339,7 +339,7 @@ public class EpubWriterTests
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `dotnet test --filter EpubWriterTests`
-Expected: FAIL — `WriteAsync` doesn't exist (compile error).
+Expected: FAIL - `WriteAsync` doesn't exist (compile error).
 
 - [ ] **Step 3: Rewrite `EpubWriter` to stream**
 
@@ -371,7 +371,7 @@ In `src/Inkshelf/Convert/EpubWriter.cs`: keep the `Page` record, `PageXhtml`, `N
             await foreach (var p in pages.WithCancellation(ct))
             {
                 // Write the image + its xhtml, then keep only the light metadata so
-                // the page's bytes become collectable — one page live at a time.
+                // the page's bytes become collectable - one page live at a time.
                 using (var s = zip.CreateEntry($"OEBPS/img/{p.Name}").Open()) s.Write(p.Bytes);
                 var vw = Math.Max(1, (int)Math.Round(p.Width / dpr));
                 var vh = Math.Max(1, (int)Math.Round(p.Height / dpr));
@@ -388,7 +388,7 @@ In `src/Inkshelf/Convert/EpubWriter.cs`: keep the `Page` record, `PageXhtml`, `N
     }
 ```
 
-Change `Opf`'s signature from `IReadOnlyList<Page>` to `IReadOnlyList<PageMeta>` (the body is unchanged — it only reads `pages[i].Name` and `pages.Count`):
+Change `Opf`'s signature from `IReadOnlyList<Page>` to `IReadOnlyList<PageMeta>` (the body is unchanged - it only reads `pages[i].Name` and `pages.Count`):
 
 ```csharp
     private static string Opf(EbookMeta m, IReadOnlyList<PageMeta> pages)
@@ -436,7 +436,7 @@ public class EpubConverter
 }
 ```
 
-(Note: `EbookMeta` is declared at the top of `EpubConverter.cs` today — **keep that declaration exactly as shown** in the block above; it is used by both `EpubConverter` and `EpubWriter`. Do not move or duplicate it.)
+(Note: `EbookMeta` is declared at the top of `EpubConverter.cs` today - **keep that declaration exactly as shown** in the block above; it is used by both `EpubConverter` and `EpubWriter`. Do not move or duplicate it.)
 
 - [ ] **Step 5: Run the writer + converter tests**
 
@@ -495,12 +495,12 @@ git commit -m "docs: recommend a container memory limit for conversions"
 - Modify: `docs/ARCHITECTURE.md`
 - Modify: `docs/ROADMAP.md`
 
-- [ ] **Step 1: Update `ARCHITECTURE.md`** (present-tense steady-state voice — NO changelog/"now"/"previously" framing; match surrounding entries)
+- [ ] **Step 1: Update `ARCHITECTURE.md`** (present-tense steady-state voice - NO changelog/"now"/"previously" framing; match surrounding entries)
 
 Reflect, wherever conversion is described:
-- Conversion **streams pages** into the EPUB (`EpubWriter.WriteAsync` consuming an `IAsyncEnumerable<Page>` from `EpubConverter`); only one page's bytes are held at a time, and the archive is spooled to a temp file rather than buffered in memory — the footprint is bounded by one page + the file-backed zip.
+- Conversion **streams pages** into the EPUB (`EpubWriter.WriteAsync` consuming an `IAsyncEnumerable<Page>` from `EpubConverter`); only one page's bytes are held at a time, and the archive is spooled to a temp file rather than buffered in memory - the footprint is bounded by one page + the file-backed zip.
 - After each conversion the worker releases ImageSharp's retained pool.
-- The runtime uses **Workstation GC** (single-user sidecar; sequential CPU-bound conversions) — a load-bearing choice, not a default.
+- The runtime uses **Workstation GC** (single-user sidecar; sequential CPU-bound conversions) - a load-bearing choice, not a default.
 - Conversions run **serially** (`MaxConcurrentConversions`), deliberately not parallelised, to bound memory.
 
 - [ ] **Step 2: Update `ROADMAP.md`**

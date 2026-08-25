@@ -23,7 +23,7 @@ public class EpubConverter
     //
     // NOT simply box ÷ dpr. The reader lays a page out at its declared CSS size and
     // never scales it UP, so a book whose scans are smaller than the screen would
-    // declare a small page and be drawn small, with dead margin around it — measured
+    // declare a small page and be drawn small, with dead margin around it - measured
     // on device: 1125×1600 scans on a 1442×1787 screen rendered at 78% of the width.
     // Scaling the viewport to the cap fixes that for free: the IMAGE stays small (no
     // extra bytes, no extra memory on a device short of both) and the reader upscales
@@ -45,14 +45,14 @@ public class EpubConverter
 
     // Process the raw ABS cover through the same pipeline as pages (cap, grayscale,
     // WebP→JPEG). A cover that fails to decode is dropped (null) so the writer falls
-    // back to flagging the first page — a bad cover must never fail the conversion.
+    // back to flagging the first page - a bad cover must never fail the conversion.
     private static async Task<EpubWriter.Cover?> ProcessCoverAsync(
         (byte[] Bytes, string Ext)? cover, RenderTarget target, CancellationToken ct)
     {
         if (cover is not { } c) return null;
         try
         {
-            // SpreadMode.Fit: a cover is one image by definition — never split or
+            // SpreadMode.Fit: a cover is one image by definition - never split or
             // rotate it. A rare landscape cover gets white bars, which beats a
             // library grid stretching it.
             // A cover is not a page: never split, rotate or letterbox it.
@@ -73,7 +73,7 @@ public class EpubConverter
     //
     // EVERY page is letterboxed onto ONE box, fixed by the first page. That is
     // load-bearing: a book with two different page sizes renders wrong on a real
-    // e-reader — the wider pages lose their right edge. Verified on device.
+    // e-reader - the wider pages lose their right edge. Verified on device.
     private static async IAsyncEnumerable<EpubWriter.Page> ProcessPagesAsync(
         Stream archive, RenderTarget target, [EnumeratorCancellation] CancellationToken ct)
     {

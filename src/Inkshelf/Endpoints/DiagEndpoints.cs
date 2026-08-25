@@ -10,7 +10,7 @@ public static class DiagEndpoints
     {
         // Receives the /diag.html browser capability probe and logs it, so device
         // limitations can be collected without a screenshot. No auth (pre-login tool)
-        // — so the body is bounded and sanitized before logging, and the whole
+        // - so the body is bounded and sanitized before logging, and the whole
         // endpoint is only mapped when enabled (see Program.cs / DIAG_ENABLED).
         app.MapPost("/diag", async (HttpContext ctx, ILogger<DiagLog> logger, CancellationToken ct) =>
         {
@@ -28,7 +28,7 @@ public static class DiagEndpoints
     }
 
     // Neutralize control characters (incl. CR/LF, so a probe body can't forge log
-    // lines) and cap the length. Pure — unit-tested directly.
+    // lines) and cap the length. Pure - unit-tested directly.
     internal static string SanitizeProbe(string raw)
     {
         if (raw.Length > MaxBytes) raw = raw[..MaxBytes];

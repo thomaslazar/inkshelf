@@ -24,7 +24,7 @@
   "Convert": "Konvertieren",
   "Converting…": "Konvertiere…",
   "Convert (retry)": "Konvertieren (erneut)",
-  "Already converted — downloads right away": "Bereits konvertiert – lädt sofort herunter",
+  "Already converted - downloads right away": "Bereits konvertiert - lädt sofort herunter",
   "Regenerate": "Neu erzeugen",
 
   "Username": "Benutzername",
@@ -36,7 +36,7 @@
 
   "These settings apply to this device / browser only.": "Diese Einstellungen gelten nur für dieses Gerät / diesen Browser.",
   "Detected resolution: {0}": "Erkannte Auflösung: {0}",
-  "Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)": "Retina-Seiten (volle Auflösung; schärfer, aber größere Dateien – kann Reader mit wenig Speicher belasten)",
+  "Retina pages (full-resolution; crisper but heavier - may strain low-memory readers)": "Retina-Seiten (volle Auflösung; schärfer, aber größere Dateien - kann Reader mit wenig Speicher belasten)",
   "Grayscale pages (smaller files on e-ink)": "Graustufen-Seiten (kleinere Dateien auf E-Ink)",
   "Page scale": "Seitenskalierung",
   "Override screen resolution": "Bildschirmauflösung überschreiben",

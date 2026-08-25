@@ -90,7 +90,7 @@ public sealed class ConvertQueue
         {
             case Phase.Queued: return ConvertStatus.Queued;
             case Phase.Running: return ConvertStatus.Running;
-            default: // Failed — expire past the TTL
+            default: // Failed - expire past the TTL
                 if (_clock() - e.FailedAtUtc > FailedTtl) { _entries.TryRemove(cachePath, out _); return ConvertStatus.None; }
                 return ConvertStatus.Failed;
         }

@@ -10,7 +10,7 @@ public static class AbsFilter
 
     // Inverse of Encode: split "<group>.<base64(value)>" back into the facet group
     // and its decoded value. Returns null for anything that isn't a base64 facet
-    // (empty, no dot, empty/non-base64 value — e.g. the "__none__" sentinel).
+    // (empty, no dot, empty/non-base64 value - e.g. the "__none__" sentinel).
     public static (string Group, string Value)? Decode(string? filter)
     {
         if (string.IsNullOrEmpty(filter)) return null;

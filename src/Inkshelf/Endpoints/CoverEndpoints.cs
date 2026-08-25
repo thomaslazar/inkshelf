@@ -16,7 +16,7 @@ public static class CoverEndpoints
             }
             catch (HttpRequestException)
             {
-                // Item has no cover (ABS 404) or a transient fetch error — the <img>
+                // Item has no cover (ABS 404) or a transient fetch error - the <img>
                 // just shows nothing rather than the page 500ing.
                 return Results.NotFound();
             }

@@ -34,7 +34,7 @@
     var series = Model.SearchResults?.Series ?? new();
     var authors = Model.SearchResults?.Authors ?? new();
     <p>@L["Results for"] "<strong>@Model.Q</strong>" <a class="btn" href="/library/@Model.Id">@L["clear"]</a></p>
-    @* No "·" separators, matching .sortbar — the padded boxes separate them. *@
+    @* No "·" separators, matching .sortbar - the padded boxes separate them. *@
     <nav class="tabs">
         @if (books.Count > 0) { <a href="#books">@L["Books"] (@books.Count)</a> } else { <span>@L["Books"] (0)</span> }
         @if (series.Count > 0) { <a href="#series">@L["Series"] (@series.Count)</a> } else { <span>@L["Series"] (0)</span> }

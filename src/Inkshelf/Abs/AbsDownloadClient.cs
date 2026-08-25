@@ -6,7 +6,7 @@ namespace Inkshelf.Abs;
 // THIRD ABS client, distinct from the two load-bearing ones (AbsAuthClient
 // login/refresh; AbsApiClient data). It is HANDLER-FREE: the worker has no
 // HttpContext, so AbsAuthHandler (which resolves the token from the request)
-// cannot run — the caller supplies the bearer instead. It does NOT refresh on
+// cannot run - the caller supplies the bearer instead. It does NOT refresh on
 // 401 (that would need HttpContext to persist the new token); a failure just
 // fails the job and the user re-taps with a fresh token.
 //
@@ -14,7 +14,7 @@ namespace Inkshelf.Abs;
 // the ABS reverse proxy requires (it 403s an empty UA). Never attach
 // AbsAuthHandler to it. The one sanctioned request-path caller is the download-
 // ticket branch in DownloadEndpoints: it's handler-free for the same reason the
-// worker is — the bearer comes from the ticket, not the request's cookie, so
+// worker is - the bearer comes from the ticket, not the request's cookie, so
 // there's no session to refresh and no cookie to depend on. Any other
 // request-path use belongs on AbsApiClient instead.
 public sealed class AbsDownloadClient

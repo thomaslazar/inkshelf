@@ -18,12 +18,12 @@
 ---
 
 Audiobookshelf's own web UI leans heavily on JavaScript, which older e-ink
-reader browsers can't run — you log in and then nothing really happens. **Inkshelf**
+reader browsers can't run - you log in and then nothing really happens. **Inkshelf**
 is a thin companion that renders plain HTML on the server with near-zero client
 JavaScript, so browsing your library works on those low-powered browsers.
 
 It runs as a **sidecar container** next to your Audiobookshelf instance, talks to
-the ABS API on your behalf, and keeps no database of its own — your ABS session
+the ABS API on your behalf, and keeps no database of its own - your ABS session
 token lives in an encrypted cookie. Pages are built from `<form>` and `<a>`
 elements only.
 
@@ -40,24 +40,24 @@ elements only.
 
 ## Features
 
-- **Browse & find** — libraries list, paginated item view with covers, full-text
+- **Browse & find** - libraries list, paginated item view with covers, full-text
   search, author/series filters, cycling sort links (title / author / added /
   sequence), and a one-tap favorite library that you land on by default.
-- **Read** — download the original ebook, or convert CBZ/CBR comics on demand to
+- **Read** - download the original ebook, or convert CBZ/CBR comics on demand to
   a **device-sized, fixed-layout EPUB** (epubcheck-clean). Conversions are cached
   on disk and the listing shows which items are already converted.
-- **Optional SSO** — if your ABS server uses an OIDC provider, Inkshelf can offer
+- **Optional SSO** - if your ABS server uses an OIDC provider, Inkshelf can offer
   the same login, so nobody needs a second password. No client secret of its own;
   see [SSO / OIDC login](#sso--oidc-login-optional).
-- **Stateless & private** — your ABS token is held in a Data-Protection-encrypted,
+- **Stateless & private** - your ABS token is held in a Data-Protection-encrypted,
   HttpOnly cookie and refreshed transparently when it expires. No accounts, no
   database.
-- **Built for weak browsers** — near-zero JavaScript, defensive CSS, plain HTML
+- **Built for weak browsers** - near-zero JavaScript, defensive CSS, plain HTML
   forms and links so it works on older e-ink browser engines.
-- **Hardened & bounded** — force-secure cookies behind a proxy, optional
+- **Hardened & bounded** - force-secure cookies behind a proxy, optional
   trusted-proxy scoping, a bounded/sanitized/gateable diagnostics endpoint, and
   resource-exhaustion guards on conversion and the cache.
-- **Easy to run** — a single multi-arch (`linux/amd64` + `linux/arm64`) container
+- **Easy to run** - a single multi-arch (`linux/amd64` + `linux/arm64`) container
   image; no external services beyond your ABS server.
 
 ## Deployment
@@ -96,9 +96,9 @@ restarts. To build from source instead, replace the `image:` line with `build: .
 Because TLS is terminated at your proxy, Inkshelf sees plain HTTP and by default
 won't mark cookies `Secure`. In production, set:
 
-- **`FORCE_SECURE_COOKIES=true`** — always mark the session cookie `Secure`
+- **`FORCE_SECURE_COOKIES=true`** - always mark the session cookie `Secure`
   (the reverse proxy is serving the site over HTTPS).
-- **`TRUSTED_PROXY`** *(optional)* — a comma-separated list of proxy IPs/CIDRs
+- **`TRUSTED_PROXY`** *(optional)* - a comma-separated list of proxy IPs/CIDRs
   allowed to set `X-Forwarded-*` headers. Leave unset to trust the immediate hop.
 
 Run Inkshelf on a trusted network and expose it only through your proxy.
@@ -110,7 +110,7 @@ Pocket ID, …), Inkshelf can offer login through that same provider, so users o
 shared server need no separate ABS password. Password login keeps working
 alongside it, and the feature is off unless you turn it on.
 
-Inkshelf reuses ABS's own OIDC client — it needs no client ID and no client secret
+Inkshelf reuses ABS's own OIDC client - it needs no client ID and no client secret
 of its own, and never sees your provider password. What it does need is three
 pieces of configuration, on three different systems. **All three are required;
 skipping any one produces one of the errors in the table at the end.**
@@ -122,7 +122,7 @@ Throughout, substitute your own hostnames for these two:
 | `INKSHELF_HOST` | where **you** reach Inkshelf in a browser | `inkshelf.example.com` |
 | `ABS_HOST` | where **you** reach Audiobookshelf in a browser | `abs.example.com` |
 
-#### 1. On Inkshelf — environment variables
+#### 1. On Inkshelf - environment variables
 
 ```yaml
 environment:
@@ -138,7 +138,7 @@ mid-login the browser is sent to ABS itself, so a container-internal name like
 `http://audiobookshelf` would be unreachable there. **If `ABS_URL` is already the
 public URL, leave `ABS_PUBLIC_URL` unset.**
 
-#### 2. In Audiobookshelf — allow Inkshelf's callback
+#### 2. In Audiobookshelf - allow Inkshelf's callback
 
 **Settings → Authentication → Mobile Redirect URIs**, add:
 
@@ -146,7 +146,7 @@ public URL, leave `ABS_PUBLIC_URL` unset.**
 https://INKSHELF_HOST/oidc/callback
 ```
 
-Keep the existing `audiobookshelf://oauth` entry — the list holds as many as you
+Keep the existing `audiobookshelf://oauth` entry - the list holds as many as you
 need. Two constraints, both enforced by ABS:
 
 - **No port is allowed in the URL.** ABS validates these entries against a pattern
@@ -157,9 +157,9 @@ need. Two constraints, both enforced by ABS:
   entirely and is not worth the exposure.)
 - **The match is exact.** Inkshelf builds this URL from the browser's host plus
   `https` when `FORCE_SECURE_COOKIES=true` (or the request is already HTTPS). If it
-  does not match, Inkshelf's log names the URL it sent — paste that value in.
+  does not match, Inkshelf's log names the URL it sent - paste that value in.
 
-#### 3. In your OIDC provider — allow ABS's mobile redirect
+#### 3. In your OIDC provider - allow ABS's mobile redirect
 
 On the client you already registered for ABS, add a **second** redirect URI
 alongside the web one:
@@ -171,7 +171,7 @@ https://ABS_HOST/auth/openid/mobile-redirect
 This is the same prerequisite the official ABS mobile apps have: the flow Inkshelf
 uses returns through `/auth/openid/mobile-redirect`, a different path from the web
 login's `/auth/openid/callback`, and providers match redirect URIs exactly. Nothing
-else about the client changes — no new client, no new secret.
+else about the client changes - no new client, no new secret.
 
 #### Then
 
@@ -183,10 +183,10 @@ The version line at the bottom of that page tells you which build is deployed.
 | What you see | Cause | Fix |
 |---|---|---|
 | `redirect_uri 'https://ABS_HOST/auth/openid/mobile-redirect' is not registered for this client` | Step 3 missing | Add that URI to the ABS client in your provider |
-| `redirect_uri 'http://audiobookshelf/auth/openid/mobile-redirect' …` — an internal name | `ABS_PUBLIC_URL` unset or wrong | Step 1: set it to the browser-facing ABS URL |
+| `redirect_uri 'http://audiobookshelf/auth/openid/mobile-redirect' …` - an internal name | `ABS_PUBLIC_URL` unset or wrong | Step 1: set it to the browser-facing ABS URL |
 | ABS answers `Invalid redirect_uri` (Inkshelf shows "SSO login failed") | Step 2 missing or mismatched | Compare the URL in Inkshelf's log against the ABS entry, character for character |
 | No SSO button on the login page | `OIDC_ENABLED` not `true`, or the container did not restart | Step 1 |
-| Login loops back to `/login` with no visible error | Flow cookie dropped — usually `FORCE_SECURE_COOKIES=true` while serving plain HTTP | Serve over HTTPS, or unset that variable for local testing |
+| Login loops back to `/login` with no visible error | Flow cookie dropped - usually `FORCE_SECURE_COOKIES=true` while serving plain HTTP | Serve over HTTPS, or unset that variable for local testing |
 
 Inkshelf logs a warning with the specific reason for every failed SSO attempt;
 `docker logs` is the first place to look.
@@ -201,9 +201,9 @@ out at the provider itself.
 
 Mount a volume for each of these so state survives restarts:
 
-- `DataProtectionKeysPath` (e.g. `/keys`) — encryption keys for the session
+- `DataProtectionKeysPath` (e.g. `/keys`) - encryption keys for the session
   cookie; without persistence everyone is logged out on restart.
-- `CachePath` (e.g. `/cache`) — converted EPUBs; without persistence they're
+- `CachePath` (e.g. `/cache`) - converted EPUBs; without persistence they're
   rebuilt on demand. Also holds each device's downloaded-file marks (`marks/`);
   without persistence, the "already downloaded" arrows are lost.
 
@@ -216,13 +216,13 @@ Set a **container memory limit** (start with 1.5 GiB) so conversions can't press
 | Tag           | Meaning                                                     |
 |---------------|-------------------------------------------------------------|
 | `:latest`     | The most recent tagged release                              |
-| `:X.Y.Z`      | A specific tagged release — pin this for reproducible deploys |
+| `:X.Y.Z`      | A specific tagged release - pin this for reproducible deploys |
 | `:main`       | Bleeding-edge build from `main` (moves on every merge)      |
 | `:main-<sha>` | A specific `main` build, pinnable                           |
 | `:pr-<n>`     | A pull request's build, for trying a branch on a device (only when the PR is labelled `test-image`) |
 
 The version on the libraries page identifies the build: a release image shows a
-bare `X.Y.Z`, while any other image appends where it came from —
+bare `X.Y.Z`, while any other image appends where it came from -
 `0.5.0+main.a1b2c3d` or `0.5.0+pr-34.a1b2c3d`.
 
 ## Configuration
@@ -231,24 +231,24 @@ All configuration is via environment variables.
 
 | Variable                  | Default              | Description |
 |---------------------------|----------------------|-------------|
-| `ABS_URL`                 | — (**required**)     | Base URL of your Audiobookshelf server. |
-| `ABS_PUBLIC_URL`          | *(unset)* = `ABS_URL` | ABS's browser-facing URL, when `ABS_URL` is an internal address. Only SSO needs it — see [SSO / OIDC login](#sso--oidc-login-optional). |
+| `ABS_URL`                 | - (**required**)     | Base URL of your Audiobookshelf server. |
+| `ABS_PUBLIC_URL`          | *(unset)* = `ABS_URL` | ABS's browser-facing URL, when `ABS_URL` is an internal address. Only SSO needs it - see [SSO / OIDC login](#sso--oidc-login-optional). |
 | `DataProtectionKeysPath`  | `<ContentRoot>/.keys`  | Where session-cookie encryption keys are persisted. Mount a volume to keep users logged in across restarts. |
 | `CachePath`               | `<ContentRoot>/.cache/epub` | Where converted EPUBs (and each device's downloaded-file marks, under `marks/`) are cached. Mount a volume to keep conversions and marks across restarts. |
 | `FORCE_SECURE_COOKIES`    | `false`              | Mark cookies `Secure` regardless of the request scheme. Set `true` when behind a TLS-terminating reverse proxy. |
 | `TRUSTED_PROXY`           | *(unset)*            | Comma-separated IPs/CIDRs permitted to set forwarded headers. Unset = trust the immediate hop. |
 | `DIAG_ENABLED`            | `true`               | Whether the unauthenticated `/diag` browser-probe endpoint is exposed. Set `false` to disable it. |
-| `OIDC_ENABLED`            | `false`              | Offer login through the OIDC provider ABS is configured with. Requires whitelisting Inkshelf's callback URL in ABS — see [SSO / OIDC login](#sso--oidc-login-optional). |
-| `OIDC_PROVIDER_NAME`      | *(unset)* = `SSO`    | Provider name on the SSO button — `Acme ID` renders "Log in with Acme ID" (and "Mit Acme ID anmelden" in German). |
-| `LOCALES_PATH`            | `<ContentRoot>/locales` | Baseline directory of shipped `<lang>.json` UI translation files. Don't mount over this — use `LOCALES_OVERRIDE_PATH` instead. |
-| `LOCALES_OVERRIDE_PATH`   | *(unset)*            | Optional extra directory of `<lang>.json` files, merged on top of `LOCALES_PATH` (its keys win). Mount custom or extra translations here and restart — the shipped set stays intact; no rebuild. |
+| `OIDC_ENABLED`            | `false`              | Offer login through the OIDC provider ABS is configured with. Requires whitelisting Inkshelf's callback URL in ABS - see [SSO / OIDC login](#sso--oidc-login-optional). |
+| `OIDC_PROVIDER_NAME`      | *(unset)* = `SSO`    | Provider name on the SSO button - `Acme ID` renders "Log in with Acme ID" (and "Mit Acme ID anmelden" in German). |
+| `LOCALES_PATH`            | `<ContentRoot>/locales` | Baseline directory of shipped `<lang>.json` UI translation files. Don't mount over this - use `LOCALES_OVERRIDE_PATH` instead. |
+| `LOCALES_OVERRIDE_PATH`   | *(unset)*            | Optional extra directory of `<lang>.json` files, merged on top of `LOCALES_PATH` (its keys win). Mount custom or extra translations here and restart - the shipped set stays intact; no rebuild. |
 | `MaxArchiveBytes`         | `1073741824` (1 GiB) | Reject ebook archives larger than this before conversion (decompression-bomb guard; spooled to a temp file, so it bounds disk not RAM). Raise for very large comics. |
 | `MaxCacheBytes`           | `5368709120` (5 GiB) | Soft cap on total EPUB cache size; oldest entries are evicted past it. |
 
 ### Logs
 
-Inkshelf writes one line per request to stdout — method, path with query, status,
-bytes written, duration — plus a warning for anything that failed:
+Inkshelf writes one line per request to stdout - method, path with query, status,
+bytes written, duration - plus a warning for anything that failed:
 
 ```
 GET /library/lib_1?sort=addedAt 200 8431b 96ms
@@ -257,14 +257,14 @@ GET /download/a1b2c3 401 26b 4ms
 GET /download/a1b2c3 200 3211008b 8102ms INCOMPLETE
 ```
 
-`INCOMPLETE` means the response promised more bytes than it delivered — a download
+`INCOMPLETE` means the response promised more bytes than it delivered - a download
 that did not finish, which the status line alone cannot show.
 
 Nothing is written to disk by Inkshelf. Docker captures stdout to a host file with
-no size cap by default, so bound it — see the `logging:` block in
+no size cap by default, so bound it - see the `logging:` block in
 [`docker-compose.example.yml`](docker-compose.example.yml).
 
-Per-device rendering settings — screen override, page scale, spreads — are not
+Per-device rendering settings - screen override, page scale, spreads - are not
 environment variables: they live in the app's own Settings page, per reader. See
 [`docs/DEVICES.md`](docs/DEVICES.md) for the values known to work on specific
 e-readers, and [`docs/FAQ.md`](docs/FAQ.md) when comic pages come out wrong.
@@ -273,11 +273,11 @@ e-readers, and [`docs/FAQ.md`](docs/FAQ.md) when comic pages come out wrong.
 
 Inkshelf is an ASP.NET Core Razor Pages app (.NET 10): Razor Pages render the
 HTML, minimal-API endpoints serve streams and actions, and a typed HTTP client
-talks to the ABS API with transparent token refresh. There is no database — state
+talks to the ABS API with transparent token refresh. There is no database - state
 is the encrypted cookie plus the on-disk EPUB cache.
 
-For the full picture — structure, the load-bearing conventions, and the
-configuration contract — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+For the full picture - structure, the load-bearing conventions, and the
+configuration contract - see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Contributing
 
@@ -291,6 +291,6 @@ and the PR flow.
 
 ## Acknowledgements
 
-Built on top of [Audiobookshelf](https://www.audiobookshelf.org/) — a wonderful
+Built on top of [Audiobookshelf](https://www.audiobookshelf.org/) - a wonderful
 self-hosted audiobook and ebook server. Inkshelf is an independent client and is
 not affiliated with the Audiobookshelf project.

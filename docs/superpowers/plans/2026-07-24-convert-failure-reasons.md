@@ -32,7 +32,7 @@
   - `enum ConvertFailReason { TooLarge, DownloadFailed, BadArchive, ConvertError }`
   - `readonly record struct ConvertFailure(ConvertFailReason Reason, long? ArchiveBytes)`
   - `ConvertQueue.MarkFailed(string cachePath, ConvertFailReason reason = ConvertFailReason.ConvertError, long? archiveBytes = null)`
-  - `ConvertQueue.ConvertFailure? FailureFor(string cachePath)` — the reason while the entry is Failed (respecting TTL), else null.
+  - `ConvertQueue.ConvertFailure? FailureFor(string cachePath)` - the reason while the entry is Failed (respecting TTL), else null.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -80,7 +80,7 @@ public void FailureFor_is_null_after_ttl()
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test tests/Inkshelf.Tests/Inkshelf.Tests.csproj --filter FullyQualifiedName~ConvertQueueTests`
-Expected: FAIL — `FailureFor` / `ConvertFailReason` / `ConvertFailure` do not exist (compile error).
+Expected: FAIL - `FailureFor` / `ConvertFailReason` / `ConvertFailure` do not exist (compile error).
 
 - [ ] **Step 3: Add the enum and failure struct**
 
@@ -154,9 +154,9 @@ git commit -m "feat: store failure reason on the convert queue entry"
 **Interfaces:**
 - Consumes: `ConvertQueue.FailureFor` (Task 1).
 - Produces:
-  - `ConvertJob(..., string? FileIno = null, long ArchiveBytes = 0)` — new trailing member, ABS-reported archive size.
+  - `ConvertJob(..., string? FileIno = null, long ArchiveBytes = 0)` - new trailing member, ABS-reported archive size.
   - `readonly record struct FailureView(string Title, ConvertFailReason Reason, long? ArchiveBytes)` in `ConvertService`.
-  - `ConvertService.FailureAsync(string id, RenderTarget target, CancellationToken ct, string? fileIno = null) : Task<FailureView?>` — resolves the cache path, returns the queue failure enriched with the item title, or null if not resolvable / not currently Failed.
+  - `ConvertService.FailureAsync(string id, RenderTarget target, CancellationToken ct, string? fileIno = null) : Task<FailureView?>` - resolves the cache path, returns the queue failure enriched with the item title, or null if not resolvable / not currently Failed.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -199,7 +199,7 @@ public async Task FailureAsync_is_null_when_not_failed()
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test tests/Inkshelf.Tests/Inkshelf.Tests.csproj --filter FullyQualifiedName~ConvertServiceTests`
-Expected: FAIL — `FailureAsync` / `FailureView` do not exist (compile error).
+Expected: FAIL - `FailureAsync` / `FailureView` do not exist (compile error).
 
 - [ ] **Step 3: Add ArchiveBytes to ConvertJob**
 
@@ -272,7 +272,7 @@ git commit -m "feat: carry archive size and expose failure via ConvertService"
 
 **Interfaces:**
 - Consumes: `ConvertQueue.MarkFailed(path, reason, archiveBytes)`, `ConvertQueue.FailureFor` (Task 1); `ConvertJob.ArchiveBytes` (Task 2).
-- Produces: no new public surface — behaviour only. Existing `MarkFailed(path)` (no reason) calls are replaced by reasoned ones.
+- Produces: no new public surface - behaviour only. Existing `MarkFailed(path)` (no reason) calls are replaced by reasoned ones.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -281,7 +281,7 @@ Add to `tests/Inkshelf.Tests/ConvertWorkerTests.cs`. Add a helper that returns g
 ```csharp
 private static byte[] Garbage() => new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
 
-// A download stub that always throws — proves the pre-download size check runs
+// A download stub that always throws - proves the pre-download size check runs
 // BEFORE any download attempt.
 private static IServiceScopeFactory ScopeFactoryDownloadThrows()
 {
@@ -377,7 +377,7 @@ public async Task A_non_archive_download_is_categorized_BadArchive()
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test tests/Inkshelf.Tests/Inkshelf.Tests.csproj --filter FullyQualifiedName~ConvertWorkerTests`
-Expected: FAIL — reasons are all `ConvertError` (the default) instead of the expected categories; the pre-check test may also fail with `DownloadFailed`.
+Expected: FAIL - reasons are all `ConvertError` (the default) instead of the expected categories; the pre-check test may also fail with `DownloadFailed`.
 
 - [ ] **Step 3: Implement the pre-check, reasoned copy-guard, and stage classification**
 
@@ -388,7 +388,7 @@ After `if (File.Exists(job.CachePath)) { _queue.MarkDone(job.CachePath); return;
 ```csharp
 if (_options.MaxArchiveBytes > 0 && job.ArchiveBytes > _options.MaxArchiveBytes)
 {
-    _logger.LogWarning("Archive for {Id} \"{Title}\" is {Size} bytes, over {Limit} — refusing before download.",
+    _logger.LogWarning("Archive for {Id} \"{Title}\" is {Size} bytes, over {Limit} - refusing before download.",
         job.ItemId, job.Meta.Title, job.ArchiveBytes, _options.MaxArchiveBytes);
     _queue.MarkFailed(job.CachePath, ConvertFailReason.TooLarge, job.ArchiveBytes);
     return;
@@ -406,7 +406,7 @@ In the copy-guard branch (lines 73-77), change the log + mark:
 ```csharp
 if (!await CopyWithLimitAsync(archive, spool, _options.MaxArchiveBytes, ct))
 {
-    _logger.LogWarning("Archive for {Id} \"{Title}\" exceeds {Limit} bytes — refusing.",
+    _logger.LogWarning("Archive for {Id} \"{Title}\" exceeds {Limit} bytes - refusing.",
         job.ItemId, job.Meta.Title, _options.MaxArchiveBytes);
     _queue.MarkFailed(job.CachePath, ConvertFailReason.TooLarge, job.ArchiveBytes);
     return;
@@ -440,7 +440,7 @@ catch (Exception ex)
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `dotnet test tests/Inkshelf.Tests/Inkshelf.Tests.csproj --filter FullyQualifiedName~ConvertWorkerTests`
-Expected: PASS (all ConvertWorkerTests — the existing `A_download_failure_marks_Failed_not_Running` and `An_over_ceiling_archive_marks_Failed_and_writes_no_file` still pass since `Status` is unchanged).
+Expected: PASS (all ConvertWorkerTests - the existing `A_download_failure_marks_Failed_not_Running` and `An_over_ceiling_archive_marks_Failed_and_writes_no_file` still pass since `Status` is unchanged).
 
 - [ ] **Step 5: Commit**
 
@@ -568,7 +568,7 @@ Create `src/Inkshelf/Pages/ConvertWhy.cshtml`:
 
 - [ ] **Step 4: Add the German strings**
 
-In `src/Inkshelf/locales/de.json`, add these keys (before the closing brace; keep valid JSON — add a comma to the current last line):
+In `src/Inkshelf/locales/de.json`, add these keys (before the closing brace; keep valid JSON - add a comma to the current last line):
 
 ```json
   "Conversion failed": "Konvertierung fehlgeschlagen",
@@ -614,7 +614,7 @@ In `src/Inkshelf/Pages/Shared/_ConvertAction.cshtml`, after the existing `freshH
     var whyHref = $"/convert/{Model.Id}/why?{fileQ}return={ret}";
 ```
 
-Change the `data-warm` links to also carry `data-why="@whyHref"` so the poll JS knows where to send the user on failure. Update the four `<a>` cases (Converting, Failed, default) that carry `data-warm` — e.g. the Failed case becomes:
+Change the `data-warm` links to also carry `data-why="@whyHref"` so the poll JS knows where to send the user on failure. Update the four `<a>` cases (Converting, Failed, default) that carry `data-warm` - e.g. the Failed case becomes:
 
 ```cshtml
         case ConvertRowState.Failed:
@@ -777,7 +777,7 @@ Update the final console line to mention the new check:
 - [ ] **Step 5: Run the full UI check**
 
 Run: `tools/uicheck/run.sh`
-Expected: `PASS — screenshots in …, all assertions held.` and a `convert-failed-de.png` screenshot showing the German reason page with the size-over-limit sentence. If ABS was already seeded from a prior run without the oversized item, reseed: `docker compose -f docker/docker-compose.yml down -v && tools/uicheck/run.sh`.
+Expected: `PASS - screenshots in …, all assertions held.` and a `convert-failed-de.png` screenshot showing the German reason page with the size-over-limit sentence. If ABS was already seeded from a prior run without the oversized item, reseed: `docker compose -f docker/docker-compose.yml down -v && tools/uicheck/run.sh`.
 
 - [ ] **Step 6: Commit**
 
@@ -794,18 +794,18 @@ git commit -m "test: cover the conversion failure reason path in uicheck"
 - Modify: `docs/ROADMAP.md` (move item to Done)
 - Modify: `docs/ARCHITECTURE.md` (present-tense design note)
 
-**Interfaces:** none — docs only. Do NOT touch `CHANGELOG.md`.
+**Interfaces:** none - docs only. Do NOT touch `CHANGELOG.md`.
 
 - [ ] **Step 1: Move the roadmap item to Done**
 
 In `docs/ROADMAP.md`, remove the "**Surface conversion failure reasons.**" bullet from the Conversion / rendering section and add a short Done entry:
 
 ```markdown
-- **Conversion failure reasons** — a failed convert records a reason category
+- **Conversion failure reasons** - a failed convert records a reason category
   (TooLarge / DownloadFailed / BadArchive / ConvertError) on its transient queue
   entry; oversized archives are rejected before download. The row's "why?" link
   (and the poll-JS auto-nav on failure) opens a plain-HTML `/convert/{id}/why`
-  page explaining the failure — actionable for TooLarge ("archive is X, over the
+  page explaining the failure - actionable for TooLarge ("archive is X, over the
   Y limit"). Failure log lines carry the item title. All strings localized.
 ```
 
@@ -848,4 +848,4 @@ git commit -m "docs: record conversion failure reasons"
 
 **Placeholder scan:** No TBD/TODO; every code step shows complete code. ✓
 
-**Type consistency:** `ConvertFailReason`, `ConvertFailure(Reason, ArchiveBytes)`, `FailureFor`, `MarkFailed(path, reason, archiveBytes)`, `ConvertJob(..., ArchiveBytes)`, `FailureView(Title, Reason, ArchiveBytes)`, `FailureAsync`, `LocalReturn`, `data-why` — used consistently across tasks. The four-tuple `ResolveAsync` return is updated at all three call sites (KickAsync, StatusAsync, FailureAsync). ✓
+**Type consistency:** `ConvertFailReason`, `ConvertFailure(Reason, ArchiveBytes)`, `FailureFor`, `MarkFailed(path, reason, archiveBytes)`, `ConvertJob(..., ArchiveBytes)`, `FailureView(Title, Reason, ArchiveBytes)`, `FailureAsync`, `LocalReturn`, `data-why` - used consistently across tasks. The four-tuple `ResolveAsync` return is updated at all three call sites (KickAsync, StatusAsync, FailureAsync). ✓

@@ -9,7 +9,7 @@ public static class ScreenTarget
     public const int MaxDimension = 4096;
 
     // Upper bound on the client-supplied device-pixel-ratio. Bounded because it
-    // multiplies the page dimensions under retina — an unbounded dpr would blow
+    // multiplies the page dimensions under retina - an unbounded dpr would blow
     // past MaxDimension's intent.
     public const double MaxDpr = 4.0;
 
@@ -41,7 +41,7 @@ public static class ScreenTarget
         // FIRST, before the cookie is even looked at. Being merely "preferred over a
         // bad value" would not help: the no-probe case returns at the bottom of this
         // method, so an override consulted later would never be reached when the
-        // cookie is absent — which is one of the reasons the override exists.
+        // cookie is absent - which is one of the reasons the override exists.
         if (over is { W: > 0, H: > 0, Dpr: > 0 } o)
         {
             var od = RoundDpr(Math.Min(o.Dpr, MaxDpr));
@@ -49,7 +49,7 @@ public static class ScreenTarget
             var oh = Math.Min(o.H, MaxDimension);
             // retina means the same thing here as on the probe path below: the entered
             // numbers are PHYSICAL pixels, so retina off converts at the CSS size
-            // (numbers ÷ ratio, dpr 1) — identical page layout, a quarter of the pixels
+            // (numbers ÷ ratio, dpr 1) - identical page layout, a quarter of the pixels
             // at ratio 2. Ignoring retina here would leave it an inert control, which
             // was the only reason the UI ever had to disable it.
             return retina

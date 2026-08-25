@@ -14,7 +14,7 @@ public class EpubNameTests
     public void Falls_back_when_metadata_is_missing()
         => Assert.Equal("Unknown - Untitled.epub", EpubName.For(null, ""));
 
-    // Blank/whitespace metadata must fall back too, not just null — the guard
+    // Blank/whitespace metadata must fall back too, not just null - the guard
     // is deliberately wider than a null check.
     [Fact]
     public void Falls_back_on_whitespace_only_author()

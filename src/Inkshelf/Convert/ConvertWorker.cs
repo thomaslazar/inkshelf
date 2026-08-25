@@ -65,7 +65,7 @@ public sealed class ConvertWorker : BackgroundService
 
                 if (_options.MaxArchiveBytes > 0 && job.ArchiveBytes > _options.MaxArchiveBytes)
                 {
-                    _logger.LogWarning("Archive for {Id} \"{Title}\" is {Size} bytes, over {Limit} — refusing before download.",
+                    _logger.LogWarning("Archive for {Id} \"{Title}\" is {Size} bytes, over {Limit} - refusing before download.",
                         job.ItemId, job.Meta.Title, job.ArchiveBytes, _options.MaxArchiveBytes);
                     _queue.MarkFailed(job.CachePath, ConvertFailReason.TooLarge, job.ArchiveBytes);
                     return;
@@ -83,7 +83,7 @@ public sealed class ConvertWorker : BackgroundService
                 {
                     if (!await CopyWithLimitAsync(archive, spool, _options.MaxArchiveBytes, ct))
                     {
-                        _logger.LogWarning("Archive for {Id} \"{Title}\" exceeds {Limit} bytes — refusing.",
+                        _logger.LogWarning("Archive for {Id} \"{Title}\" exceeds {Limit} bytes - refusing.",
                             job.ItemId, job.Meta.Title, _options.MaxArchiveBytes);
                         _queue.MarkFailed(job.CachePath, ConvertFailReason.TooLarge, null);
                         return;
@@ -105,7 +105,7 @@ public sealed class ConvertWorker : BackgroundService
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw; // app stopping — leave .tmp for the next startup sweep, don't mark Failed
+            throw; // app stopping - leave .tmp for the next startup sweep, don't mark Failed
         }
         catch (Exception ex)
         {
@@ -126,7 +126,7 @@ public sealed class ConvertWorker : BackgroundService
             // finally (it would mask a real conversion exception and skip the release).
             try { if (File.Exists(dlTmp)) File.Delete(dlTmp); } catch { }
             // Return ImageSharp's retained UNMANAGED pool to the OS between jobs
-            // (GC config can't reclaim it). Safe across jobs — trims free buffers,
+            // (GC config can't reclaim it). Safe across jobs - trims free buffers,
             // not ones a concurrent convert is renting.
             SixLabors.ImageSharp.Configuration.Default.MemoryAllocator.ReleaseRetainedResources();
         }
@@ -139,7 +139,7 @@ public sealed class ConvertWorker : BackgroundService
 
     // Best-effort ABS cover fetch. Any failure (no cover / 404 / transient, including
     // an HttpClient request timeout, which surfaces as TaskCanceledException) yields
-    // null and the converter falls back to the first page — never fails the job.
+    // null and the converter falls back to the first page - never fails the job.
     // Only a genuine app-shutdown cancellation (ct.IsCancellationRequested) propagates.
     private static async Task<(byte[] Bytes, string Ext)?> TryFetchCoverAsync(
         AbsDownloadClient download, ConvertJob job, CancellationToken ct)
@@ -156,7 +156,7 @@ public sealed class ConvertWorker : BackgroundService
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            return null; // e.g. HttpClient request timeout — not app shutdown; fall back to first page
+            return null; // e.g. HttpClient request timeout - not app shutdown; fall back to first page
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

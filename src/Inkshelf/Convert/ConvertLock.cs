@@ -27,7 +27,7 @@ public sealed class ConvertLock
         }
         catch
         {
-            // Never acquired the semaphore — undo the ref (and drop the entry if last).
+            // Never acquired the semaphore - undo the ref (and drop the entry if last).
             lock (_gate) { if (--entry.Refs == 0) _entries.Remove(key); }
             throw;
         }

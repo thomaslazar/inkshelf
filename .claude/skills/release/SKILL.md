@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut a new Inkshelf release with human review gates — bumps version, writes the changelog, opens a PR for CI, then tags and lets CI publish the container image. Use when the user asks to cut/publish a release.
+description: Cut a new Inkshelf release with human review gates - bumps version, writes the changelog, opens a PR for CI, then tags and lets CI publish the container image. Use when the user asks to cut/publish a release.
 disable-model-invocation: true
 allowed-tools:
   - Bash
@@ -19,7 +19,7 @@ every GATE for human approval before proceeding. Never skip a gate.
 
 Inkshelf ships as a container image published to
 `ghcr.io/thomaslazar/inkshelf`. Cutting a release means: bump the version,
-record the changelog, validate on CI via a PR, then create a GitHub Release —
+record the changelog, validate on CI via a PR, then create a GitHub Release -
 which triggers CI to build and push the `:X.Y.Z` and `:latest` image tags.
 
 ## Step 1: Preflight
@@ -38,7 +38,7 @@ dotnet test tests/Inkshelf.Tests/Inkshelf.Tests.csproj
 
 If any check fails, stop and report. Do not proceed.
 
-(Note: there is no live smoke test against a seeded ABS yet — that is a future
+(Note: there is no live smoke test against a seeded ABS yet - that is a future
 preflight gate once the seed harness exists.)
 
 Determine the version:
@@ -55,7 +55,7 @@ Determine the version:
 
 ```bash
 VERSION="v{version}"        # e.g. v0.2.0
-VERSION_NUM="${VERSION#v}"   # 0.2.0 — the csproj wants no leading v
+VERSION_NUM="${VERSION#v}"   # 0.2.0 - the csproj wants no leading v
 git checkout -b "release/${VERSION}"
 ```
 
@@ -78,11 +78,11 @@ git commit -m "chore: bump version to ${VERSION_NUM}"
 
 ## Step 3: Changelog
 
-Generate `release-notes.md` with a **Highlights** section (3–5 plain-language
+Generate `release-notes.md` with a **Highlights** section (3-5 plain-language
 bullets) and grouped conventional commits since the last tag.
 
-**Every commit gets listed.** Group them — `docs:`/`test:`/`refactor:`/`chore:`
-belong under Internal, not the top — but never drop a type because it looks like
+**Every commit gets listed.** Group them - `docs:`/`test:`/`refactor:`/`chore:`
+belong under Internal, not the top - but never drop a type because it looks like
 noise. A reader scanning for "was my thing in this release" must be able to find
 it.
 
@@ -93,7 +93,7 @@ TYPES="feat|fix|revert|perf|refactor|docs|test|ci|build|chore|style"
 git log --oneline $RANGE --pretty="- %s" | grep -E "^- ($TYPES)(\(.+\))?!?: " | sort
 
 # Then prove nothing was dropped. Anything this prints other than merge commits
-# is a commit the grep missed — add it to the notes (and widen $TYPES).
+# is a commit the grep missed - add it to the notes (and widen $TYPES).
 # A v0.4.0-era `revert:` was silently lost this way before the list was widened.
 git log $RANGE --pretty="%s" | grep -vE "^($TYPES)(\(.+\))?!?: " | grep -v "^Merge "
 ```
@@ -104,7 +104,7 @@ commits already listed, so including them double-counts.
 Format:
 
 ```markdown
-## v{version} — YYYY-MM-DD
+## v{version} - YYYY-MM-DD
 
 ### Highlights
 - ...

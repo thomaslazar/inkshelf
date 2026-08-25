@@ -57,7 +57,7 @@ builder.Services.AddHttpClient<AbsClient>(c =>
 
 Run: `dotnet build src/Inkshelf`
 Expected: builds clean.
-Run: `dotnet exec` not needed — confirm the version string by a one-off:
+Run: `dotnet exec` not needed - confirm the version string by a one-off:
 `dotnet run --project src/Inkshelf --no-launch-profile` is not required; instead trust `ToString(3)`. Confirm the assembly version via:
 `grep -q "<Version>0.1.0</Version>" src/Inkshelf/Inkshelf.csproj && echo OK`
 Expected: `OK`.
@@ -138,7 +138,7 @@ git commit -m "chore: add .editorconfig and normalize formatting"
 **Files:**
 - Modify: `.gitignore`
 
-Do NOT create `CHANGELOG.md` here — the changelog is an output of the release
+Do NOT create `CHANGELOG.md` here - the changelog is an output of the release
 skill only (it creates the file on the first release).
 
 - [ ] **Step 1: Gitignore generated release notes**
@@ -268,7 +268,7 @@ Frontmatter:
 ```markdown
 ---
 name: release
-description: Cut a new Inkshelf release with human review gates — bumps version, writes changelog, opens a PR for CI, then tags and publishes the container image.
+description: Cut a new Inkshelf release with human review gates - bumps version, writes changelog, opens a PR for CI, then tags and publishes the container image.
 disable-model-invocation: true
 allowed-tools:
   - Bash
@@ -281,14 +281,14 @@ allowed-tools:
 ---
 ```
 
-Body — the steps (each gate is mandatory; never skip):
+Body - the steps (each gate is mandatory; never skip):
 
 1. **Preflight:** assert on `main`, clean tree, `git pull`; run
    `dotnet format Inkshelf.sln --verify-no-changes` and
    `dotnet test tests/Inkshelf.Tests/Inkshelf.Tests.csproj`. Determine version
    from conventional commits since last tag (`git describe --tags --abbrev=0`;
    any `feat:` → bump minor, else patch). **GATE: confirm version with the human.**
-   (Note: no live smoke test yet — a seeded-ABS smoke gate is a future addition.)
+   (Note: no live smoke test yet - a seeded-ABS smoke gate is a future addition.)
 2. **Branch + bump:** `git checkout -b release/vX.Y.Z`; `Edit` `<Version>` in
    `src/Inkshelf/Inkshelf.csproj` to `X.Y.Z`; `grep` to confirm; `dotnet build`.
    Commit `chore: bump version to X.Y.Z`.
@@ -344,10 +344,10 @@ Multi-arch (amd64/arm64) images are published to GitHub Container Registry:
     ghcr.io/thomaslazar/inkshelf
 
 Tags:
-- `:main` — latest build from the `main` branch (moves on every merge)
-- `:main-<sha>` — a specific main build, pinnable
-- `:X.Y.Z` — a tagged release
-- `:latest` — the most recent tagged release
+- `:main` - latest build from the `main` branch (moves on every merge)
+- `:main-<sha>` - a specific main build, pinnable
+- `:X.Y.Z` - a tagged release
+- `:latest` - the most recent tagged release
 
 Run it (see `docker-compose.example.yml` for a full example):
 
@@ -395,7 +395,7 @@ Expected: the `test` job passes. The `image` job is skipped on the PR (it only r
 
 After human merge to `main`, watch the push-triggered run; confirm the `image` job pushes `:main` + `:main-<sha>`.
 
-- [ ] **Step 5: One-time — make the GHCR package public**
+- [ ] **Step 5: One-time - make the GHCR package public**
 
 In GitHub → the `inkshelf` package → Package settings → change visibility to **Public**. (Cannot be done from the workflow.)
 

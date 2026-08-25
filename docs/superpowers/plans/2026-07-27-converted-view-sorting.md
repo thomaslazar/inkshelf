@@ -11,14 +11,14 @@
 ## Global Constraints
 
 - **Spec:** `docs/superpowers/specs/2026-07-27-converted-view-sorting-design.md`. Read it before starting.
-- **No new dependencies. No new localisation keys** — `"Sort:"`, `"Title"`, `"Author"`, `"Series"`, `"Converted"` all already exist in `src/Inkshelf/locales/de.json` (the only locale file). Do not add or rename catalog keys.
+- **No new dependencies. No new localisation keys** - `"Sort:"`, `"Title"`, `"Author"`, `"Series"`, `"Converted"` all already exist in `src/Inkshelf/locales/de.json` (the only locale file). Do not add or rename catalog keys.
 - **All work happens inside the devcontainer.** There is no `dotnet` on the host.
 - **Branch:** `feat/converted-sort` (already created, spec already committed).
 - **Conventional Commits**, imperative lowercase subject, max ~72 chars. Types used here: `feat`, `test`.
 - **Do NOT add `Co-Authored-By:` or "Generated with Claude Code" lines to commits.**
 - **Do NOT edit `CHANGELOG.md`.** It is written only by the release skill. Shipped work is recorded in `ROADMAP.md`'s Done section and `ARCHITECTURE.md`.
 - **`desc` MUST bind as `string?`, never `bool`.** Razor's bool binder rejects `"1"`, which is the form the app uses everywhere. Typed as `bool`, every descending direction silently becomes unreachable.
-- **The conversion timestamp MUST come from the cached file's write time**, never from `CachedVariant.MtimeMs`. That field is the *source ebook's* mtime, part of the cache key for invalidation. Sorting on it orders by ABS activity instead of conversion time — wrong, and it looks right.
+- **The conversion timestamp MUST come from the cached file's write time**, never from `CachedVariant.MtimeMs`. That field is the *source ebook's* mtime, part of the cache key for invalidation. Sorting on it orders by ABS activity instead of conversion time - wrong, and it looks right.
 - `dotnet format Inkshelf.sln --verify-no-changes` runs in CI over the whole solution. Run it before the final commit.
 - Run the suite with `dotnet test` from `/workspaces/inkshelf`. It should report **243 passed** before you start.
 
@@ -61,7 +61,7 @@ Add to `tests/Inkshelf.Tests/EpubCacheTests.cs`. Read the file first to reuse it
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `dotnet test --filter "FullyQualifiedName~EpubCacheTests"`
-Expected: FAIL to compile — `'CachedVariant' has no member 'ConvertedAtUtc'`. A compile error is a legitimate red here.
+Expected: FAIL to compile - `'CachedVariant' has no member 'ConvertedAtUtc'`. A compile error is a legitimate red here.
 
 - [ ] **Step 3: Add the field**
 
@@ -95,7 +95,7 @@ Change `TryParse`'s signature to `private static CachedVariant? TryParse(FileInf
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `dotnet test --filter "FullyQualifiedName~EpubCacheTests"`
-Expected: PASS, including the file's pre-existing tests — they must keep passing unchanged, since the parsing logic itself is not being altered.
+Expected: PASS, including the file's pre-existing tests - they must keep passing unchanged, since the parsing logic itself is not being altered.
 
 Then: `dotnet test`
 Expected: PASS, 244 tests (243 + 1).
@@ -111,7 +111,7 @@ git commit -m "feat: expose when a cached epub was converted"
 
 ### Task 2: Remove touch-on-serve; evict FIFO by conversion time
 
-`EpubCache.Touch` re-stamps a served file's write time so `EnforceCap` acts as approximate LRU. It is removed. Read section **A2** of the spec for the reasoning — the short version is that this cache bridges one expensive conversion to one download, and touch-on-serve protects already-consumed volumes while evicting the ones not yet fetched. Removing it also makes `ConvertedAtUtc` (Task 1) genuinely mean conversion time, which the next task relies on.
+`EpubCache.Touch` re-stamps a served file's write time so `EnforceCap` acts as approximate LRU. It is removed. Read section **A2** of the spec for the reasoning - the short version is that this cache bridges one expensive conversion to one download, and touch-on-serve protects already-consumed volumes while evicting the ones not yet fetched. Removing it also makes `ConvertedAtUtc` (Task 1) genuinely mean conversion time, which the next task relies on.
 
 **Files:**
 - Modify: `src/Inkshelf/Convert/EpubCache.cs` (delete `Touch`, reword `EnforceCap`'s comment)
@@ -121,7 +121,7 @@ git commit -m "feat: expose when a cached epub was converted"
 
 **Interfaces:**
 - Consumes: nothing from Task 1.
-- Produces: `EpubCache.Touch` no longer exists. `EnforceCap` still orders by `LastWriteTimeUtc` — unchanged code, new meaning (oldest conversion rather than least recently used).
+- Produces: `EpubCache.Touch` no longer exists. `EnforceCap` still orders by `LastWriteTimeUtc` - unchanged code, new meaning (oldest conversion rather than least recently used).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -132,7 +132,7 @@ Add to `tests/Inkshelf.Tests/ConvertServiceTests.cs`, reusing its existing `Temp
     public async Task A_cache_hit_does_not_restamp_the_file()
     {
         // The cached EPUB's write time IS its conversion time, and /converted sorts
-        // on it. Serving a hit must not bump it — otherwise fetching an old comic
+        // on it. Serving a hit must not bump it - otherwise fetching an old comic
         // would reorder it to "newest conversion", and cap eviction would protect
         // volumes already on the reader while deleting ones not yet fetched.
         using var dir = new TempDir();
@@ -155,7 +155,7 @@ Add to `tests/Inkshelf.Tests/ConvertServiceTests.cs`, reusing its existing `Temp
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `dotnet test --filter "FullyQualifiedName~A_cache_hit_does_not_restamp"`
-Expected: FAIL — the write time comes back as roughly now instead of 2026-01-02, because `KickAsync` still calls `Touch`. This is the real red: the behaviour being removed.
+Expected: FAIL - the write time comes back as roughly now instead of 2026-01-02, because `KickAsync` still calls `Touch`. This is the real red: the behaviour being removed.
 
 - [ ] **Step 3: Delete `Touch` and its call**
 
@@ -171,25 +171,25 @@ In `src/Inkshelf/Convert/EpubCache.cs`, delete the whole `Touch` method **and** 
     // Evict oldest-by-conversion-time entries until total cache bytes are under the
     // cap. FIFO, not LRU, and deliberately so: this cache bridges one expensive
     // conversion to one download, after which the EPUB lives on the reader. Nothing
-    // re-stamps a served file, so write time stays the conversion time — which is
+    // re-stamps a served file, so write time stays the conversion time - which is
     // also what /converted sorts on. No-op when maxBytes <= 0 or already under.
     // Best-effort (ignores IO races).
 ```
 
 - [ ] **Step 4: Delete the now-meaningless test**
 
-Remove `EpubCacheTests.Touch_bumps_last_write_time` entirely (around line 97) — it tests a method that no longer exists.
+Remove `EpubCacheTests.Touch_bumps_last_write_time` entirely (around line 97) - it tests a method that no longer exists.
 
-Leave `EpubCacheTests.EnforceCap_deletes_oldest_until_under_cap` untouched. It sets write times explicitly and asserts oldest-first eviction, which is exactly the FIFO behaviour that survives — it is the guard that this change didn't break eviction.
+Leave `EpubCacheTests.EnforceCap_deletes_oldest_until_under_cap` untouched. It sets write times explicitly and asserts oldest-first eviction, which is exactly the FIFO behaviour that survives - it is the guard that this change didn't break eviction.
 
 - [ ] **Step 5: Run the tests**
 
 Run: `dotnet test`
-Expected: PASS, **243** tests — 244 from Task 1, plus the new one, minus the deleted `Touch` test, minus `ConvertServiceTests.KickAsync_touches_cached_file_on_serve` which asserted the very behaviour being removed.
+Expected: PASS, **243** tests - 244 from Task 1, plus the new one, minus the deleted `Touch` test, minus `ConvertServiceTests.KickAsync_touches_cached_file_on_serve` which asserted the very behaviour being removed.
 
 - [ ] **Step 6: Fix the env-var docs**
 
-`docs/ARCHITECTURE.md:200` is wrong on two counts — it says LRU, and its stated default is stale (1 GB, while `AbsOptions.MaxCacheBytes` is `5_368_709_120`). Replace the row:
+`docs/ARCHITECTURE.md:200` is wrong on two counts - it says LRU, and its stated default is stale (1 GB, while `AbsOptions.MaxCacheBytes` is `5_368_709_120`). Replace the row:
 
 ```
 | `MaxCacheBytes` | `1073741824` (1 GB) | LRU-evict the EPUB cache past this |
@@ -272,7 +272,7 @@ Add to `tests/Inkshelf.Tests/ConvertedRenderTests.cs`. The existing fixtures are
         return await (await client.SendAsync(Request(factory, "/converted" + query))).Content.ReadAsStringAsync();
     }
 
-    // b2 converted most recently, then c3, then a1 — deliberately not the
+    // b2 converted most recently, then c3, then a1 - deliberately not the
     // alphabetical, series or author order.
     private static (string, DateTime)[] Seed() =>
     [
@@ -388,8 +388,8 @@ Add the bound properties and the href helper next to the existing public propert
     public const string ConvertedKey = "converted";
     private static readonly string[] Keys = [ConvertedKey, "series", "title", "author"];
 
-    // `sort` is client-supplied, so anything unrecognised — absent, misspelled or
-    // hostile — means "the default view", which is newest conversion FIRST. Note
+    // `sort` is client-supplied, so anything unrecognised - absent, misspelled or
+    // hostile - means "the default view", which is newest conversion FIRST. Note
     // EffectiveDesc keys off recognition, not off `Sort is null`: with a garbage
     // value, Desc would be false and the page would render oldest-first, which is
     // not the default it claims to fall back to.
@@ -402,7 +402,7 @@ Collect the conversion time while enumerating the cache. Replace the existing id
 
 ```csharp
         // Cache entries for THIS device. Only the SET of item ids matters for the
-        // batch fetch — row state is recomputed below from the current ebook file —
+        // batch fetch - row state is recomputed below from the current ebook file -
         // but keep each item's newest conversion time for the default sort. An item
         // can have more than one matching variant if the source changed and the
         // older entry hasn't been evicted.
@@ -416,7 +416,7 @@ Collect the conversion time while enumerating the cache. Replace the existing id
         if (convertedAt.Count == 0) return Page();
 ```
 
-Update the batch call to use the dictionary's keys — replace `ids.ToList()` with `convertedAt.Keys.ToList()`.
+Update the batch call to use the dictionary's keys - replace `ids.ToList()` with `convertedAt.Keys.ToList()`.
 
 Replace the sort at the end of `OnGetAsync`:
 
@@ -453,12 +453,12 @@ Add the two key helpers beside the existing `SeriesKey` / `SeqKey`:
         m?.Authors is { Count: > 0 } a ? a[0].Name : "";
 ```
 
-Add `using Microsoft.AspNetCore.Mvc;` if it is not already present (it is — `IActionResult` is used).
+Add `using Microsoft.AspNetCore.Mvc;` if it is not already present (it is - `IActionResult` is used).
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `dotnet test --filter "FullyQualifiedName~ConvertedRenderTests"`
-Expected: PASS, including the five pre-existing tests in the file — the empty-cache, grayscale-mismatch, batch-failure and Index-link tests must all still pass untouched.
+Expected: PASS, including the five pre-existing tests in the file - the empty-cache, grayscale-mismatch, batch-failure and Index-link tests must all still pass untouched.
 
 Then: `dotnet test`
 Expected: PASS, 251 tests (243 + 8).
@@ -521,7 +521,7 @@ Add to `tests/Inkshelf.Tests/ConvertedRenderTests.cs`:
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `dotnet test --filter "FullyQualifiedName~Renders_a_sortbar"`
-Expected: FAIL — `Assert.Contains() Failure` on `class="sortbar"`, which the view does not render yet.
+Expected: FAIL - `Assert.Contains() Failure` on `class="sortbar"`, which the view does not render yet.
 
 - [ ] **Step 3: Add the sortbar**
 
@@ -542,7 +542,7 @@ In `src/Inkshelf/Pages/Converted.cshtml`, insert immediately after the
 }
 ```
 
-It is guarded on a non-empty list so the empty state and the load-error notice stay clean — there is nothing to sort in either case.
+It is guarded on a non-empty list so the empty state and the load-error notice stay clean - there is nothing to sort in either case.
 
 - [ ] **Step 4: Run the tests**
 
@@ -559,10 +559,10 @@ Expected: no output, exit 0. If it reports changes, run `dotnet format Inkshelf.
 
 **Do not add the sortbar assertion to the existing `converted-de` check.** That check runs *before* the Convert click in `Program.cs`, so nothing is converted yet, the page shows its empty state, and the Step 3 guard in this task correctly hides the bar. Asserting there would fail.
 
-Instead add a **second** visit at the very end of the `UICHECK_AUTHED` block — after the failure-reason section, by which point the good `Neon Blade Vol. 1` conversion kicked off earlier has had ample time to finish. Waiting on the selector rather than a fixed sleep makes it deterministic:
+Instead add a **second** visit at the very end of the `UICHECK_AUTHED` block - after the failure-reason section, by which point the good `Neon Blade Vol. 1` conversion kicked off earlier has had ample time to finish. Waiting on the selector rather than a fixed sleep makes it deterministic:
 
 ```csharp
-        // Converted view again, now that a conversion has actually landed — this is
+        // Converted view again, now that a conversion has actually landed - this is
         // where the sortbar exists (it's hidden on the empty state). Waiting on the
         // selector doubles as "the conversion finished".
         await page.GotoAsync(baseUrl + "/converted");
@@ -573,24 +573,24 @@ Instead add a **second** visit at the very end of the `UICHECK_AUTHED` block —
 ```
 
 Run: `tools/uicheck/run.sh`
-Expected: `PASS`. Then **look at** `tools/uicheck/shots/converted-sorted-de.png` and confirm the sortbar renders without overflowing the 758px-wide viewport — four links plus the label is the most crowded sortbar in the app, and the library listing's has only three. If it wraps or overflows, say so in your report rather than adjusting CSS: that is a design decision, not a fix to make silently.
+Expected: `PASS`. Then **look at** `tools/uicheck/shots/converted-sorted-de.png` and confirm the sortbar renders without overflowing the 758px-wide viewport - four links plus the label is the most crowded sortbar in the app, and the library listing's has only three. If it wraps or overflows, say so in your report rather than adjusting CSS: that is a design decision, not a fix to make silently.
 
 - [ ] **Step 6: Update the docs**
 
 In `docs/ROADMAP.md`, delete the **Sort the Converted view, newest first** bullet from `## Browsing & reading` and add to the top of `## Done`:
 
 ```markdown
-- **Converted view sorting** — `/converted` defaults to newest conversion first
+- **Converted view sorting** - `/converted` defaults to newest conversion first
   (the one you came to fetch) with Converted / Series / Title / Author sort links.
   The timestamp is the cached EPUB's own write time, exposed as
-  `CachedVariant.ConvertedAtUtc` — deliberately not the source-ebook `mtimeMs`
+  `CachedVariant.ConvertedAtUtc` - deliberately not the source-ebook `mtimeMs`
   that the cache filename carries as an invalidation key. Sorting is a two-state
   toggle rather than the library listing's off/asc/desc cycle, because a locally
   sorted list has no server-side default order to fall back to. Filtering and
   paging were considered and left out: the list is per-device and short.
 ```
 
-In `docs/ARCHITECTURE.md`, replace this exact passage (around lines 98–101):
+In `docs/ARCHITECTURE.md`, replace this exact passage (around lines 98-101):
 
 ```
   a "converted" badge always agrees across pages. The `/converted` view is the EPUB
@@ -605,8 +605,8 @@ with:
   a "converted" badge always agrees across pages. The `/converted` view is the EPUB
   cache read back: `EpubCache.ListVariants` reverse-parses filenames into item ids,
   filtered to the current device's target, then one cross-library
-  `POST /api/items/batch/get` supplies metadata. It sorts in-process — newest
-  conversion first by default, with series/title/author as sort links — keyed on
+  `POST /api/items/batch/get` supplies metadata. It sorts in-process - newest
+  conversion first by default, with series/title/author as sort links - keyed on
   `CachedVariant.ConvertedAtUtc`, the cached file's own write time. That is
   deliberately not the `mtimeMs` in the cache filename, which is the *source*
   ebook's mtime and exists to invalidate the entry.
@@ -621,7 +621,7 @@ git add -A
 git commit -m "test: cover the converted sortbar; docs: record the sorting"
 ```
 
-If the uicheck change and the docs feel like separate concerns, split into two commits (`test:` then `docs:`) — either is fine as long as each subject is accurate.
+If the uicheck change and the docs feel like separate concerns, split into two commits (`test:` then `docs:`) - either is fine as long as each subject is accurate.
 
 ---
 

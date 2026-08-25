@@ -1,4 +1,4 @@
-# UI localisation — design
+# UI localisation - design
 
 ## Problem
 
@@ -13,9 +13,9 @@ strings.
 
 Localise Inkshelf's own UI strings, German first, with English as the default
 and the per-string fallback. A translator (or the operator) can add a language
-by dropping a JSON file into the container and restarting — no rebuild. Language
+by dropping a JSON file into the container and restarting - no rebuild. Language
 is a per-device choice, alongside the existing retina/grayscale settings. ABS
-content (titles, descriptions, author names) is untouched — it is already in its
+content (titles, descriptions, author names) is untouched - it is already in its
 own language.
 
 ## Approach (why this, not `.resx` / `.po`)
@@ -29,7 +29,7 @@ Settled in brainstorming, backed by measurement:
   keep at this surface.
 - Chosen: a **file-backed JSON catalog** keyed by the **source English string**,
   selected by a per-device cookie. No `RequestLocalization` middleware, no new
-  NuGet dependency. This is the ponytail option — the minimum that satisfies the
+  NuGet dependency. This is the ponytail option - the minimum that satisfies the
   requirement.
 
 ## Scope decisions (settled in brainstorming)
@@ -38,7 +38,7 @@ Settled in brainstorming, backed by measurement:
   is no `en.json`; a miss in any catalog falls back to the key (English).
 - **Source-string-as-key**, gettext-style: no separate key catalog to maintain,
   and English needs no file.
-- **Load from the filesystem at startup**, not embedded resources — so a file
+- **Load from the filesystem at startup**, not embedded resources - so a file
   dropped into the container (or a mounted volume) is picked up on restart with
   no rebuild. **No hot reload.**
 - **One dependency-free path.** Uses `System.Text.Json` (already in the runtime)
@@ -71,17 +71,17 @@ Settled in brainstorming, backed by measurement:
 
 - **Two directories, merged** (baseline + optional override), so a mount is
   additive and never hides shipped translations:
-  - **`LOCALES_PATH`** (default `<ContentRoot>/locales`) — the shipped baseline,
+  - **`LOCALES_PATH`** (default `<ContentRoot>/locales`) - the shipped baseline,
     always loaded first. The repo ships `src/Inkshelf/locales/de.json`; the
     `.csproj` copies `locales/**` to output. Not meant to be mounted over.
-  - **`LOCALES_OVERRIDE_PATH`** (optional, default unset) — an extra directory
+  - **`LOCALES_OVERRIDE_PATH`** (optional, default unset) - an extra directory
     merged on top, its keys winning. This is the safe path to bind-mount for
     custom/extra translations, and the one contributors point at a scratch dir
     to test a language locally.
 - Merge is **per-key**: an override file can add a whole new language or replace
   a few strings without copying the baseline file. (Rationale: a bind mount
   shadows the image directory it covers, so mounting over `LOCALES_PATH` would
-  hide the shipped `de.json` — the override dir avoids that.)
+  hide the shipped `de.json` - the override dir avoids that.)
 
 ### 3. Loading
 
@@ -89,7 +89,7 @@ Settled in brainstorming, backed by measurement:
   `LOCALES_OVERRIDE_PATH` if set) for `*.json`, parse each into a
   `Dictionary<string,string>` keyed by filename stem (`de.json` → `de`), merging
   per-key with later dirs winning.
-- Held in a **singleton `LocalizationCatalog`** — immutable after load.
+- Held in a **singleton `LocalizationCatalog`** - immutable after load.
 - **Resilience:** a malformed or unreadable file is logged (warning) and skipped;
   it must never crash the sidecar. A missing/empty dir → zero catalogs → the app
   runs fully in English.
@@ -111,7 +111,7 @@ Settled in brainstorming, backed by measurement:
   shared partials (`_ItemRow`, `_Pager`, `_ConvertAction`) that have no shared
   model, so threading a `Lang` field through every model would be boilerplate.
 
-### 5. Language selection — `DeviceSettings`
+### 5. Language selection - `DeviceSettings`
 
 Extend the existing record and its cookie, preserving backward compatibility:
 
@@ -134,7 +134,7 @@ Extend the existing record and its cookie, preserving backward compatibility:
   option (value `en`) plus one option per loaded catalog language, labelled by
   its `$name` (fallback: the code), with the current selection marked. Saving
   always records an explicit code, so after a first save the header no longer
-  applies — an explicit English pick sticks even on a German browser.
+  applies - an explicit English pick sticks even on a German browser.
 - `SettingsEndpoints` reads `form["lang"]` into the new `DeviceSettings` field.
 - `SettingsModel` exposes the available languages (from the catalog) for the view.
 
@@ -153,13 +153,13 @@ Extend the existing record and its cookie, preserving backward compatibility:
 To be wrapped in `@L[...]`. This is the actual bulk of the work and is
 mechanism-independent.
 
-- **`_Layout`**: JS convert labels (via §7). (`<title>Inkshelf` is the brand —
+- **`_Layout`**: JS convert labels (via §7). (`<title>Inkshelf` is the brand -
   left as-is.)
 - **`_Pager`**: `Prev`, `Next`, `Page {0} of {1}`.
 - **`_ItemRow`**: `Download`, `Mark read`, `Read`, titles `Mark as read` /
   `Mark as unread`, `(untitled)`.
 - **`_ConvertAction`**: `EPUB ✓`, `Converting…`, `Convert`, `Convert (retry)`,
-  titles `Already converted — downloads right away`, `Regenerate`.
+  titles `Already converted - downloads right away`, `Regenerate`.
 - **`Login`**: `Username`, `Password`, `Log in`.
 - **`Settings`**: `Libraries`, `Settings`, `These settings apply to this device /
   browser only.`, `Detected screen: {0}`, the retina/grayscale label text,
@@ -176,16 +176,16 @@ Inkshelf authors them; raw ABS error text passed through is not.
 
 Language is resolved per request, in order:
 
-1. **Explicit choice** — `DeviceSettings.Lang` is a non-empty code → use it.
+1. **Explicit choice** - `DeviceSettings.Lang` is a non-empty code → use it.
    `"en"` is a valid explicit choice (English = the keys) and overrides the
    browser header.
-2. **No choice yet** — `Lang` empty (never chosen, or a legacy 2-char cookie) →
+2. **No choice yet** - `Lang` empty (never chosen, or a legacy 2-char cookie) →
    the best quality-ranked `Accept-Language` entry (`Request.GetTypedHeaders()
    .AcceptLanguage`) that matches a loaded catalog code.
 3. **Nothing matches** → English (the keys).
 
 This is a resolution *fallback*, not cookie-seeding: a GET never writes the
-cookie — it is written only when the user saves Settings.
+cookie - it is written only when the user saves Settings.
 
 Within the chosen language, a missing/empty key falls back to the English key
 verbatim; there is never a placeholder, so the worst case is an English word in

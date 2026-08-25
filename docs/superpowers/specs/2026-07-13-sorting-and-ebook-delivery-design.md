@@ -1,7 +1,7 @@
-# Sorting + ebook delivery (download & CBZ/CBR→EPUB) — Design
+# Sorting + ebook delivery (download & CBZ/CBR→EPUB) - Design
 
 **Date:** 2026-07-13
-**Status:** Approved — proceeding to plan/implementation on `feat/sort-and-download`
+**Status:** Approved - proceeding to plan/implementation on `feat/sort-and-download`
 
 ## Purpose
 
@@ -13,7 +13,7 @@ Three related additions, shipped in one PR:
    disk-cached, force-regenerable) so they read on the Tolino.
 
 Near-zero-JavaScript throughout (`<form>`/`<a>` only). Target browser is the
-Tolino's Chrome-30/ES5 engine — see `docs/tolino-browser.md`.
+Tolino's Chrome-30/ES5 engine - see `docs/tolino-browser.md`.
 
 ## A. Sorting
 
@@ -39,7 +39,7 @@ Each field link computes its own next-state href from the current `sort`/`desc`.
 ## B. Download primary ebook
 
 **Link gating:** the `Download` (and `Convert`) links render **only when the
-item has an ebook** — the listing JSON already carries `media.ebookFormat`, so
+item has an ebook** - the listing JSON already carries `media.ebookFormat`, so
 the row decides for free (no extra request). Items without an ebook (audio-only)
 show no link at all.
 
@@ -49,9 +49,9 @@ The `Download` link → `GET /download/{id}`:
   (`media.ebookFile.metadata.filename`), then proxies
   `GET /api/items/{id}/ebook` (no special ABS permission) and streams the bytes
   with `Content-Disposition: attachment; filename="<abs filename>"`.
-- Works for every format (epub/pdf/cbz/cbr/mobi/…) — the primary file, as-is.
+- Works for every format (epub/pdf/cbz/cbr/mobi/…) - the primary file, as-is.
 - **Defensive 404:** since the link is gated, users don't normally hit
-  `/download/{id}` for an ebook-less item — but if the endpoint is hit directly
+  `/download/{id}` for an ebook-less item - but if the endpoint is hit directly
   (bookmark/stale link/audio-only id), it returns 404 rather than 500.
 
 ## C. CBZ/CBR → EPUB conversion
@@ -74,7 +74,7 @@ Items whose `ebookFormat` is `cbz` or `cbr` *additionally* get
 
 - Download the archive via `GET /api/items/{id}/ebook`.
 - Read entries with **SharpCompress** (handles ZIP *and* RAR/RAR5 in managed
-  code — **no `rar`/`unrar` binary needed at runtime**). Select image entries
+  code - **no `rar`/`unrar` binary needed at runtime**). Select image entries
   (`.jpg/.jpeg/.png/.webp/.gif`), sort by entry name (natural/ordinal).
 - For each page, read pixel dimensions with **SixLabors.ImageSharp**
   (`Image.Identify`, header-only). **WebP** pages are decoded and re-encoded to
@@ -104,7 +104,7 @@ Items whose `ebookFormat` is `cbz` or `cbr` *additionally* get
 
 - Generation is synchronous: the first convert of a large volume takes tens of
   seconds (request waits, then streams); cached thereafter. No progress UI
-  (near-zero-JS) — acceptable for a download action.
+  (near-zero-JS) - acceptable for a download action.
 - Errors (corrupt archive, no images) → a plain error response; the `↻` lets the
   user retry a fresh build.
 
@@ -115,14 +115,14 @@ Items whose `ebookFormat` is `cbz` or `cbr` *additionally* get
 
 ## Dependencies (NuGet)
 
-- `SharpCompress` — read ZIP + RAR archives (CBZ/CBR) in managed code.
-- `SixLabors.ImageSharp` — image dimensions + WebP→JPEG transcode.
+- `SharpCompress` - read ZIP + RAR archives (CBZ/CBR) in managed code.
+- `SixLabors.ImageSharp` - image dimensions + WebP→JPEG transcode.
 - EPUB writing uses `System.IO.Compression` (framework, no package).
 
 ## Endpoints (added to `Program.cs`)
 
-- `GET /download/{id}` — proxy the primary ebook file (any format).
-- `GET /convert/{id}[?fresh=1]` — CBZ/CBR → cached EPUB.
+- `GET /download/{id}` - proxy the primary ebook file (any format).
+- `GET /convert/{id}[?fresh=1]` - CBZ/CBR → cached EPUB.
 
 ## Client / model additions
 

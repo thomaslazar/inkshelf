@@ -17,7 +17,7 @@ public class EndpointTests
             .WithWebHostBuilder(b => b.UseSetting("ABS_URL", "http://localhost:1"));
 
     // /login is unauthenticated and, like any POST form on the site, gets an
-    // auto-injected __RequestVerificationToken hidden field — grab it (and the
+    // auto-injected __RequestVerificationToken hidden field - grab it (and the
     // antiforgery cookie the client already tracks) to make a valid CSRF'd request.
     private static async Task<string> GetAntiforgeryTokenAsync(HttpClient client)
     {
@@ -85,7 +85,7 @@ public class EndpointTests
         Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal("text/plain", response.Content.Headers.ContentType?.MediaType);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.DoesNotContain("<", body);   // never markup — that is the whole point
+        Assert.DoesNotContain("<", body);   // never markup - that is the whole point
         Assert.NotEmpty(body);
     }
 
@@ -128,7 +128,7 @@ public class EndpointTests
         var res = await client.SendAsync(req);
         // A favorite is now validated against the current ABS's library list
         // (so a cookie from a different ABS can't redirect into a missing
-        // library) — that fetch needs a session, so no session -> /login.
+        // library) - that fetch needs a session, so no session -> /login.
         // The "favorite that exists -> /library/{id}" happy path is covered by
         // FavoriteLibraryRoutingTests with an authenticated stub client.
         Assert.Equal(System.Net.HttpStatusCode.Redirect, res.StatusCode);
@@ -185,7 +185,7 @@ public class EndpointTests
     }
 
     // The page you land on after saving is the page to bookmark, so the redirect
-    // has to carry the values — and following it must reproduce them, which is
+    // has to carry the values - and following it must reproduce them, which is
     // what makes the bookmark work at all.
     [Fact]
     public async Task Saving_redirects_to_a_url_that_restores_the_same_settings()
@@ -228,8 +228,8 @@ public class EndpointTests
 
     // The language select must reflect what the page is RENDERING in, not what is
     // stored. With no explicit choice the stored value is "", so without an option
-    // carrying that value nothing is selected, the browser shows the first option —
-    // English — and saving any other setting posts it, pinning the language.
+    // carrying that value nothing is selected, the browser shows the first option -
+    // English - and saving any other setting posts it, pinning the language.
     [Fact]
     public async Task Settings_marks_automatic_selected_when_no_language_was_chosen()
     {
@@ -304,7 +304,7 @@ public class EndpointTests
         var token = await GetAntiforgeryTokenAsync(client);
 
         // Favorite a library, then save unrelated settings. Both go through the
-        // client's own cookie container — do NOT set a Cookie header by hand, it
+        // client's own cookie container - do NOT set a Cookie header by hand, it
         // fights the container and drops the antiforgery cookie.
         var fav = await client.PostAsync("/favorite", new FormUrlEncodedContent(
             new Dictionary<string, string>
@@ -341,7 +341,7 @@ public class EndpointTests
         var token = await GetAntiforgeryTokenAsync(client);
 
         // Save settings first, then toggle the favorite. Both go through the
-        // client's own cookie container — do NOT set a Cookie header by hand, it
+        // client's own cookie container - do NOT set a Cookie header by hand, it
         // fights the container and drops the antiforgery cookie.
         var saved = await client.PostAsync("/settings", new FormUrlEncodedContent(
             new Dictionary<string, string>
@@ -402,7 +402,7 @@ public class EndpointTests
     public async Task Saving_with_the_override_off_keeps_the_numbers()
     {
         // The three fields are disabled while the override is off, so they submit
-        // nothing — and must not be zeroed, or switching the override off would
+        // nothing - and must not be zeroed, or switching the override off would
         // throw away numbers the user had to look up.
         using var factory = CreateFactory();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -492,7 +492,7 @@ public class EndpointTests
     public async Task Convert_download_serves_the_cached_file_for_an_override_geometry_with_no_scr_cookie()
     {
         // FromCookie consults an override FIRST, before the (here, absent) "scr"
-        // probe is even looked at — so the cache path must be keyed on the override
+        // probe is even looked at - so the cache path must be keyed on the override
         // geometry, not on a (0,0) fallback target. Seeding the cache at the
         // override's numbers and asserting a hit (rather than a re-convert attempt,
         // which would need a real archive download) proves the download endpoint
@@ -526,7 +526,7 @@ public class EndpointTests
         var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
         var protector = dp.CreateProtector("inkshelf.session.v1");
         var req = new HttpRequestMessage(HttpMethod.Get, $"/convert/{itemId}");
-        // NO "scr" cookie — the override must win the target on its own.
+        // NO "scr" cookie - the override must win the target on its own.
         req.Headers.Add("Cookie",
             $"inkshelf_session={Uri.EscapeDataString(protector.Protect("access\nrefresh"))}; "
             + $"inkshelf_settings=ovr=1&ovrw={overrideW}&ovrh={overrideH}&ovrd={overrideDpr}");
@@ -539,7 +539,7 @@ public class EndpointTests
     }
 
     [Theory]
-    [InlineData("1000", "2000", "0.5")]     // ratio below 1 — would double the viewport
+    [InlineData("1000", "2000", "0.5")]     // ratio below 1 - would double the viewport
     [InlineData("1000", "2000", "9")]       // ratio past MaxDpr
     [InlineData("99999", "2000", "1.5")]    // width past MaxDimension
     [InlineData("", "", "")]                // ticked with nothing filled in
@@ -644,7 +644,7 @@ public class EndpointTests
     [Fact]
     public async Task A_fine_grained_page_scale_survives_the_round_trip()
     {
-        // 98 is not on any menu — the whole reason the control changed.
+        // 98 is not on any menu - the whole reason the control changed.
         using var factory = CreateFactory();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         var token = await GetAntiforgeryTokenAsync(client);
@@ -746,7 +746,7 @@ public class EndpointTests
     }
 
     // A restored override can be out of range too (a typo'd digit in a hand-typed
-    // bookmark) — it must warn the same way a POST-time rejection does, not tick the
+    // bookmark) - it must warn the same way a POST-time rejection does, not tick the
     // override and silently show the probe's numbers instead.
     [Fact]
     public async Task A_restored_out_of_range_override_still_warns()
@@ -762,7 +762,7 @@ public class EndpointTests
     }
 
     // Download marks are keyed to the device id, so a bookmarked URL that omits it
-    // must still land on a real one — an empty id keys this device's marks to
+    // must still land on a real one - an empty id keys this device's marks to
     // nothing at all.
     [Fact]
     public async Task A_restore_without_a_device_id_mints_one()

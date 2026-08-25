@@ -1,4 +1,4 @@
-# Security #1 — Secure cookies + trusted-proxy config — Implementation Plan
+# Security #1 - Secure cookies + trusted-proxy config - Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -12,8 +12,8 @@
 
 - New config lives on `AbsOptions` (keys: `FORCE_SECURE_COOKIES`, `TRUSTED_PROXY`); binding stays inline in `Program.cs`. `dotnet test` green after every task.
 - **Behavior change is intentional but must not regress legitimate users:** an HTTPS request still gets `Secure` cookies exactly as before; `ForceSecureCookies` only *adds* `Secure` on requests that report non-HTTPS (i.e. behind a TLS-terminating proxy). Default `false` = today's behavior.
-- **Back-compat:** when `TRUSTED_PROXY` is unset, keep clearing `KnownProxies`/`KnownIPNetworks` (trust-all) — do not silently start dropping forwarded headers on existing deployments.
-- `SmokeTests.MissingAbsUrl_FailsStartup` still relies on the `InvalidOperationException` guard — don't disturb it.
+- **Back-compat:** when `TRUSTED_PROXY` is unset, keep clearing `KnownProxies`/`KnownIPNetworks` (trust-all) - do not silently start dropping forwarded headers on existing deployments.
+- `SmokeTests.MissingAbsUrl_FailsStartup` still relies on the `InvalidOperationException` guard - don't disturb it.
 - Conventional Commits; no `Co-Authored-By`. Branch `security/hardening`.
 
 ---
@@ -35,7 +35,7 @@
 **Files:** as above.
 
 **Interfaces:**
-- `AbsOptions` gains `bool ForceSecureCookies` and `string? TrustedProxy` (the latter is consumed in Task 2 but added now — one config class).
+- `AbsOptions` gains `bool ForceSecureCookies` and `string? TrustedProxy` (the latter is consumed in Task 2 but added now - one config class).
 - `TokenStore` constructor gains a required `AbsOptions options` parameter.
 
 - [ ] **Step 1: Green baseline**
@@ -115,10 +115,10 @@ In `tests/Inkshelf.Tests/TokenStoreTests.cs`, change `Make` to take options, the
 
 Add `using Inkshelf;` to the test file's usings (for `AbsOptions`).
 
-- [ ] **Step 5: Run — verify fail to compile**
+- [ ] **Step 5: Run - verify fail to compile**
 
 Run: `dotnet test --filter FullyQualifiedName~TokenStoreTests`
-Expected: FAIL to compile — `TokenStore` has no 3-arg constructor yet.
+Expected: FAIL to compile - `TokenStore` has no 3-arg constructor yet.
 
 - [ ] **Step 6: Update `TokenStore`**
 
@@ -143,16 +143,16 @@ and in `Save`, change the `Secure` line to:
             Secure = _options.ForceSecureCookies || Ctx.Request.IsHttps,
 ```
 
-(`AbsOptions` resolves via the enclosing `Inkshelf` namespace — no `using` needed.)
+(`AbsOptions` resolves via the enclosing `Inkshelf` namespace - no `using` needed.)
 
-- [ ] **Step 7: Run TokenStore tests — GREEN**
+- [ ] **Step 7: Run TokenStore tests - GREEN**
 
 Run: `dotnet test --filter FullyQualifiedName~TokenStoreTests`
 Expected: PASS (roundtrip, absent, tampered, root-path, + the two new secure-flag tests).
 
 - [ ] **Step 8: Fix the AbsAuthHandlerTests TokenStore constructions**
 
-`tests/Inkshelf.Tests/AbsAuthHandlerTests.cs` builds `TokenStore` two ways in its `Make` helper — both need the new arg:
+`tests/Inkshelf.Tests/AbsAuthHandlerTests.cs` builds `TokenStore` two ways in its `Make` helper - both need the new arg:
 1. The DI registration: add `services.AddSingleton(new AbsOptions());` alongside the existing `services.AddTransient<TokenStore>();`.
 2. The cookie-seeding line `new TokenStore(dp, new HttpContextAccessor { HttpContext = w })` → `new TokenStore(dp, new HttpContextAccessor { HttpContext = w }, new AbsOptions())`.
 
@@ -262,10 +262,10 @@ public class ForwardedProxiesTests
 }
 ```
 
-- [ ] **Step 3: Run — verify fail to compile**
+- [ ] **Step 3: Run - verify fail to compile**
 
 Run: `dotnet test --filter FullyQualifiedName~ForwardedProxiesTests`
-Expected: FAIL to compile — `ForwardedProxies` does not exist.
+Expected: FAIL to compile - `ForwardedProxies` does not exist.
 
 - [ ] **Step 4: Create `ForwardedProxies.cs`**
 
@@ -300,7 +300,7 @@ public static class ForwardedProxies
 }
 ```
 
-- [ ] **Step 5: Run parse tests — GREEN**
+- [ ] **Step 5: Run parse tests - GREEN**
 
 Run: `dotnet test --filter FullyQualifiedName~ForwardedProxiesTests`
 Expected: PASS (3).
@@ -326,7 +326,7 @@ app.UseForwardedHeaders(fho);
 - [ ] **Step 7: Full suite**
 
 Run: `dotnet test`
-Expected: PASS (75 + 3 = 78). Existing endpoint/smoke tests still pass — with no `TRUSTED_PROXY` set the lists stay empty (trust-all), unchanged from before.
+Expected: PASS (75 + 3 = 78). Existing endpoint/smoke tests still pass - with no `TRUSTED_PROXY` set the lists stay empty (trust-all), unchanged from before.
 
 - [ ] **Step 8: Commit**
 
@@ -349,4 +349,4 @@ git commit -m "feat: optional TRUSTED_PROXY scoping for forwarded headers"
 
 **Type consistency:** `AbsOptions.ForceSecureCookies`/`TrustedProxy` used identically in `Program.cs` binding, `TokenStore`, `Favorites`, and Task 2's wiring. `TokenStore`'s 3-arg constructor is matched at all construction sites (DI auto-resolves; `TokenStoreTests.Make` and `AbsAuthHandlerTests` updated). `ForwardedProxies.Parse`'s tuple return matches the test and the `Program.cs` consumer.
 
-**Scope:** Two tasks — the force-secure cookie fix (primary), then the optional proxy scoping. Both behavior-safe by default (`false`/unset = today's behavior). Findings #2–#5 are separate just-in-time plans.
+**Scope:** Two tasks - the force-secure cookie fix (primary), then the optional proxy scoping. Both behavior-safe by default (`false`/unset = today's behavior). Findings #2-#5 are separate just-in-time plans.

@@ -6,7 +6,7 @@
 
 **Architecture:** `DeviceSettings` keeps its positional record shape for the three rendering settings and gains `Fav` as an `init` property. The cookie value becomes `retina=1&gray=0&lang=de&fav=lib_x`, parsed with `QueryHelpers.ParseQuery` and written by string interpolation. Legacy positional values are detected by the absence of `=` and parsed by the old code path; the legacy `inkshelf_fav_library` cookie is read as a fallback and deleted on every write. All five `Favorites` call sites move to read-modify-write via `with`.
 
-**Tech Stack:** .NET 10, ASP.NET Core Razor Pages, xUnit. `Microsoft.AspNetCore.WebUtilities.QueryHelpers` (already in the shared framework — no package to add).
+**Tech Stack:** .NET 10, ASP.NET Core Razor Pages, xUnit. `Microsoft.AspNetCore.WebUtilities.QueryHelpers` (already in the shared framework - no package to add).
 
 ## Global Constraints
 
@@ -37,7 +37,7 @@ Adds the new format and the legacy read path, leaving `Fav` for Task 2. This kee
 
 - [ ] **Step 1: Write the failing tests**
 
-Add to `tests/Inkshelf.Tests/DeviceSettingsTests.cs`. Note the two existing tests that assert the old exact strings — `Serialize_roundtrips_lang` and `Set_writes_essential_root_path_cookie_with_value` — are **replaced** here, not added to.
+Add to `tests/Inkshelf.Tests/DeviceSettingsTests.cs`. Note the two existing tests that assert the old exact strings - `Serialize_roundtrips_lang` and `Set_writes_essential_root_path_cookie_with_value` - are **replaced** here, not added to.
 
 ```csharp
     [Fact]
@@ -59,7 +59,7 @@ Add to `tests/Inkshelf.Tests/DeviceSettingsTests.cs`. Note the two existing test
     [Fact]
     public void Read_absent_key_falls_back_to_the_documented_default_not_false()
     {
-        // Only gray is present. Retina must stay ON — it defaults on, and a naive
+        // Only gray is present. Retina must stay ON - it defaults on, and a naive
         // `q["retina"] == "1"` would silently turn it off.
         var s = DeviceSettings.Read(RequestWithCookie("gray=1"));
         Assert.True(s.Retina);
@@ -103,7 +103,7 @@ Add to `tests/Inkshelf.Tests/DeviceSettingsTests.cs`. Note the two existing test
 Then **delete** these two now-obsolete tests from the same file:
 
 ```csharp
-    // DELETE — asserts the old positional format
+    // DELETE - asserts the old positional format
     [Fact]
     public void Serialize_roundtrips_lang()
     {
@@ -126,7 +126,7 @@ and change the cookie-value assertion in `Set_writes_essential_root_path_cookie_
     }
 ```
 
-Leave every other existing test in the file exactly as it is. `Read_parses_flags_and_lang`, `Read_legacy_two_char_cookie_has_empty_lang`, `Read_junk_lang_sanitises_to_empty`, `Read_accepts_region_code`, `Read_accepts_script_subtag_up_to_eight_chars`, `Read_explicit_00_is_both_off_distinct_from_default` and `Read_parses_both_flags` all feed positional values and must keep passing via the legacy path — they are the proof that backward compat works.
+Leave every other existing test in the file exactly as it is. `Read_parses_flags_and_lang`, `Read_legacy_two_char_cookie_has_empty_lang`, `Read_junk_lang_sanitises_to_empty`, `Read_accepts_region_code`, `Read_accepts_script_subtag_up_to_eight_chars`, `Read_explicit_00_is_both_off_distinct_from_default` and `Read_parses_both_flags` all feed positional values and must keep passing via the legacy path - they are the proof that backward compat works.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -139,7 +139,7 @@ Replace the body of `src/Inkshelf/Auth/DeviceSettings.cs` between the `Default` 
 
 ```csharp
     // Keyed, NOT positional: "retina=1&gray=0&lang=de&fav=". Looks like a query
-    // string because it is parsed by QueryHelpers, but it is a cookie value —
+    // string because it is parsed by QueryHelpers, but it is a cookie value -
     // Response.Cookies.Append escapes the & and = to %26/%3D and the request side
     // unescapes them. Every key is always written, including empty ones: Read
     // distinguishes "key present but empty" from "key absent" and they mean
@@ -164,7 +164,7 @@ Replace the body of `src/Inkshelf/Auth/DeviceSettings.cs` between the `Default` 
     }
 
     // An absent key means "not specified", which must land on the DOCUMENTED
-    // default — retina defaults ON, so a plain `== "1"` would silently flip it off.
+    // default - retina defaults ON, so a plain `== "1"` would silently flip it off.
     // ParseQuery hands back a plain Dictionary whose indexer THROWS on a missing
     // key, so every lookup goes through TryGetValue.
     private static bool Flag(Dictionary<string, StringValues> q, string key, bool fallback) =>
@@ -184,7 +184,7 @@ Run: `dotnet test --filter "FullyQualifiedName~DeviceSettingsTests"`
 Expected: PASS, all tests in the class.
 
 Then run the full suite: `dotnet test`
-Expected: PASS, **231** tests — 226 plus the six added, minus the one deleted
+Expected: PASS, **231** tests - 226 plus the six added, minus the one deleted
 (`Serialize_roundtrips_lang`; `Set_writes_essential_root_path_cookie_with_value`
 is edited, not removed).
 
@@ -288,7 +288,7 @@ Add to `tests/Inkshelf.Tests/DeviceSettingsTests.cs`. The helper below is needed
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter "FullyQualifiedName~DeviceSettingsTests"`
-Expected: FAIL to **compile** first — `'DeviceSettings' has no property 'Fav'` and `'DeviceSettings' has no member 'LegacyFavCookie'`. That is the expected first failure; a compile error is a legitimate red.
+Expected: FAIL to **compile** first - `'DeviceSettings' has no property 'Fav'` and `'DeviceSettings' has no member 'LegacyFavCookie'`. That is the expected first failure; a compile error is a legitimate red.
 
 - [ ] **Step 3: Add `Fav`, `SanitizeId`, the legacy fallback and the legacy delete**
 
@@ -300,7 +300,7 @@ Add the constant and the property just below the existing `Default` field:
     public const string LegacyFavCookie = "inkshelf_fav_library";
 
     // An init property rather than a fourth positional parameter, so the ten
-    // existing `new DeviceSettings(a, b, c)` sites in the tests keep compiling —
+    // existing `new DeviceSettings(a, b, c)` sites in the tests keep compiling -
     // those tests are the regression net for this refactor. Record equality still
     // covers it and `with { Fav = ... }` still works.
     public string Fav { get; init; } = "";
@@ -370,7 +370,7 @@ Run: `dotnet test --filter "FullyQualifiedName~DeviceSettingsTests"`
 Expected: PASS.
 
 Then: `dotnet test`
-Expected: PASS, **242** tests — 231 plus eleven, because xUnit counts each
+Expected: PASS, **242** tests - 231 plus eleven, because xUnit counts each
 `[InlineData]` of `Fav_is_sanitized_on_the_way_into_the_cookie` as its own test
 (six `[Fact]`s + five theory cases).
 
@@ -405,7 +405,7 @@ git commit -m "refactor: move the favorite library into the settings cookie"
 
 This is the bug this task can introduce, so it gets a real end-to-end test first. It drives the actual HTTP endpoints, because the hazard lives in the endpoint wiring, not in `DeviceSettings`.
 
-Add to `tests/Inkshelf.Tests/EndpointTests.cs`, which already has the `CreateFactory` and `GetAntiforgeryTokenAsync` helpers this uses. Neither `POST /favorite` nor `POST /settings` calls ABS — both only read and write cookies and redirect — so no ABS stubbing is needed.
+Add to `tests/Inkshelf.Tests/EndpointTests.cs`, which already has the `CreateFactory` and `GetAntiforgeryTokenAsync` helpers this uses. Neither `POST /favorite` nor `POST /settings` calls ABS - both only read and write cookies and redirect - so no ABS stubbing is needed.
 
 ```csharp
     [Fact]
@@ -423,7 +423,7 @@ Add to `tests/Inkshelf.Tests/EndpointTests.cs`, which already has the `CreateFac
         var token = await GetAntiforgeryTokenAsync(client);
 
         // Favorite a library, then save unrelated settings. Both go through the
-        // client's own cookie container — do NOT set a Cookie header by hand, it
+        // client's own cookie container - do NOT set a Cookie header by hand, it
         // fights the container and drops the antiforgery cookie.
         var fav = await client.PostAsync("/favorite", new FormUrlEncodedContent(
             new Dictionary<string, string>
@@ -450,14 +450,14 @@ Add to `tests/Inkshelf.Tests/EndpointTests.cs`, which already has the `CreateFac
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `dotnet test --filter "FullyQualifiedName~Saving_settings_keeps_the_favorite"`
-Expected: FAIL. After Task 2 the settings POST still builds a fresh `DeviceSettings`, so it writes `fav=` and the assertion reports the `fav%3Dlib_keep` substring missing. This is a genuine red — the exact bug, before the fix.
+Expected: FAIL. After Task 2 the settings POST still builds a fresh `DeviceSettings`, so it writes `fav=` and the assertion reports the `fav%3Dlib_keep` substring missing. This is a genuine red - the exact bug, before the fix.
 
 - [ ] **Step 3: Update `SettingsEndpoints.cs`**
 
-Replace lines 18–20 (`var settings = new DeviceSettings(...)` through `DeviceSettings.Set(...)`) with:
+Replace lines 18-20 (`var settings = new DeviceSettings(...)` through `DeviceSettings.Set(...)`) with:
 
 ```csharp
-            // `with`, NOT a fresh instance — the favorite lives in this same cookie
+            // `with`, NOT a fresh instance - the favorite lives in this same cookie
             // and constructing a new record would wipe it.
             var settings = DeviceSettings.Read(ctx.Request) with
             {
@@ -470,7 +470,7 @@ Replace lines 18–20 (`var settings = new DeviceSettings(...)` through `DeviceS
 
 - [ ] **Step 4: Update `SessionEndpoints.cs`**
 
-Replace lines 30–31 (the `if (Favorites.Read(...)) ... else ...` pair) with:
+Replace lines 30-31 (the `if (Favorites.Read(...)) ... else ...` pair) with:
 
 ```csharp
             // Toggle: favoriting the library you already favorited clears it.
@@ -490,7 +490,7 @@ Replace the body of `OnGetAsync` from `var fav = Favorites.Read(Request);` throu
         if (!string.IsNullOrEmpty(fav) && string.IsNullOrEmpty(all))
         {
             // Only honor the favorite if it still exists on the ABS we're pointed
-            // at now — a cookie saved against a different ABS would otherwise
+            // at now - a cookie saved against a different ABS would otherwise
             // redirect into a library this one doesn't have. Drop the stale
             // favorite and fall through to the list rather than looping on a dead
             // link.
@@ -522,7 +522,7 @@ git rm src/Inkshelf/Auth/Favorites.cs tests/Inkshelf.Tests/FavoritesTests.cs
 Run: `dotnet build`
 Expected: two errors in `tests/Inkshelf.Tests/FavoriteLibraryRoutingTests.cs`, at the two `Favorites.Cookie` references. Make exactly these changes.
 
-Line 32, inside the `WithContext` helper — seed the favorite inside the settings cookie instead of its own:
+Line 32, inside the `WithContext` helper - seed the favorite inside the settings cookie instead of its own:
 
 ```csharp
         // The favorite lives in the settings cookie now. A raw unescaped value is
@@ -532,7 +532,7 @@ Line 32, inside the `WithContext` helper — seed the favorite inside the settin
             http.Request.Headers.Cookie = $"{DeviceSettings.Cookie}=retina=1&gray=0&lang=&fav={favCookie}";
 ```
 
-Line 55, in `Index_drops_a_stale_favorite_and_shows_the_list` — the stale-clear now rewrites the settings cookie rather than deleting a cookie, so the `expires=…1970` assertion on the following line no longer applies to it. Replace both lines:
+Line 55, in `Index_drops_a_stale_favorite_and_shows_the_list` - the stale-clear now rewrites the settings cookie rather than deleting a cookie, so the `expires=…1970` assertion on the following line no longer applies to it. Replace both lines:
 
 ```csharp
         var setCookie = model.Response.Headers.SetCookie.ToString();
@@ -543,12 +543,12 @@ Line 55, in `Index_drops_a_stale_favorite_and_shows_the_list` — the stale-clea
 `fav` is the last key and `Set-Cookie` always continues with `; path=/`, so
 `fav%3D;` is the empty-favorite signature.
 
-Leave the other three tests in the file untouched — they exercise the redirect behavior, which is unchanged.
+Leave the other three tests in the file untouched - they exercise the redirect behavior, which is unchanged.
 
 - [ ] **Step 9: Run the full suite**
 
 Run: `dotnet test`
-Expected: PASS, **241** tests — 242 plus the one added in Step 1, minus the two deleted `FavoritesTests`.
+Expected: PASS, **241** tests - 242 plus the one added in Step 1, minus the two deleted `FavoritesTests`.
 
 - [ ] **Step 10: Commit**
 
@@ -561,14 +561,14 @@ git commit -m "refactor: read the favorite from the settings cookie everywhere"
 
 ### Task 4: Verify in a browser, then docs
 
-The change touches the favorite-redirect flow and the settings form — both plain-HTML paths that tests exercise only at the unit level. A browser pass comes before the docs so a broken flow is found while the code is still fresh.
+The change touches the favorite-redirect flow and the settings form - both plain-HTML paths that tests exercise only at the unit level. A browser pass comes before the docs so a broken flow is found while the code is still fresh.
 
 **Files:**
 - Modify: `docs/ARCHITECTURE.md` (three places, see Step 3)
 - Modify: `docs/ROADMAP.md`
 
 **Interfaces:**
-- Consumes: everything from Tasks 1–3.
+- Consumes: everything from Tasks 1-3.
 - Produces: nothing consumed by later tasks.
 
 - [ ] **Step 1: Run the app**
@@ -577,7 +577,7 @@ The change touches the favorite-redirect flow and the settings form — both pla
 cd /workspaces/inkshelf && dotnet run --project src/Inkshelf --urls http://localhost:5099
 ```
 
-Port 5099 is the one the e-reader's bookmark points at — use it, not the 5197 in `launchSettings.json`.
+Port 5099 is the one the e-reader's bookmark points at - use it, not the 5197 in `launchSettings.json`.
 
 - [ ] **Step 2: Walk the four flows that changed**
 
@@ -585,8 +585,8 @@ With a browser (Playwright .NET is available in the devcontainer; there is no `s
 
 1. Log in, open a library, click the favorite control. Expect a redirect to that library.
 2. Return to `/`. Expect the automatic redirect into the favorited library.
-3. Go to `/settings`, toggle grayscale, save. Then go to `/`. **Expect the favorite redirect to still happen** — this is the clobber hazard; if the favorite is gone, `SettingsEndpoints` is not using `with`.
-4. Click the favorite control again on the same library to un-favorite. Go to `/`. Expect the library *list*, and expect it to stay that way on reload — if the favorite comes back, the legacy-cookie delete or the presence check is wrong.
+3. Go to `/settings`, toggle grayscale, save. Then go to `/`. **Expect the favorite redirect to still happen** - this is the clobber hazard; if the favorite is gone, `SettingsEndpoints` is not using `with`.
+4. Click the favorite control again on the same library to un-favorite. Go to `/`. Expect the library *list*, and expect it to stay that way on reload - if the favorite comes back, the legacy-cookie delete or the presence check is wrong.
 
 Also confirm with devtools that only `inkshelf_settings` is present and `inkshelf_fav_library` is gone after any save.
 
@@ -612,14 +612,14 @@ with:
 
 ```
   `ForceSecureCookies || Request.IsHttps`. `TokenStore` and `Favorites` must apply
-  the same rule — keep them in sync.
+  the same rule - keep them in sync.
 ```
 
 with:
 
 ```
   `ForceSecureCookies || Request.IsHttps`. `TokenStore` and `DeviceSettings` must
-  apply the same rule — keep them in sync.
+  apply the same rule - keep them in sync.
 ```
 
 **3. "Two device cookies, two purposes" (~line 140).** The `scr` versus
@@ -630,7 +630,7 @@ its first half stay. Append to the end of that bullet:
   The settings cookie is a **keyed** value (`retina=1&gray=0&lang=de&fav=lib_x`),
   parsed with `QueryHelpers.ParseQuery`: a new setting is one key, and an absent
   key falls back to that setting's own default rather than to `false`. The
-  favorite library is a field in it, not a second cookie — so every write is a
+  favorite library is a field in it, not a second cookie - so every write is a
   read-modify-write via `with`, or it silently drops the other fields.
 ```
 
@@ -641,7 +641,7 @@ Keep the house style: present-tense design description, no changelog, no "shippe
 In `docs/ROADMAP.md`, delete the **Structured settings cookie (refactor)** bullet from the Settings section and add to the top of `## Done`:
 
 ```markdown
-- **Structured settings cookie** — `DeviceSettings` stores a keyed value
+- **Structured settings cookie** - `DeviceSettings` stores a keyed value
   (`retina=1&gray=0&lang=de&fav=lib_x`) instead of a positional string, so adding
   a setting is one key and an absent key falls back to that setting's documented
   default. The favorite library folded into the same cookie, retiring
@@ -650,7 +650,7 @@ In `docs/ROADMAP.md`, delete the **Structured settings cookie (refactor)** bulle
   their settings.
 ```
 
-Leave the two remaining Settings bullets (resolution override, EPUB2 fallback) in place — they were blocked on this and are now unblocked, but they are not done. Do **not** touch `CHANGELOG.md`.
+Leave the two remaining Settings bullets (resolution override, EPUB2 fallback) in place - they were blocked on this and are now unblocked, but they are not done. Do **not** touch `CHANGELOG.md`.
 
 - [ ] **Step 5: Final full run and commit**
 

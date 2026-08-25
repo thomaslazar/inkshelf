@@ -1,4 +1,4 @@
-# Security #2 — /diag hardening — Implementation Plan
+# Security #2 - /diag hardening - Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - New config on `AbsOptions` (key `DIAG_ENABLED`, **default true** = current behavior). `dotnet test` green after the task.
-- `/diag` stays functionally the same when enabled (logs the probe) — it just caps + sanitizes the input and can be turned off.
+- `/diag` stays functionally the same when enabled (logs the probe) - it just caps + sanitizes the input and can be turned off.
 - Conventional Commits; no `Co-Authored-By`. Branch `security/hardening`.
 
 ## File Structure
@@ -27,7 +27,7 @@
 
 **Interfaces:**
 - `AbsOptions` gains `bool DiagEnabled` (default `true`).
-- `DiagEndpoints.SanitizeProbe(string raw) : string` — `internal static`, pure.
+- `DiagEndpoints.SanitizeProbe(string raw) : string` - `internal static`, pure.
 
 - [ ] **Step 1: Green baseline**
 
@@ -53,7 +53,7 @@ In the `AbsOptions` initializer, add (default true unless explicitly `"false"`):
 
 - [ ] **Step 4: Write the failing tests**
 
-Create `tests/Inkshelf.Tests/DiagEndpointsTests.cs`. Note: `SanitizeProbe` neutralizes only *control* characters — spaces are printable and are intentionally preserved, so do NOT assert on spaces. The `\r`, `\n`, `\t` below are C# escape sequences in the test source (real control chars at runtime), which is exactly what the helper must strip.
+Create `tests/Inkshelf.Tests/DiagEndpointsTests.cs`. Note: `SanitizeProbe` neutralizes only *control* characters - spaces are printable and are intentionally preserved, so do NOT assert on spaces. The `\r`, `\n`, `\t` below are C# escape sequences in the test source (real control chars at runtime), which is exactly what the helper must strip.
 
 ```csharp
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -103,10 +103,10 @@ public class DiagEndpointsTests
 }
 ```
 
-- [ ] **Step 5: Run — verify fail to compile**
+- [ ] **Step 5: Run - verify fail to compile**
 
 Run: `dotnet test --filter FullyQualifiedName~DiagEndpointsTests`
-Expected: FAIL to compile — `DiagEndpoints.SanitizeProbe` does not exist.
+Expected: FAIL to compile - `DiagEndpoints.SanitizeProbe` does not exist.
 
 - [ ] **Step 6: Harden `DiagEndpoints.cs`**
 
@@ -125,7 +125,7 @@ public static class DiagEndpoints
     {
         // Receives the /diag.html browser capability probe and logs it, so device
         // limitations can be collected without a screenshot. No auth (pre-login tool)
-        // — so the body is bounded and sanitized before logging, and the whole
+        // - so the body is bounded and sanitized before logging, and the whole
         // endpoint is only mapped when enabled (see Program.cs / DIAG_ENABLED).
         app.MapPost("/diag", async (HttpContext ctx, ILogger<DiagLog> logger, CancellationToken ct) =>
         {
@@ -143,7 +143,7 @@ public static class DiagEndpoints
     }
 
     // Neutralize control characters (incl. CR/LF, so a probe body can't forge log
-    // lines) and cap the length. Pure — unit-tested directly.
+    // lines) and cap the length. Pure - unit-tested directly.
     internal static string SanitizeProbe(string raw)
     {
         if (raw.Length > MaxBytes) raw = raw[..MaxBytes];
@@ -184,10 +184,10 @@ git commit -m "feat: bound and sanitize /diag body, add DIAG_ENABLED kill-switch
 
 **Spec coverage (#2):** body capped at 4 KB (bounded read, not `ReadToEndAsync`); control chars + newlines sanitized before logging (pure `SanitizeProbe`); `DIAG_ENABLED` kill-switch gates the mapping.
 
-**Placeholder scan:** None — tests assert concrete sanitization, truncation bound, and 404/200 wiring. The sanitize test intentionally does not assert on spaces (they are printable and preserved).
+**Placeholder scan:** None - tests assert concrete sanitization, truncation bound, and 404/200 wiring. The sanitize test intentionally does not assert on spaces (they are printable and preserved).
 
 **Type consistency:** `AbsOptions.DiagEnabled` used in `Program.cs` binding + gate; `SanitizeProbe` signature matches its tests and the endpoint call site; `MaxBytes` bounds both the read and the truncation.
 
-**Note:** `char.IsControl` covers CR, LF, TAB, NUL and other C0/C1 controls — exactly the log-forging surface — while leaving printable content (including spaces) intact so legitimate probes still read clearly.
+**Note:** `char.IsControl` covers CR, LF, TAB, NUL and other C0/C1 controls - exactly the log-forging surface - while leaving printable content (including spaces) intact so legitimate probes still read clearly.
 
 **Scope:** One task. Findings #3/#5/#4/docs are separate just-in-time plans.

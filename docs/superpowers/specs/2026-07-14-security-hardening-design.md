@@ -1,4 +1,4 @@
-# Inkshelf Security Hardening — Design
+# Inkshelf Security Hardening - Design
 
 **Date:** 2026-07-14
 **Status:** Approved for planning
@@ -9,7 +9,7 @@ Follow-on to the structural refactor (PR #5, merged to `main` @ 2cf628d).
 ## Goal & scope
 
 Close the actionable security findings from the review. Unlike the refactor,
-this work **intentionally changes runtime behavior** — that is the point.
+this work **intentionally changes runtime behavior** - that is the point.
 
 **In scope** (owner's selection): findings **#1, #2, #3, #4, #5**.
 **Documented as accepted tradeoffs, not coded:** #6, #7 (see end).
@@ -21,7 +21,7 @@ Ground rules (from `CLAUDE.md`):
 - Verify ABS behavior against `temp/audiobookshelf/`. Near-zero client JS
   unchanged (none of this touches the two inline scripts → no Tolino re-test).
 - Sequenced as small, independently-testable steps on one branch
-  (`security/hardening`), shipping as a single PR — same model as the refactor.
+  (`security/hardening`), shipping as a single PR - same model as the refactor.
 
 ## New configuration (all on `AbsOptions`)
 
@@ -39,7 +39,7 @@ fallback to the default when unset/invalid. `AbsOptions` binding stays inline in
 
 ---
 
-## #1 — Forwarded-header trust & Secure cookies (High)
+## #1 - Forwarded-header trust & Secure cookies (High)
 
 **Problem.** `Program.cs` clears `KnownIPNetworks`/`KnownProxies`, so any direct
 client can spoof `X-Forwarded-Proto`/`X-Forwarded-For`. The only security-relevant
@@ -49,7 +49,7 @@ spoofed `X-Forwarded-Proto: http` makes the app drop `Secure`, exposing the
 encrypted-token cookie to plaintext interception.
 
 **Design.**
-- **Primary fix — force-secure cookies.** `TokenStore` (already a DI service)
+- **Primary fix - force-secure cookies.** `TokenStore` (already a DI service)
   injects `AbsOptions`; the cookie `Secure` becomes
   `options.ForceSecureCookies || Ctx.Request.IsHttps`. `Favorites` is a static
   helper taking `HttpResponse`, so `Favorites.Set` resolves `AbsOptions` from
@@ -58,7 +58,7 @@ encrypted-token cookie to plaintext interception.
   spoofable `IsHttps` no longer has a security consequence.
 - **Optional root-cause tightening.** When `TrustedProxy` is set (a comma-separated
   list of IPs/CIDRs), `Program.cs` populates `ForwardedHeadersOptions.KnownProxies`
-  / `KnownIPNetworks` from it (default-deny — only those proxies may set forwarded
+  / `KnownIPNetworks` from it (default-deny - only those proxies may set forwarded
   headers) instead of clearing. When unset, current clear-all behavior is retained
   for back-compat (the real risk is already covered by force-secure).
 
@@ -69,7 +69,7 @@ the parse into a small pure helper so it's testable without booting the host).
 
 ---
 
-## #2 — `/diag` log-injection / flood (High)
+## #2 - `/diag` log-injection / flood (High)
 
 **Problem.** `DiagEndpoints` reads the request body unbounded and logs it verbatim,
 pre-auth: newlines forge fake log lines, large bodies flood log storage, no rate
@@ -90,10 +90,10 @@ covered by an endpoint smoke test: `/diag` returns 404 when disabled.)
 
 ---
 
-## #3 — EPUB cache: `scr` clamp + LRU cap (Medium)
+## #3 - EPUB cache: `scr` clamp + LRU cap (Medium)
 
 **Problem.** The client-set `scr` cookie (only validated as positive ints) feeds
-`maxW × maxH` into the cache filename, and the cache has no eviction — an
+`maxW × maxH` into the cache filename, and the cache has no eviction - an
 authenticated user can mint unlimited size variants per item and exhaust disk.
 
 **Design.**
@@ -115,7 +115,7 @@ oldest are deleted until under the cap and newest survive.
 
 ---
 
-## #5 — Concurrent-convert race (Low-Med)
+## #5 - Concurrent-convert race (Low-Med)
 
 **Problem.** Two simultaneous `/convert` requests for the same item both pass the
 `File.Exists` check, both convert, and both write `outPath + ".tmp"` → wasted CPU
@@ -138,7 +138,7 @@ cleanup).
 
 ---
 
-## #4 — Archive size ceiling (Medium)
+## #4 - Archive size ceiling (Medium)
 
 **Problem.** `ConvertService` copies the whole ebook stream into a `MemoryStream`
 and the converter holds pages as `byte[]`; a decompression-bomb or huge CBZ OOMs
@@ -151,7 +151,7 @@ the sidecar.
   limit) to catch missing/lying `Content-Length`.
 - On exceed: log a warning (item id + limit) and return `ConvertOutcome.NotFound`
   (the existing "can't convert" signal the endpoint maps; no new outcome kind
-  needed). Default ceiling **500 MB** — conversion downscales to device size
+  needed). Default ceiling **500 MB** - conversion downscales to device size
   anyway, so this only blocks pathological/bomb inputs.
 
 No temp-file spooling (the reader already streams per-page post-refactor; only the
@@ -178,24 +178,24 @@ green.
    shipped conventions; note the new config), and document the accepted tradeoffs.
 
 Steps are independent except that #4 and #5 both touch `ConvertService`'s
-convert-on-miss block — do #5 before #4 so the ceiling check lands inside the
+convert-on-miss block - do #5 before #4 so the ceiling check lands inside the
 already-locked block.
 
 ## Accepted tradeoffs (documented, not coded)
 
-- **#6 — `/login` has no local rate limit.** ABS enforces its own brute-force
+- **#6 - `/login` has no local rate limit.** ABS enforces its own brute-force
   protection, and per-IP limiting is only meaningful once client IP is
   trustworthy (which `TRUSTED_PROXY` enables but the deployment doesn't require).
   Revisit if the sidecar is ever exposed without a trusted proxy.
-- **#7 — existing hygiene is sound:** Data-Protection-encrypted, HttpOnly,
+- **#7 - existing hygiene is sound:** Data-Protection-encrypted, HttpOnly,
   SameSite=Lax token cookie; antiforgery on state changes; URL-escaped ids;
-  `/cover` width clamped 1–400; XML-escaped EPUB metadata. Data-Protection keys
-  sit unencrypted in the keys volume — standard for this deployment; keep the
+  `/cover` width clamped 1-400; XML-escaped EPUB metadata. Data-Protection keys
+  sit unencrypted in the keys volume - standard for this deployment; keep the
   volume private.
 
 ## Non-goals
 
 - No auth/authz model changes, no new endpoints, no dependency additions.
-- Not behavior-preserving (by design) — but no *intended* change to a legitimate
+- Not behavior-preserving (by design) - but no *intended* change to a legitimate
   user's experience: real archives convert, real devices get cached variants,
   cookies still round-trip. Only abuse/edge paths change.

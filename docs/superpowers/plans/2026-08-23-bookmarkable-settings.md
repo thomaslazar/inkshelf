@@ -4,7 +4,7 @@
 
 **Goal:** Let a device restore its settings from a bookmarked URL, so a reader that loses its cookies on every browser restart no longer needs its screen override re-measured by hand.
 
-**Architecture:** The settings cookie's value is already a query string (`retina=1&gray=0&…`). One parser serves both sources: the cookie and — on `/settings` only — the request query. Saving redirects to `/settings?<serialized settings>`, so the page you land on is the page that restores what you saved, captured with the browser's own bookmark button.
+**Architecture:** The settings cookie's value is already a query string (`retina=1&gray=0&…`). One parser serves both sources: the cookie and - on `/settings` only - the request query. Saving redirects to `/settings?<serialized settings>`, so the page you land on is the page that restores what you saved, captured with the browser's own bookmark button.
 
 **Tech Stack:** ASP.NET Core Razor Pages (.NET 10), xUnit, `WebApplicationFactory` integration tests, `tools/uicheck` Playwright pass.
 
@@ -33,7 +33,7 @@ Extract the keyed-settings parsing out of `Read` so the same code serves a cooki
 **Interfaces:**
 - Consumes: nothing from earlier tasks.
 - Produces:
-  - `public static DeviceSettings? FromQuery(IQueryCollection q)` — settings parsed from a query, or `null` when no recognised key is present. Does not read cookies and does not apply `LegacyFav`.
+  - `public static DeviceSettings? FromQuery(IQueryCollection q)` - settings parsed from a query, or `null` when no recognised key is present. Does not read cookies and does not apply `LegacyFav`.
   - `Read(HttpRequest)` keeps its existing signature and behaviour.
 
 - [ ] **Step 1: Write the failing tests**
@@ -42,7 +42,7 @@ Add to `tests/Inkshelf.Tests/DeviceSettingsTests.cs`. `RequestWithCookie` alread
 
 ```csharp
     // The cookie's value and a bookmark's query are the same wire format, so one
-    // parser must serve both — otherwise the two drift and a restored bookmark
+    // parser must serve both - otherwise the two drift and a restored bookmark
     // means something subtly different from the cookie it came from.
     [Fact]
     public void FromQuery_matches_the_cookie_parser_for_the_same_string()
@@ -115,7 +115,7 @@ using Microsoft.AspNetCore.WebUtilities;
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --filter FromQuery`
-Expected: FAIL — compile error, `DeviceSettings` has no member `FromQuery`.
+Expected: FAIL - compile error, `DeviceSettings` has no member `FromQuery`.
 
 - [ ] **Step 3: Implement**
 
@@ -140,7 +140,7 @@ In `src/Inkshelf/Auth/DeviceSettings.cs`, replace the body of `Read` from `var q
     }
 
     // The keys Serialize writes, and nothing else. A query carrying none of them
-    // is not a settings payload — `range`/`scalerange` are warning markers.
+    // is not a settings payload - `range`/`scalerange` are warning markers.
     private static readonly string[] Keys =
         ["retina", "gray", "lang", "fav", "did", "spread", "scale", "ovr", "ovrw", "ovrh", "ovrd"];
 
@@ -177,7 +177,7 @@ In `src/Inkshelf/Auth/DeviceSettings.cs`, replace the body of `Read` from `var q
         };
 ```
 
-`Flag` currently takes `Dictionary<string, StringValues>`. Change its parameter type to `IQueryCollection` — its body needs no other change:
+`Flag` currently takes `Dictionary<string, StringValues>`. Change its parameter type to `IQueryCollection` - its body needs no other change:
 
 ```csharp
     private static bool Flag(IQueryCollection q, string key, bool fallback) =>
@@ -189,7 +189,7 @@ Check whether `Flag`'s existing signature differs from the above; match the real
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `dotnet test`
-Expected: PASS, and the whole suite still green — `Read` is used everywhere, so a regression here shows up broadly. Pay attention to the existing `Fav` tests: `fav=` present-but-empty must still mean "deliberately un-favorited" while an absent `fav` falls back to the legacy cookie.
+Expected: PASS, and the whole suite still green - `Read` is used everywhere, so a regression here shows up broadly. Pay attention to the existing `Fav` tests: `fav=` present-but-empty must still mean "deliberately un-favorited" while an absent `fav` falls back to the legacy cookie.
 
 - [ ] **Step 5: Commit**
 
@@ -257,7 +257,7 @@ Add to `tests/Inkshelf.Tests/EndpointTests.cs`. `CreateFactory` already exists t
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `dotnet test --filter Settings_from_the_url_are_applied_and_stored`
-Expected: FAIL — no `Set-Cookie` for settings, because nothing reads the query yet.
+Expected: FAIL - no `Set-Cookie` for settings, because nothing reads the query yet.
 
 - [ ] **Step 3: Implement**
 
@@ -267,7 +267,7 @@ In `src/Inkshelf/Pages/Settings.cshtml.cs`, replace the first line of `OnGet` (`
         // A bookmarked URL carrying settings IS the restore mechanism for devices
         // that lose their cookies on a browser restart: apply it and store it, so
         // the rest of the session behaves as if the values had been typed in.
-        // Only this page honours query settings — see the spec.
+        // Only this page honours query settings - see the spec.
         var restored = DeviceSettings.FromQuery(Request.Query);
         Settings = restored is { } r ? DeviceSettings.Set(Response, r) : DeviceSettings.Read(Request);
 ```
@@ -298,7 +298,7 @@ The POST-redirect-GET target carries the saved settings, so the page you land on
 - Test: `tests/Inkshelf.Tests/EndpointTests.cs`
 
 **Interfaces:**
-- Consumes: Task 2's behaviour — the redirect target must be a URL that Task 2 honours.
+- Consumes: Task 2's behaviour - the redirect target must be a URL that Task 2 honours.
 - Produces: no new API.
 
 - [ ] **Step 1: Write the failing test**
@@ -307,7 +307,7 @@ Add to `tests/Inkshelf.Tests/EndpointTests.cs`. `GetAntiforgeryTokenAsync` alrea
 
 ```csharp
     // The page you land on after saving is the page to bookmark, so the redirect
-    // has to carry the values — and following it must reproduce them, which is
+    // has to carry the values - and following it must reproduce them, which is
     // what makes the bookmark work at all.
     [Fact]
     public async Task Saving_redirects_to_a_url_that_restores_the_same_settings()
@@ -349,14 +349,14 @@ Add to `tests/Inkshelf.Tests/EndpointTests.cs`. `GetAntiforgeryTokenAsync` alrea
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `dotnet test --filter Saving_redirects_to_a_url_that_restores`
-Expected: FAIL — the location is `/settings`, so `Assert.StartsWith("/settings?", …)` fails.
+Expected: FAIL - the location is `/settings`, so `Assert.StartsWith("/settings?", …)` fails.
 
 - [ ] **Step 3: Implement**
 
 In `src/Inkshelf/Endpoints/SettingsEndpoints.cs`, replace the PRG block at the end of the POST handler:
 
 ```csharp
-            // PRG back to the page — carrying the saved settings, so the URL in the
+            // PRG back to the page - carrying the saved settings, so the URL in the
             // address bar is one a device can bookmark to restore them. Warning
             // flags ride along as extra params; they are not settings keys.
             var flags = (unusable ? "&range=1" : "") + (scaleRejected ? "&scalerange=1" : "");
@@ -368,7 +368,7 @@ Delete the previous two lines that built `flags` without leading `&` and the con
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `dotnet test`
-Expected: PASS. `Settings_post_sets_cookie_and_redirects` asserts `response.Headers.Location == "/settings"`; it now needs to assert `StartsWith("/settings?")` instead. Update that assertion — it is testing the same behaviour, which has deliberately changed.
+Expected: PASS. `Settings_post_sets_cookie_and_redirects` asserts `response.Headers.Location == "/settings"`; it now needs to assert `StartsWith("/settings?")` instead. Update that assertion - it is testing the same behaviour, which has deliberately changed.
 
 - [ ] **Step 5: Commit**
 
@@ -409,7 +409,7 @@ In `src/Inkshelf/locales/de.json`, next to the existing `"Automatic"` entry, add
   "Bookmark this page to restore these settings later.": "Diese Seite als Lesezeichen speichern, um diese Einstellungen später wiederherzustellen.",
 ```
 
-Keep the file valid JSON — check for a trailing comma problem by running the tests, which load the catalog.
+Keep the file valid JSON - check for a trailing comma problem by running the tests, which load the catalog.
 
 - [ ] **Step 3: Assert it in the browser pass**
 
@@ -418,7 +418,7 @@ In `tools/uicheck/Program.cs`, add the new strings to the two settings checks. I
 - [ ] **Step 4: Run the tests and the browser pass**
 
 Run: `dotnet test`
-Expected: PASS — `LocalizationCatalogTests` and `LocalizationIntegrationTests` load the German catalog, so malformed JSON fails here.
+Expected: PASS - `LocalizationCatalogTests` and `LocalizationIntegrationTests` load the German catalog, so malformed JSON fails here.
 
 Run: `PORT=5130 tools/uicheck/run.sh`
 Expected: `PASS` for both viewports. Read `tools/uicheck/shots/settings-de.png` and confirm the sentence renders and does not push the first Save button off the visible area.
@@ -435,7 +435,7 @@ git commit -m "feat: say that the settings page can be bookmarked"
 
 ### Task 5: Guard the invariant that other pages ignore query settings
 
-The spec's central safety property — only `/settings` honours query settings — is currently true by construction rather than by test. Lock it down so a future change to `DeviceSettings.Read` cannot quietly turn every URL into a settings link.
+The spec's central safety property - only `/settings` honours query settings - is currently true by construction rather than by test. Lock it down so a future change to `DeviceSettings.Read` cannot quietly turn every URL into a settings link.
 
 **Files:**
 - Test: `tests/Inkshelf.Tests/ListingRenderTests.cs`
@@ -450,7 +450,7 @@ Add to `tests/Inkshelf.Tests/ListingRenderTests.cs`. That file's `CreateFactory`
 
 ```csharp
     // Query settings are honoured on /settings ONLY. A link is allowed to change
-    // settings on the page where changing settings is the point — nowhere else,
+    // settings on the page where changing settings is the point - nowhere else,
     // or any URL anyone sends becomes a silent settings rewrite.
     [Fact]
     public async Task A_listing_url_carrying_settings_keys_ignores_them()
@@ -475,7 +475,7 @@ If `LibraryRequest`'s signature does not accept a null settings cookie, call it 
 - [ ] **Step 2: Run the test**
 
 Run: `dotnet test --filter A_listing_url_carrying_settings_keys_ignores_them`
-Expected: PASS immediately — this is a regression guard for behaviour Task 2 deliberately scoped, not new behaviour. If it FAILS, query settings are leaking outside `/settings`: stop and fix that before continuing.
+Expected: PASS immediately - this is a regression guard for behaviour Task 2 deliberately scoped, not new behaviour. If it FAILS, query settings are leaking outside `/settings`: stop and fix that before continuing.
 
 - [ ] **Step 3: Commit**
 
@@ -512,14 +512,14 @@ marks.
 
 - [ ] **Step 2: Update the shine's note in the matrix**
 
-In `docs/DEVICES.md`, in the `Notes on the shine` cell, replace `so the login and every setting — the override included — are re-entered each session` with:
+In `docs/DEVICES.md`, in the `Notes on the shine` cell, replace `so the login and every setting - the override included - are re-entered each session` with:
 
 ```html
         so you log in again each session; bookmark the settings page and its
         values come back with one tap
 ```
 
-Keep the surrounding sentence grammatical — read the whole cell after editing.
+Keep the surrounding sentence grammatical - read the whole cell after editing.
 
 - [ ] **Step 3: Record it as shipped**
 
@@ -536,8 +536,8 @@ git commit -m "docs: record bookmarkable settings"
 
 ## Verification before handing back
 
-- [ ] `dotnet test` — whole suite green.
-- [ ] `dotnet format --verify-no-changes` — clean.
-- [ ] `PORT=5130 tools/uicheck/run.sh` — PASS at both viewports, and `settings-de.png` read, not just the exit code.
+- [ ] `dotnet test` - whole suite green.
+- [ ] `dotnet format --verify-no-changes` - clean.
+- [ ] `PORT=5130 tools/uicheck/run.sh` - PASS at both viewports, and `settings-de.png` read, not just the exit code.
 - [ ] Manual round trip against the seeded ABS: save settings, copy the redirect URL, clear cookies, open the URL, confirm the fields come back.
 - [ ] `docs/ARCHITECTURE.md` deliberately untouched: this adds no new invariant and changes no structure. The rule for that file is that most features change it not at all.

@@ -2,7 +2,7 @@
 
 **Status:** design approved, ready for implementation plan
 **Date:** 2026-07-27
-**Roadmap item:** Settings — "Structured settings cookie (refactor)"
+**Roadmap item:** Settings - "Structured settings cookie (refactor)"
 
 ## Goal
 
@@ -11,9 +11,9 @@ retina, grayscale, lang). Meaning is by index, only the *last* field may be
 variable-length, and every new setting is another hand-rolled parse plus a
 legacy shape to keep reading. Two backlog settings are blocked behind this:
 
-- **Resolution override** — a variable-length *number*, which cannot follow the
+- **Resolution override** - a variable-length *number*, which cannot follow the
   variable-length `lang` field. Positional encoding has no room for it.
-- **EPUB2 reflowable fallback** — a flag, would fit, but not after `lang`.
+- **EPUB2 reflowable fallback** - a flag, would fit, but not after `lang`.
 
 Move to a keyed encoding so a new setting is one key and one line, then fold
 the sibling `Favorites` cookie into the same value so the app ends with one
@@ -29,7 +29,7 @@ packing was drift from that spec, not a decision. This restores it.
 `Favorites` fold, sanitization of the two free-text fields, updated tests and
 docs.
 
-**Out:** the resolution override and EPUB2 settings themselves — they stay on
+**Out:** the resolution override and EPUB2 settings themselves - they stay on
 the roadmap. This change only unblocks them. No UI change: the Settings page
 form and its fields are untouched.
 
@@ -46,7 +46,7 @@ single letters reintroduce a lookup table, which is positional encoding's
 problem in spirit. Costs ~12 characters in a cookie that has no size pressure.
 
 **Every key is always written**, including empty ones (`fav=`). Presence of a
-key is load-bearing — see the resurrect guard in section C.
+key is load-bearing - see the resurrect guard in section C.
 
 **Escaping:** `Response.Cookies.Append` runs the value through
 `Uri.EscapeDataString`, and `RequestCookieCollection` reverses it, so `&` and
@@ -56,7 +56,7 @@ Response→Request round-trip test locks it in so a framework change can't break
 it silently.
 
 **Consequence to be aware of:** anything writing this cookie *outside*
-`Response.Cookies.Append` — e.g. the inline JS that writes the `scr` probe —
+`Response.Cookies.Append` - e.g. the inline JS that writes the `scr` probe -
 would have to escape `&`/`=` itself. Nothing does today; `scr` is a separate
 cookie and stays one.
 
@@ -66,7 +66,7 @@ The roadmap suggested JSON. Rejected, in order of weight:
 
 1. **JSON needs a nullable DTO purely to avoid a default-flip bug.** With
    `record Dto(int retina, …)`, an absent key deserializes to `0` and silently
-   turns retina *off* — retina defaults **on**. Avoiding that needs `int?` on
+   turns retina *off* - retina defaults **on**. Avoiding that needs `int?` on
    every field plus a null check per field. The keyed form gets absent-vs-zero
    from `StringValues.Count == 0`, with no extra type.
 2. **Junk cannot throw.** `QueryHelpers.ParseQuery` returns what it can parse;
@@ -97,7 +97,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // Record equality still covers it, and `with { Fav = … }` still works.
     public string Fav { get; init; } = "";
 
-    // Sanitized on the way OUT here and on the way IN in Read — the two cookie
+    // Sanitized on the way OUT here and on the way IN in Read - the two cookie
     // boundaries. See "Why not sanitize in the record" below.
     public string Serialize() =>
         $"retina={(Retina ? 1 : 0)}&gray={(Grayscale ? 1 : 0)}"
@@ -108,7 +108,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
 **Sanitization is a trust boundary, not tidiness.** `/favorite` takes
 `libraryId` straight from a form POST. A `libraryId` of `x&retina=0` would
 write a cookie that parses back with retina off. It is only the caller's own
-cookie, so this is a correctness hole rather than a meaningful security one —
+cookie, so this is a correctness hole rather than a meaningful security one -
 but it does have to be closed somewhere no call site can forget.
 
 **Why not sanitize in the record (corrected).** An earlier draft of this spec
@@ -117,20 +117,20 @@ exist". That does not work in C#, confirmed by probe:
 
 | Form | Result |
 |---|---|
-| `public string Fav { get; } = SanitizeId(Fav);` | ctor sanitizes, but `with { Fav = … }` does not compile — no `init` accessor |
-| `public string Fav { get; init; } = SanitizeId(Fav);` | ctor sanitizes; **`with` silently bypasses it** — initializers only run in the primary constructor |
+| `public string Fav { get; } = SanitizeId(Fav);` | ctor sanitizes, but `with { Fav = … }` does not compile - no `init` accessor |
+| `public string Fav { get; init; } = SanitizeId(Fav);` | ctor sanitizes; **`with` silently bypasses it** - initializers only run in the primary constructor |
 | `private readonly string _fav; public string Fav { get => _fav; init => _fav = SanitizeId(value); }` | `with` sanitizes, but the compiler warns **CS8907 "Parameter 'Fav' is unread"** and `new DeviceSettings(…, "x")` yields `null` |
 
 The only airtight version means dropping the positional constructor entirely
 and converting every construction site to object-initializer syntax. Not worth
-it. Instead both cookie boundaries sanitize — `Serialize` on the way out,
+it. Instead both cookie boundaries sanitize - `Serialize` on the way out,
 `Read` on the way in. The in-memory record can transiently hold an odd `Fav`
 after a `with`, which is harmless: the one consumer that builds a URL from it
 (`Index`'s `Redirect($"/library/{fav}")`) gets its value from `Read`.
 
-- `SanitizeLang` — unchanged from today: short lowercase code, letters and
+- `SanitizeLang` - unchanged from today: short lowercase code, letters and
   dash, else `""`.
-- `SanitizeId` — `[A-Za-z0-9_-]`, max 64 chars, else `""`. Covers ABS's
+- `SanitizeId` - `[A-Za-z0-9_-]`, max 64 chars, else `""`. Covers ABS's
   `lib_…` ids and uuids. Rejecting `%` also rules out double-decoding
   surprises, since `ParseQuery` URL-decodes a value the cookie layer already
   unescaped once.
@@ -141,7 +141,7 @@ after a `with`, which is harmless: the one consumer that builds a URL from it
 - Value contains no `=` → legacy positional shape (`"10"`, `"10de"`); parse as
   today, with `Fav` from the legacy cookie.
 - Otherwise `QueryHelpers.ParseQuery`, then per field:
-  - `Flag(q, "retina", Default.Retina)` — an absent key lands on the
+  - `Flag(q, "retina", Default.Retina)` - an absent key lands on the
     *documented default*, not `false`. This is the whole reason keyed encoding
     is worth doing, and the easiest thing to get wrong.
   - `Fav`: **presence, not emptiness.** `q.TryGetValue("fav", out var f)`
@@ -155,14 +155,14 @@ private static bool Flag(Dictionary<string, StringValues> q, string key, bool fa
 ```
 
 **`ParseQuery` returns a plain `Dictionary<string, StringValues>`, not an
-`IQueryCollection`** — so its indexer *throws* `KeyNotFoundException` on a
+`IQueryCollection`** - so its indexer *throws* `KeyNotFoundException` on a
 missing key rather than yielding `StringValues.Empty`. Every access must go
 through `TryGetValue`. Confirmed by probe, along with the rest of the
 encoding's behavior:
 
 | Input | Result |
 |---|---|
-| `retina=1&gray=0&lang=de&fav=` | `fav` key **present**, value `""` — the resurrect guard works |
+| `retina=1&gray=0&lang=de&fav=` | `fav` key **present**, value `""` - the resurrect guard works |
 | `q["nope"]` | throws `KeyNotFoundException` |
 | `"totally-not-a-query"` | 1 key, no exception, no `retina` key → every field defaults |
 | `""` | 0 keys |
@@ -189,7 +189,7 @@ All five have `HttpContext` available; verified.
 
 **The `SettingsEndpoints` line is the hazard this fold introduces.** With two
 cookies, a settings save and a favorite toggle could not interfere. With one,
-constructing a fresh `DeviceSettings` on save wipes the favorite — and the
+constructing a fresh `DeviceSettings` on save wipes the favorite - and the
 symptom (a favorite that vanishes when you touch Settings) points nowhere near
 the cause. `with` is what makes read-modify-write safe; the rule is that no
 call site constructs a fresh instance.
@@ -197,13 +197,13 @@ call site constructs a fresh instance.
 The existing `DeviceSettings.Read` call sites that only read rendering fields
 (`ConvertEndpoints`, `ConvertWhy`, `Item`, `Converted`, `Settings`, `Localizer`,
 and `Library.cshtml.cs:134`) need no change. `Library.cshtml.cs` appears in the
-table above for its *other* line — the `IsFavorite` check at line 48.
+table above for its *other* line - the `IsFavorite` check at line 48.
 
 ### E. Tests
 
 `DeviceSettingsTests`, extended:
 
-- **Response→Request round-trip** — write via `Set`, move the `Set-Cookie`
+- **Response→Request round-trip** - write via `Set`, move the `Set-Cookie`
   value into a fresh context's request cookies, `Read` it back. Verifies the
   `&`/`=` escaping premise rather than assuming it.
 - Absent key → documented default, **including retina staying `true`**.
@@ -215,18 +215,18 @@ table above for its *other* line — the `IsFavorite` check at line 48.
 - `fav=x&retina=0` injection attempt via the form value is sanitized away.
 - Existing forced/default `Secure` pair stays.
 
-`FavoritesTests.cs` is deleted — its `Secure` pair is already covered by the
+`FavoritesTests.cs` is deleted - its `Secure` pair is already covered by the
 `DeviceSettingsTests` equivalents, which now govern the only preferences
 cookie.
 
 ### F. Docs
 
-- `ARCHITECTURE.md` lines ~30–31 (the `Auth/` map), ~114–116 (the cookie
-  `Secure` rule, which names `Favorites`) and ~140–144 ("Two device cookies,
+- `ARCHITECTURE.md` lines ~30-31 (the `Auth/` map), ~114-116 (the cookie
+  `Secure` rule, which names `Favorites`) and ~140-144 ("Two device cookies,
   two purposes") all describe two preferences cookies. All three need
   rewriting: `scr` versus `inkshelf_settings` remains the meaningful split
   (device *truth* versus user *choice*), and the favorite is now a field.
-- `ROADMAP.md` — item moves to Done.
+- `ROADMAP.md` - item moves to Done.
 
 ## Migration
 

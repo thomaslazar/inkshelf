@@ -109,7 +109,7 @@ public class ScreenTargetTests
     public void An_override_works_with_no_probe_at_all()
     {
         // The whole point: FromCookie used to return (0,0,1) the moment the cookie
-        // was missing and never look further, so there was no cap — no downscaling,
+        // was missing and never look further, so there was no cap - no downscaling,
         // and SpreadMode.Fit had no box to letterbox a spread onto.
         var t = ScreenTarget.FromCookie(null, over: new ScreenOverride(1000, 2000, 1));
         Assert.Equal(1000, t.MaxW);
@@ -120,7 +120,7 @@ public class ScreenTargetTests
     public void An_override_honours_retina_by_converting_at_the_css_size()
     {
         // The entered numbers are physical pixels. retina off means the same thing here
-        // as on the probe path — convert at the CSS size, dpr 1 — so the page lays out
+        // as on the probe path - convert at the CSS size, dpr 1 - so the page lays out
         // identically with a quarter of the pixels. If this were ignored, retina would
         // be an inert control whenever an override was set.
         var on = ScreenTarget.FromCookie(null, retina: true, over: new ScreenOverride(1000, 2000, 2));
@@ -133,7 +133,7 @@ public class ScreenTargetTests
     [Fact]
     public void An_override_is_clamped_to_the_same_bounds_as_the_probe()
     {
-        // retina: true so the entered numbers are used as-is — with retina off they are
+        // retina: true so the entered numbers are used as-is - with retina off they are
         // divided by the ratio, which is a different test (see the retina case above).
         var t = ScreenTarget.FromCookie(null, retina: true, over: new ScreenOverride(99999, 99999, 99));
         Assert.Equal(ScreenTarget.MaxDimension, t.MaxW);

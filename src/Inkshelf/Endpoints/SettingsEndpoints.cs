@@ -17,7 +17,7 @@ public static class SettingsEndpoints
             // Unchecked checkboxes send no field → absent == off. lang comes from
             // the <select>; DeviceSettings sanitises it on both write (Serialize)
             // and read.
-            // `with`, NOT a fresh instance — the favorite lives in this same cookie
+            // `with`, NOT a fresh instance - the favorite lives in this same cookie
             // and constructing a new record would wipe it.
             var stored = DeviceSettings.Read(ctx.Request);
             var settings = stored with
@@ -45,7 +45,7 @@ public static class SettingsEndpoints
             };
             DeviceSettings.Set(ctx.Response, settings);
 
-            // Ticked but unusable — a value out of range is dropped to 0, and blanks
+            // Ticked but unusable - a value out of range is dropped to 0, and blanks
             // are 0 already, so the override is stored yet inactive and conversion
             // quietly keeps using the probe. Say so: without this the field simply
             // re-displays the detected number and the setting looks broken.
@@ -57,7 +57,7 @@ public static class SettingsEndpoints
             var scaleRejected = !string.IsNullOrWhiteSpace(rawScale)
                 && (!int.TryParse(rawScale, out var typed) || DeviceSettings.SanitizeScale(typed) != typed);
 
-            // PRG back to the page — carrying the saved settings, so the URL in the
+            // PRG back to the page - carrying the saved settings, so the URL in the
             // address bar is one a device can bookmark to restore them. Warning
             // flags ride along as extra params; they are not settings keys.
             var flags = (unusable ? "&range=1" : "") + (scaleRejected ? "&scalerange=1" : "");

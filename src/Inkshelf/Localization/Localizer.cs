@@ -6,7 +6,7 @@ namespace Inkshelf.Localization;
 // View-facing localiser. Injected once via _ViewImports (`@inject Localizer L`)
 // and used as `L["English string"]`. Resolves the request language itself (from
 // the DeviceSettings cookie, then Accept-Language) so strings in the layout and
-// shared partials — which have no PageModel — need no plumbing.
+// shared partials - which have no PageModel - need no plumbing.
 public sealed class Localizer
 {
     private readonly LocalizationCatalog _catalog;
@@ -26,7 +26,7 @@ public sealed class Localizer
         {
             var template = _catalog.Get(CurrentLang(), key);
             // A translator can ship a template whose placeholders don't match the
-            // call site (wrong index, missing arg) — don't 500 the page for it,
+            // call site (wrong index, missing arg) - don't 500 the page for it,
             // just show the unformatted template.
             try { return string.Format(template, args); }
             catch (FormatException) { return template; }

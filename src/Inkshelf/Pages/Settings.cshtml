@@ -24,7 +24,7 @@
     <p>
         <label>
             <input type="checkbox" name="retina" value="on" @(Model.Settings.Retina ? "checked" : "") />
-            @L["Retina pages (full-resolution; crisper but heavier — may strain low-memory readers)"]
+            @L["Retina pages (full-resolution; crisper but heavier - may strain low-memory readers)"]
         </label>
     </p>
     <p>
@@ -90,7 +90,7 @@
     <p>
         <label>@L["Language"]<br />
             <select name="lang">
-                @* The empty code means "follow Accept-Language" — the state a device is
+                @* The empty code means "follow Accept-Language" - the state a device is
                    in until someone picks a language. Without it in the list nothing
                    matches, the browser shows the first option, and saving any other
                    setting silently pins that language. *@

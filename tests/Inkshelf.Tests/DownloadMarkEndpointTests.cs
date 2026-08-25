@@ -33,7 +33,7 @@ public class DownloadMarkEndpointTests
 
     // ABS answers a file request over the network: the body is NOT seekable, and
     // the size arrives as a header. A ByteArrayContent stub would hand out a
-    // seekable MemoryStream instead, which Results.File can measure by itself —
+    // seekable MemoryStream instead, which Results.File can measure by itself -
     // hiding whether the endpoint passes the length on.
     private sealed class NetworkLikeStream(byte[] data) : MemoryStream(data)
     {
@@ -61,7 +61,7 @@ public class DownloadMarkEndpointTests
          "libraryFiles":[{"ino":"{{Ino}}","fileType":"ebook","metadata":{"filename":"b.epub","size":11,"mtimeMs":21} }]}
         """;
 
-    // A separate cbz item for the /convert/{id} tests — the /download endpoint's
+    // A separate cbz item for the /convert/{id} tests - the /download endpoint's
     // fixture above is an epub (not convertible).
     private const string ComicId = "comic1";
     private const long CSize = 555, CMtime = 666;
@@ -108,7 +108,7 @@ public class DownloadMarkEndpointTests
         return req;
     }
 
-    // Old e-reader download managers want the size up front — one refuses the
+    // Old e-reader download managers want the size up front - one refuses the
     // transfer without it, and none can show progress or resume. ABS sends a
     // Content-Length; the endpoint hands out a live network stream, so nothing
     // downstream can work the length out and it has to be passed on explicitly
@@ -224,7 +224,7 @@ public class DownloadMarkEndpointTests
     }
 
     // The did must be minted only where it's used (the serve path), not on
-    // every poll — a poll/warm request has no reason to write a settings
+    // every poll - a poll/warm request has no reason to write a settings
     // cookie. This regressed once inside this branch's own history (EnsureDid
     // briefly sat at the top of the handler) and the rest of the suite stayed
     // green, so it's pinned explicitly here.
@@ -259,8 +259,8 @@ public class DownloadMarkEndpointTests
 
         // Pre-seed the cached EPUB for this device's render target. No `scr`
         // cookie is sent (mirrors Download()'s request), so ScreenTarget.FromCookie
-        // resolves to (0,0,1,false) — the same target the convert endpoint computes
-        // — and KickAsync sees ConvertStatus.Done, serving + marking immediately
+        // resolves to (0,0,1,false) - the same target the convert endpoint computes
+        // - and KickAsync sees ConvertStatus.Done, serving + marking immediately
         // instead of only enqueuing a background job.
         var cache = factory.Services.GetRequiredService<EpubCache>();
         File.WriteAllText(cache.PathFor(ComicId, CSize, CMtime, 0, 0, spread: DeviceSettings.Default.Spread, scale: DeviceSettings.Default.Scale), "epub");

@@ -110,7 +110,7 @@ public class DeviceSettingsTests
     [Fact]
     public void Read_absent_key_falls_back_to_the_documented_default_not_false()
     {
-        // Only gray is present. Retina must stay ON — it defaults on, and a naive
+        // Only gray is present. Retina must stay ON - it defaults on, and a naive
         // `q["retina"] == "1"` would silently turn it off.
         var s = DeviceSettings.Read(RequestWithCookie("gray=1"));
         Assert.True(s.Retina);
@@ -248,7 +248,7 @@ public class DeviceSettingsTests
     public void Fav_is_sanitized_on_the_way_out_of_the_cookie()
     {
         // A hand-edited cookie must not smuggle an unsafe id into Index's redirect.
-        // URL-escaped, as a browser would actually send it after a hand edit — a
+        // URL-escaped, as a browser would actually send it after a hand edit - a
         // raw space would make the request-cookie parser reject the whole cookie
         // before Read ever reaches SanitizeId.
         var v = DeviceSettings.Read(RequestWithCookie("retina%3D1%26gray%3D0%26lang%3D%26fav%3Da%20b"));
@@ -331,8 +331,8 @@ public class DeviceSettingsTests
         // the default, not on 0, or every page would be laid out at zero size.
         Assert.Equal(d, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=")).Scale);
         Assert.Equal(90, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=90")).Scale);
-        // 100 is a real choice — a reader that honours the declared viewport exactly
-        // wants it — so it must survive the round trip rather than being normalised away.
+        // 100 is a real choice - a reader that honours the declared viewport exactly
+        // wants it - so it must survive the round trip rather than being normalised away.
         Assert.Equal(100, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=100")).Scale);
         // A hand-edited cookie must not mint an absurd page size.
         Assert.Equal(d, DeviceSettings.Read(RequestWithCookie("retina=1&gray=0&lang=&fav=&scale=5")).Scale);
@@ -402,7 +402,7 @@ public class DeviceSettingsTests
     {
         // The UI is translated; a German-locale user typing 1,875 must not
         // silently fall through to the invalid-value path. The comma is
-        // percent-encoded here (%2C) the way a real Cookie header carries it —
+        // percent-encoded here (%2C) the way a real Cookie header carries it -
         // ASP.NET's own cookie-header parser splits raw, unescaped commas as if
         // they separated multiple header values, which would corrupt every other
         // field in this cookie before Read ever saw it.
@@ -415,7 +415,7 @@ public class DeviceSettingsTests
     [InlineData("-5", "1000", "1")]       // negative width
     [InlineData("99999", "1000", "1")]    // past MaxDimension
     [InlineData("800", "1000", "0")]      // zero ratio
-    [InlineData("800", "1000", "0.5")]    // below 1 — would enlarge the viewport
+    [InlineData("800", "1000", "0.5")]    // below 1 - would enlarge the viewport
     [InlineData("800", "1000", "99")]     // past MaxDpr
     [InlineData("800", "1000", "abc")]    // unparseable ratio
     public void Screen_override_rejects_values_out_of_range(string w, string h, string dpr)
@@ -438,7 +438,7 @@ public class DeviceSettingsTests
     }
 
     // The cookie's value and a bookmark's query are the same wire format, so one
-    // parser must serve both — otherwise the two drift and a restored bookmark
+    // parser must serve both - otherwise the two drift and a restored bookmark
     // means something subtly different from the cookie it came from.
     [Fact]
     public void FromQuery_matches_the_cookie_parser_for_the_same_string()
@@ -491,7 +491,7 @@ public class DeviceSettingsTests
     public void FromQuery_lands_on_the_default_for_a_duplicated_flag_key()
     {
         // StringValues.ToString() joins a duplicated key with a comma ("1,1"), which
-        // must not compare as anything other than the documented default — every
+        // must not compare as anything other than the documented default - every
         // other garbled value in Parse falls back the same way.
         var s = DeviceSettings.FromQuery(
             new QueryCollection(QueryHelpers.ParseQuery("retina=1&retina=1")));

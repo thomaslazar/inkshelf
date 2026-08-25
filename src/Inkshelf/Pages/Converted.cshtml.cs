@@ -47,8 +47,8 @@ public class ConvertedModel : PageModel
     public const string ConvertedKey = "converted";
     private static readonly string[] Keys = [ConvertedKey, "series", "title", "author"];
 
-    // `sort` is client-supplied, so anything unrecognised — absent, misspelled or
-    // hostile — means "the default view", which is newest conversion FIRST. `Desc`
+    // `sort` is client-supplied, so anything unrecognised - absent, misspelled or
+    // hostile - means "the default view", which is newest conversion FIRST. `Desc`
     // is what the query asked for; `AppliedDesc` is what the page actually did, and
     // it keys off recognition, not off `Sort is null`: with a garbage value, `Desc`
     // would be false and the page would render oldest-first, which is not the
@@ -70,7 +70,7 @@ public class ConvertedModel : PageModel
         var markSet = _marks.Read(settings.Did);
 
         // Cache entries for THIS device. Only the SET of item ids matters for the
-        // batch fetch — row state is recomputed below from the current ebook file —
+        // batch fetch - row state is recomputed below from the current ebook file -
         // but keep each item's newest conversion time for the default sort. An item
         // can have more than one matching variant if the source changed and the
         // older entry hasn't been evicted.

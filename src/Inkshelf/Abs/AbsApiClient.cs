@@ -35,7 +35,7 @@ public class AbsApiClient
     }
 
     // Fetch expanded items (id, libraryId, structured metadata, coverPath,
-    // ebookFile) for a set of ids in ONE call. Cross-library — batch/get queries
+    // ebookFile) for a set of ids in ONE call. Cross-library - batch/get queries
     // by id only, not scoped to a library.
     public async Task<List<AbsBatchItem>> GetItemsBatchAsync(
         IReadOnlyCollection<string> itemIds, CancellationToken ct = default)
@@ -112,7 +112,7 @@ public class AbsApiClient
         return set;
     }
 
-    // Mark an item read (isFinished:true) or unread (false). PATCH is symmetric —
+    // Mark an item read (isFinished:true) or unread (false). PATCH is symmetric -
     // unmarking leaves a harmless isFinished:false progress row, so no DELETE / no
     // need to know the progress-row id.
     public async Task SetReadAsync(string itemId, bool finished, CancellationToken ct = default)

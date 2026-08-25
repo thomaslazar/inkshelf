@@ -34,7 +34,7 @@
         } catch (e) {}
     })();
     /* Background convert: tap kicks (?warm=1) then polls (?status=1) every 5s,
-       updating the link text in place — the conversion runs server-side even if
+       updating the link text in place - the conversion runs server-side even if
        this page goes away. Links the server marked data-poll are already in
        flight, so we resume polling them on load. No-JS falls back to the
        <noscript> meta-refresh. ES5 for old e-readers. */

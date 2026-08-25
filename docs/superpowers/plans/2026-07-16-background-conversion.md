@@ -6,18 +6,18 @@
 
 **Architecture:** A singleton `ConvertQueue` (in-memory registry + `System.Threading.Channels` producer) fed by a reshaped `ConvertService` "kick" (which fetches ABS detail, captures the access token, and enqueues). A `ConvertWorker` `BackgroundService` drains the channel on the app lifetime, downloads the archive with a new handler-free `AbsDownloadClient` (the worker has no `HttpContext`, so it can't use `AbsApiClient`), converts, and records terminal state. "Done" is the atomic existence of the `.epub` on disk; the registry only tracks `Queued`/`Running`/`Failed`.
 
-**Tech Stack:** ASP.NET Core Razor Pages + minimal APIs, .NET 10, xUnit, ImageSharp (existing). No new NuGet — `System.Threading.Channels` and `BackgroundService` ship in the shared framework.
+**Tech Stack:** ASP.NET Core Razor Pages + minimal APIs, .NET 10, xUnit, ImageSharp (existing). No new NuGet - `System.Threading.Channels` and `BackgroundService` ship in the shared framework.
 
 **Spec:** `docs/superpowers/specs/2026-07-16-background-conversion-design.md`
 
 ## Global Constraints
 
 - **No AOT. No new NuGet dependency.** Queue is built-in `Channel` + `BackgroundService`.
-- **Near-zero client JS.** Only the two inline scripts in `_Layout.cshtml` may exist; this evolves the convert-warm one. **Real e-ink device test required before merge** (Task 6). Defensive CSS only — no `object-fit`, no flex `gap`. ES5 in inline scripts (old e-reader engines).
+- **Near-zero client JS.** Only the two inline scripts in `_Layout.cshtml` may exist; this evolves the convert-warm one. **Real e-ink device test required before merge** (Task 6). Defensive CSS only - no `object-fit`, no flex `gap`. ES5 in inline scripts (old e-reader engines).
 - **New config extends `AbsOptions`** (one config surface). Booleans/longs parse from strings with a default fallback.
 - **`dotnet test` green after every task.** Run from repo root inside the devcontainer.
-- **Conventional Commits**; `type: subject`, imperative, lowercase, ≤72 chars. **No** `Co-Authored-By` / "Generated with" lines. **Ask before committing** — the per-task commit steps below are the plan's intent, but confirm with the owner.
-- **Load-bearing auth conventions** (`ARCHITECTURE.md`): the two ABS clients stay as-is; the new `AbsDownloadClient` is a deliberate **third** client — handler-free, caller-supplied bearer, **no** refresh, worker-only. It MUST send a non-empty `User-Agent` (the ABS proxy 403s an empty one). Never attach `AbsAuthHandler` to it.
+- **Conventional Commits**; `type: subject`, imperative, lowercase, ≤72 chars. **No** `Co-Authored-By` / "Generated with" lines. **Ask before committing** - the per-task commit steps below are the plan's intent, but confirm with the owner.
+- **Load-bearing auth conventions** (`ARCHITECTURE.md`): the two ABS clients stay as-is; the new `AbsDownloadClient` is a deliberate **third** client - handler-free, caller-supplied bearer, **no** refresh, worker-only. It MUST send a non-empty `User-Agent` (the ABS proxy 403s an empty one). Never attach `AbsAuthHandler` to it.
 - **ABS source of truth** for API shapes: `temp/audiobookshelf/` (not the stale hosted docs).
 
 ---
@@ -25,28 +25,28 @@
 ## File Structure
 
 **Create:**
-- `src/Inkshelf/Convert/ConvertJob.cs` — `ConvertJob` record, `ConvertStatus` enum.
-- `src/Inkshelf/Convert/ConvertQueue.cs` — registry + channel producer (singleton).
-- `src/Inkshelf/Abs/AbsDownloadClient.cs` — handler-free authenticated ebook download.
-- `src/Inkshelf/Convert/ConvertWorker.cs` — `BackgroundService` consumer.
+- `src/Inkshelf/Convert/ConvertJob.cs` - `ConvertJob` record, `ConvertStatus` enum.
+- `src/Inkshelf/Convert/ConvertQueue.cs` - registry + channel producer (singleton).
+- `src/Inkshelf/Abs/AbsDownloadClient.cs` - handler-free authenticated ebook download.
+- `src/Inkshelf/Convert/ConvertWorker.cs` - `BackgroundService` consumer.
 - `tests/Inkshelf.Tests/ConvertQueueTests.cs`
 - `tests/Inkshelf.Tests/AbsDownloadClientTests.cs`
 - `tests/Inkshelf.Tests/ConvertWorkerTests.cs`
 
 **Modify:**
-- `src/Inkshelf/AbsOptions.cs` — add `MaxConcurrentConversions`.
-- `src/Inkshelf/Convert/EpubCache.cs` — add `SweepTemp()`.
-- `src/Inkshelf/Convert/ConvertService.cs` — reshape into the kick (`KickAsync`/`StatusAsync`); drop the download/convert body.
-- `src/Inkshelf/Endpoints/ConvertEndpoints.cs` — new param surface (`warm`/`status`/`fresh`/`return`).
-- `src/Inkshelf/Program.cs` — register `ConvertQueue` (singleton), `ConvertWorker` (hosted), `AbsDownloadClient` (typed client).
-- `src/Inkshelf/Pages/Library.cshtml.cs` — precompute per-row convert state + `AnyConverting`.
-- `src/Inkshelf/Pages/Support/ItemRowModel.cs` — carry `State` + `ReturnUrl` instead of `Cached`.
-- `src/Inkshelf/Pages/Shared/_ItemRow.cshtml` — render the four convert states.
-- `src/Inkshelf/Pages/Library.cshtml` — `<noscript>` meta-refresh when `AnyConverting`.
-- `src/Inkshelf/Pages/Shared/_Layout.cshtml` — evolve the warm script (kick → poll; resume-on-load).
-- `tests/Inkshelf.Tests/ConvertServiceTests.cs` — rewrite for the kick.
-- `tests/Inkshelf.Tests/EndpointTests.cs` — add convert-endpoint cases.
-- `docs/ARCHITECTURE.md`, `docs/ROADMAP.md` — Task 7.
+- `src/Inkshelf/AbsOptions.cs` - add `MaxConcurrentConversions`.
+- `src/Inkshelf/Convert/EpubCache.cs` - add `SweepTemp()`.
+- `src/Inkshelf/Convert/ConvertService.cs` - reshape into the kick (`KickAsync`/`StatusAsync`); drop the download/convert body.
+- `src/Inkshelf/Endpoints/ConvertEndpoints.cs` - new param surface (`warm`/`status`/`fresh`/`return`).
+- `src/Inkshelf/Program.cs` - register `ConvertQueue` (singleton), `ConvertWorker` (hosted), `AbsDownloadClient` (typed client).
+- `src/Inkshelf/Pages/Library.cshtml.cs` - precompute per-row convert state + `AnyConverting`.
+- `src/Inkshelf/Pages/Support/ItemRowModel.cs` - carry `State` + `ReturnUrl` instead of `Cached`.
+- `src/Inkshelf/Pages/Shared/_ItemRow.cshtml` - render the four convert states.
+- `src/Inkshelf/Pages/Library.cshtml` - `<noscript>` meta-refresh when `AnyConverting`.
+- `src/Inkshelf/Pages/Shared/_Layout.cshtml` - evolve the warm script (kick → poll; resume-on-load).
+- `tests/Inkshelf.Tests/ConvertServiceTests.cs` - rewrite for the kick.
+- `tests/Inkshelf.Tests/EndpointTests.cs` - add convert-endpoint cases.
+- `docs/ARCHITECTURE.md`, `docs/ROADMAP.md` - Task 7.
 
 ---
 
@@ -64,7 +64,7 @@
 In `src/Inkshelf/AbsOptions.cs`, after `MaxArchiveBytes`:
 
 ```csharp
-    // Max conversions the background worker runs at once. Default 1 — a small
+    // Max conversions the background worker runs at once. Default 1 - a small
     // host must not run two ImageSharp resizes concurrently (CPU/RAM thrash).
     public int MaxConcurrentConversions { get; set; } = 1;
 ```
@@ -205,7 +205,7 @@ public class ConvertQueueTests
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter ConvertQueueTests`
-Expected: FAIL — `ConvertQueue` / `ConvertStatus` / `ConvertJob` don't exist (compile error).
+Expected: FAIL - `ConvertQueue` / `ConvertStatus` / `ConvertJob` don't exist (compile error).
 
 - [ ] **Step 3: Create `ConvertJob.cs`**
 
@@ -301,7 +301,7 @@ public sealed class ConvertQueue
         {
             case Phase.Queued: return ConvertStatus.Queued;
             case Phase.Running: return ConvertStatus.Running;
-            default: // Failed — expire past the TTL
+            default: // Failed - expire past the TTL
                 if (_clock() - e.FailedAtUtc > FailedTtl) { _entries.TryRemove(cachePath, out _); return ConvertStatus.None; }
                 return ConvertStatus.Failed;
         }
@@ -380,7 +380,7 @@ Note: the production `User-Agent` is applied by `ConfigureAbs` in `Program.cs`, 
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test --filter AbsDownloadClientTests`
-Expected: FAIL — `AbsDownloadClient` doesn't exist.
+Expected: FAIL - `AbsDownloadClient` doesn't exist.
 
 - [ ] **Step 3: Create `AbsDownloadClient.cs`**
 
@@ -393,7 +393,7 @@ namespace Inkshelf.Abs;
 // THIRD ABS client, distinct from the two load-bearing ones (AbsAuthClient
 // login/refresh; AbsApiClient data). It is HANDLER-FREE: the worker has no
 // HttpContext, so AbsAuthHandler (which resolves the token from the request)
-// cannot run — the caller supplies the bearer instead. It does NOT refresh on
+// cannot run - the caller supplies the bearer instead. It does NOT refresh on
 // 401 (that would need HttpContext to persist the new token); a failure just
 // fails the job and the user re-taps with a fresh token.
 //
@@ -427,7 +427,7 @@ public sealed class AbsDownloadClient
 In `src/Inkshelf/Program.cs`, right after the `AbsApiClient` registration (line ~53):
 
 ```csharp
-// Handler-FREE (no AbsAuthHandler) — the worker supplies the bearer; ConfigureAbs
+// Handler-FREE (no AbsAuthHandler) - the worker supplies the bearer; ConfigureAbs
 // gives it the BaseAddress + required User-Agent. See AbsDownloadClient.
 builder.Services.AddHttpClient<AbsDownloadClient>(ConfigureAbs);
 ```
@@ -455,7 +455,7 @@ git commit -m "feat: add handler-free AbsDownloadClient for the worker"
 - Test: `tests/Inkshelf.Tests/ConvertWorkerTests.cs`
 
 **Interfaces:**
-- Consumes: `ConvertQueue`, `AbsDownloadClient` (resolved per-job via `IServiceScopeFactory`), `EpubConverter`, `ConvertLock`, `EpubCache`, `AbsOptions` (all existing / from Tasks 2–3).
+- Consumes: `ConvertQueue`, `AbsDownloadClient` (resolved per-job via `IServiceScopeFactory`), `EpubConverter`, `ConvertLock`, `EpubCache`, `AbsOptions` (all existing / from Tasks 2-3).
 - Produces: `ConvertWorker : BackgroundService`; `EpubCache.SweepTemp()` (deletes `*.tmp` in the cache dir).
 
 - [ ] **Step 1: Write the failing test for `SweepTemp`**
@@ -481,7 +481,7 @@ Add to `tests/Inkshelf.Tests/EpubCacheTests.cs` (new `[Fact]`):
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `dotnet test --filter EpubCacheTests`
-Expected: FAIL — `SweepTemp` not defined.
+Expected: FAIL - `SweepTemp` not defined.
 
 - [ ] **Step 3: Add `SweepTemp` to `EpubCache.cs`**
 
@@ -614,7 +614,7 @@ public class ConvertWorkerTests
 - [ ] **Step 6: Run to verify the worker tests fail**
 
 Run: `dotnet test --filter ConvertWorkerTests`
-Expected: FAIL — `ConvertWorker` doesn't exist.
+Expected: FAIL - `ConvertWorker` doesn't exist.
 
 - [ ] **Step 7: Create `ConvertWorker.cs`**
 
@@ -687,7 +687,7 @@ public sealed class ConvertWorker : BackgroundService
                 using var buffered = new MemoryStream();
                 if (!await CopyWithLimitAsync(archive, buffered, _options.MaxArchiveBytes, ct))
                 {
-                    _logger.LogWarning("Archive for {Id} exceeds {Limit} bytes — refusing.", job.ItemId, _options.MaxArchiveBytes);
+                    _logger.LogWarning("Archive for {Id} exceeds {Limit} bytes - refusing.", job.ItemId, _options.MaxArchiveBytes);
                     _queue.MarkFailed(job.CachePath);
                     return;
                 }
@@ -882,7 +882,7 @@ public class ConvertServiceTests
 - [ ] **Step 2: Run to verify the rewritten tests fail**
 
 Run: `dotnet test --filter ConvertServiceTests`
-Expected: FAIL — `KickAsync`/`StatusAsync`/`KickResult` and the new constructor don't exist.
+Expected: FAIL - `KickAsync`/`StatusAsync`/`KickResult` and the new constructor don't exist.
 
 - [ ] **Step 3: Rewrite `ConvertService.cs`**
 
@@ -896,7 +896,7 @@ public readonly record struct KickResult(ConvertStatus Status, string? FilePath 
 
 // The convert "kick": HTTP-free orchestration that runs IN THE REQUEST SCOPE.
 // It fetches item detail (needs the ABS token), validates the format, computes
-// the per-device cache path, and — on a miss — captures the access token and
+// the per-device cache path, and - on a miss - captures the access token and
 // enqueues a background job. It never downloads or converts; ConvertWorker does
 // that on the app lifetime. Kept HTTP-free so it unit-tests without a request.
 public class ConvertService
@@ -1041,7 +1041,7 @@ Append these `[Fact]`s (they exercise the unauthenticated redirect + the local-r
     }
 ```
 
-Note: deeper endpoint behavior (202 on warm, download on done, 302 to a local return) needs a stubbed authenticated ABS and is covered at the unit level by `ConvertServiceTests`. If a fuller integration test is wanted, inject a fake `AbsApiClient` via `WithWebHostBuilder(b => b.ConfigureServices(...))` — optional, not required for green.
+Note: deeper endpoint behavior (202 on warm, download on done, 302 to a local return) needs a stubbed authenticated ABS and is covered at the unit level by `ConvertServiceTests`. If a fuller integration test is wanted, inject a fake `AbsApiClient` via `WithWebHostBuilder(b => b.ConfigureServices(...))` - optional, not required for green.
 
 - [ ] **Step 6: Run the affected tests**
 
@@ -1051,7 +1051,7 @@ Expected: PASS.
 - [ ] **Step 7: Run the full suite**
 
 Run: `dotnet test`
-Expected: PASS (all). If the old `ConvertOutcome`/`ConvertAsync` is referenced anywhere else, the compiler will flag it — there should be no remaining references outside the endpoint (now rewritten).
+Expected: PASS (all). If the old `ConvertOutcome`/`ConvertAsync` is referenced anywhere else, the compiler will flag it - there should be no remaining references outside the endpoint (now rewritten).
 
 - [ ] **Step 8: Commit**
 
@@ -1062,7 +1062,7 @@ git commit -m "feat: reshape convert into a background-kick + status endpoint"
 
 ---
 
-## Task 6: Client — poll, listing states, meta-refresh (real-device test)
+## Task 6: Client - poll, listing states, meta-refresh (real-device test)
 
 **Files:**
 - Modify: `src/Inkshelf/Pages/Support/ItemRowModel.cs`
@@ -1098,7 +1098,7 @@ public record ItemRowModel(
     string ReturnUrl = "/");
 ```
 
-- [ ] **Step 2: Update `Library.cshtml.cs`** — inject `ConvertQueue`, precompute states + `AnyConverting`
+- [ ] **Step 2: Update `Library.cshtml.cs`** - inject `ConvertQueue`, precompute states + `AnyConverting`
 
 Change the constructor and add the state map. Replace the constructor and `IsCached`/`RowFor`:
 
@@ -1177,7 +1177,7 @@ Update `RowFor` to pass state + return URL:
         }
 ```
 
-- [ ] **Step 3: Update `_ItemRow.cshtml`** — render the four states
+- [ ] **Step 3: Update `_ItemRow.cshtml`** - render the four states
 
 Replace the `@if (fmt == "cbz" || fmt == "cbr")` convert block with a `switch` on `Model.State`. The convert/retry/converting anchors carry `data-warm` (+ `data-poll` while converting) and the escaped `return`:
 
@@ -1194,7 +1194,7 @@ Replace the `@if (fmt == "cbz" || fmt == "cbr")` convert block with a `switch` o
                     @switch (Model.State)
                     {
                         case ConvertRowState.Cached:
-                            <a href="/convert/@item.Id" title="Already converted — downloads right away">EPUB &#10003;</a>
+                            <a href="/convert/@item.Id" title="Already converted - downloads right away">EPUB &#10003;</a>
                             break;
                         case ConvertRowState.Converting:
                             <a href="/convert/@item.Id?return=@ret" data-warm data-poll>Converting&#8230;</a>
@@ -1213,9 +1213,9 @@ Replace the `@if (fmt == "cbz" || fmt == "cbr")` convert block with a `switch` o
     }
 ```
 
-(Add `@using Inkshelf.Pages` is unnecessary — same namespace; `ConvertRowState` is in `Inkshelf.Pages`.)
+(Add `@using Inkshelf.Pages` is unnecessary - same namespace; `ConvertRowState` is in `Inkshelf.Pages`.)
 
-- [ ] **Step 4: Update `Library.cshtml`** — emit `<noscript>` meta-refresh + no-store
+- [ ] **Step 4: Update `Library.cshtml`** - emit `<noscript>` meta-refresh + no-store
 
 At the very top of `Library.cshtml` (page `@{ }` block), set the response header and a flag for the layout. Since the meta tag must land in `<head>` (rendered by `_Layout`), pass it via `ViewData` and have the layout emit it.
 
@@ -1237,13 +1237,13 @@ In `_Layout.cshtml` `<head>`, after the `<title>`:
     }
 ```
 
-- [ ] **Step 5: Update the `_Layout.cshtml` convert script** — kick → poll, resume-on-load
+- [ ] **Step 5: Update the `_Layout.cshtml` convert script** - kick → poll, resume-on-load
 
 Replace the second inline script (the convert-warm one) with:
 
 ```javascript
     /* Background convert: tap kicks (?warm=1) then polls (?status=1) every 5s,
-       updating the link text in place — the conversion runs server-side even if
+       updating the link text in place - the conversion runs server-side even if
        this page goes away. Links the server marked data-poll are already in
        flight, so we resume polling them on load. No-JS falls back to the
        <noscript> meta-refresh. ES5 for old e-readers. */
@@ -1304,7 +1304,7 @@ Replace the second inline script (the convert-warm one) with:
 - [ ] **Step 6: Build + full test suite**
 
 Run: `dotnet build src/Inkshelf/Inkshelf.csproj && dotnet test`
-Expected: build succeeds; all tests pass. (The `LibraryModel` constructor change is satisfied by DI — `ConvertQueue` is registered singleton in Task 4.)
+Expected: build succeeds; all tests pass. (The `LibraryModel` constructor change is satisfied by DI - `ConvertQueue` is registered singleton in Task 4.)
 
 - [ ] **Step 7: Manual smoke on desktop (JS path)**
 
@@ -1312,7 +1312,7 @@ Run the app (`/run` skill or `dotnet run --project src/Inkshelf`), log in, open 
 
 - [ ] **Step 8: REAL E-INK DEVICE TEST (required before merge)**
 
-On the actual e-ink reader: (a) JS path — Convert flips to `EPUB ↓` and downloads; (b) disable JS (or confirm the engine ignores it) — tapping Convert returns to the listing, which reloads every 30s via `<noscript>` and flips to `EPUB ✓`; the download then works. Confirm no layout breakage (defensive CSS). **Do not merge without this.**
+On the actual e-ink reader: (a) JS path - Convert flips to `EPUB ↓` and downloads; (b) disable JS (or confirm the engine ignores it) - tapping Convert returns to the listing, which reloads every 30s via `<noscript>` and flips to `EPUB ✓`; the download then works. Confirm no layout breakage (defensive CSS). **Do not merge without this.**
 
 - [ ] **Step 9: Commit**
 
@@ -1333,7 +1333,7 @@ git commit -m "feat: poll convert status client-side, meta-refresh fallback"
 
 - Under **Layout**, add `Convert/ConvertQueue.cs`, `Convert/ConvertWorker.cs`, `Abs/AbsDownloadClient.cs` with one-line descriptions.
 - Under **Load-bearing conventions**, add a "Conversion runs in the background" entry: the request only kicks (detail + token capture + enqueue); `ConvertWorker` downloads+converts on the app lifetime so a disconnect can't cancel it; "done" is the on-disk `.epub`; the registry is in-memory (restart = re-tap).
-- Extend the "two ABS clients" note to name the **third** (`AbsDownloadClient`): handler-free, caller-supplied bearer, no refresh, worker-only — and why (no `HttpContext`).
+- Extend the "two ABS clients" note to name the **third** (`AbsDownloadClient`): handler-free, caller-supplied bearer, no refresh, worker-only - and why (no `HttpContext`).
 - Add `MaxConcurrentConversions` to the **Configuration** table (default 1).
 - Note the `/convert/{id}` param surface (`warm`/`status`/`fresh`/`return`).
 

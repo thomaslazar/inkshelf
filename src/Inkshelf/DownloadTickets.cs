@@ -6,7 +6,7 @@ namespace Inkshelf;
 
 // A download ticket: a URL-safe handle standing for one file this server will
 // stream. An e-reader's download manager takes over the transfer WITHOUT the
-// browser's cookies (issue #40), so the URL has to authorise on its own — and a
+// browser's cookies (issue #40), so the URL has to authorise on its own - and a
 // handle, rather than a signed blob, keeps the credential out of the URL, the
 // browser history and the request log.
 //
@@ -49,7 +49,7 @@ public sealed class DownloadTickets
 
     // One page render mints ten to twenty tickets, so sweeping on every call is
     // that many O(n) passes over the same map. Expiry itself never depends on the
-    // sweep — Redeem checks the stamp — so this only decides when dead entries stop
+    // sweep - Redeem checks the stamp - so this only decides when dead entries stop
     // occupying memory.
     // ponytail: full sweep above SweepAbove entries; per-shard expiry if the table
     // ever gets big.

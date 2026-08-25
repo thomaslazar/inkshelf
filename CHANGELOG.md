@@ -3,11 +3,11 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## v0.6.0 — 2026-08-25
+## v0.6.0 - 2026-08-25
 
 ### Highlights
 - Large downloads now finish on e-readers whose download manager re-fetches the
-  link without the browser's cookies — previously they arrived empty or as the
+  link without the browser's cookies - previously they arrived empty or as the
   login page saved under the book's name.
 - Converted comics fit the reader's page instead of landing in a corner or losing
   a strip off the bottom.
@@ -147,13 +147,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 - chore: bump version to 0.6.0
 - chore: drop a duplicate using in DeviceSettings
 
-## v0.5.0 — 2026-07-30
+## v0.5.0 - 2026-07-30
 
 ### Highlights
 
 - **Log in with SSO.** If your Audiobookshelf server is set up with an OIDC
   provider (Authentik, Keycloak, Pocket ID, …), Inkshelf can now offer that same
-  login next to the password form — so people on a shared server no longer need a
+  login next to the password form - so people on a shared server no longer need a
   separate ABS password. Off unless you set `OIDC_ENABLED=true`, and password login
   is unchanged. Inkshelf reuses ABS's own OIDC client: no client ID, no client
   secret, and it never sees your provider password.
@@ -203,7 +203,7 @@ upgrading without touching your configuration keeps today's behaviour.
 
 - chore: bump version to 0.5.0
 
-## v0.4.1 — 2026-07-29
+## v0.4.1 - 2026-07-29
 
 ### Highlights
 
@@ -211,7 +211,7 @@ upgrading without touching your configuration keeps today's behaviour.
   moved it across the header to the title; it belongs with the other controls on
   the right.
 - **The search bar reliably gets its own line.** It already landed there most of
-  the time, but only because the header ran out of room — so a short library name
+  the time, but only because the header ran out of room - so a short library name
   could have squeezed it up beside the breadcrumb, and a long one could have
   pushed the cog down instead. The breadcrumb row now keeps the same shape
   whatever your library is called.
@@ -225,12 +225,12 @@ upgrading without touching your configuration keeps today's behaviour.
 
 - chore: bump version to 0.4.1
 
-## v0.4.0 — 2026-07-29
+## v0.4.0 - 2026-07-29
 
 ### Highlights
 
 - **The whole UI is now sized for finger taps.** Actions were text links about
-  24px tall with 5.6px between them — on a 6" e-ink panel that put the three
+  24px tall with 5.6px between them - on a 6" e-ink panel that put the three
   actions on a listing row roughly 3.6mm apart, well inside a fingertip. Every
   action is now a bordered target around 48px, and listing actions moved out of
   the cramped side column onto their own full-width line under the title.
@@ -240,7 +240,7 @@ upgrading without touching your configuration keeps today's behaviour.
 - **The converted view sorts.** Newest conversion first by default, with sorting
   by series, title or author.
 - **Phones get a usable layout.** One width breakpoint stacks the row actions
-  full-width below 600px. No device sniffing involved — the same finger-sized
+  full-width below 600px. No device sniffing involved - the same finger-sized
   design is simply correct everywhere.
 - Existing settings survive the upgrade: the preferences cookie changed shape
   internally, but the old format and the old favourite-library cookie are still
@@ -318,14 +318,14 @@ Chore:
 
 - chore: bump version to 0.4.0
 
-## v0.3.0 — 2026-07-24
+## v0.3.0 - 2026-07-24
 
 ### Highlights
-- **German UI localisation.** Inkshelf's own chrome (navigation, breadcrumbs, row actions, pager, login/settings forms, empty states) is now translatable. Language is per-device, chosen in Settings or defaulted from the browser's `Accept-Language`, with English as the fallback. New languages drop in as a JSON file plus a restart — no rebuild.
-- **Conversion failure reasons.** A failed comic conversion now explains *why* on a plain-HTML page — too large (with the actual size vs the limit), unreadable archive, download failure, or unexpected error — instead of a bare "Convert (retry)". Oversized archives are now rejected before downloading.
+- **German UI localisation.** Inkshelf's own chrome (navigation, breadcrumbs, row actions, pager, login/settings forms, empty states) is now translatable. Language is per-device, chosen in Settings or defaulted from the browser's `Accept-Language`, with English as the fallback. New languages drop in as a JSON file plus a restart - no rebuild.
+- **Conversion failure reasons.** A failed comic conversion now explains *why* on a plain-HTML page - too large (with the actual size vs the limit), unreadable archive, download failure, or unexpected error - instead of a bare "Convert (retry)". Oversized archives are now rejected before downloading.
 - **No more blank page from a stale favorite.** A favorite-library cookie left over from a different Audiobookshelf server no longer produces a blank 500; it's validated and cleared, falling back to the library list.
-- **Higher default conversion limits** — archive 1 GiB, cache 5 GiB.
-- **Touch- and e-reader-friendly polish** — a larger, better-spaced libraries list, and Failed-row actions that wrap correctly on narrow e-ink screens.
+- **Higher default conversion limits** - archive 1 GiB, cache 5 GiB.
+- **Touch- and e-reader-friendly polish** - a larger, better-spaced libraries list, and Failed-row actions that wrap correctly on narrow e-ink screens.
 
 ### Features
 - feat: add conversion failure reason page
@@ -376,7 +376,7 @@ Chore:
 - docs: roadmap item for surfacing conversion failure reasons
 - docs: spec for surfacing conversion failure reasons
 
-## v0.2.1 — 2026-07-21
+## v0.2.1 - 2026-07-21
 
 ### Highlights
 - The header icon (left of "Libraries") is now a link back to the libraries
@@ -387,20 +387,20 @@ Chore:
 ### Features
 - feat: link the header icon to libraries and show the version
 
-## v0.2.0 — 2026-07-21
+## v0.2.0 - 2026-07-21
 
 ### Highlights
-- **Per-device settings** — a Settings page (cog link in every header) with
+- **Per-device settings** - a Settings page (cog link in every header) with
   **retina** and **grayscale** toggles that flow through comic conversion and the
   cache, so each e-reader gets pages tuned to its screen.
-- **Read / unread tracking** — mark items read from the listing, search, and
+- **Read / unread tracking** - mark items read from the listing, search, and
   detail rows, synced to your Audiobookshelf progress.
-- **Real EPUB covers** — converted comics embed a proper cover (the ABS cover
+- **Real EPUB covers** - converted comics embed a proper cover (the ABS cover
   art, falling back to the first page) instead of a blank placeholder.
-- **Item detail page** — a per-item page with full metadata (author, series,
-  narrators, genres, tags, description — all filterable), every downloadable file,
+- **Item detail page** - a per-item page with full metadata (author, series,
+  narrators, genres, tags, description - all filterable), every downloadable file,
   and a per-file convert action.
-- **"Converted on this device" view** — one page listing every comic already
+- **"Converted on this device" view** - one page listing every comic already
   converted and cached for the device you're on, across all libraries.
 
 ### Features
@@ -443,20 +443,20 @@ Chore:
 - refactor: simplify converted-view dedupe to an id set
 - refactor: thread RenderTarget through the conversion pipeline
 
-## v0.1.2 — 2026-07-17
+## v0.1.2 - 2026-07-17
 
 ### Highlights
 - **Much lower memory use during and after conversions.** Comic conversion no
-  longer buffers the whole archive and every page in RAM — the download is
+  longer buffers the whole archive and every page in RAM - the download is
   spooled to a temp file and pages are streamed into the EPUB one at a time, so
   only a single page is held. Combined with Workstation GC (which hands memory
   back to the OS), the sidecar no longer ratchets up to ~900 MiB and stay there
   after a batch; it returns to near-idle.
 - **The per-conversion peak is bounded by one page**, so even large comics stay
-  modest — safe on a memory-constrained host.
+  modest - safe on a memory-constrained host.
 - Operators can now set a **container memory limit** (see the compose example /
   README); with the lower footprint it can be kept tight.
-- No change to converted-EPUB output — byte-identical to before.
+- No change to converted-EPUB output - byte-identical to before.
 
 ### Performance
 - perf: stream pages into the EPUB instead of buffering all
@@ -466,7 +466,7 @@ Chore:
 ### Fixes
 - fix: make convert temp-file cleanup best-effort in finally
 
-## v0.1.1 — 2026-07-16
+## v0.1.1 - 2026-07-16
 
 ### Highlights
 - **Comic conversion no longer dies on slow hosts.** CBZ/CBR→EPUB conversion now
@@ -474,10 +474,10 @@ Chore:
   disconnect (a timed-out tab, navigating away) can no longer cancel it
   mid-flight. On a low-powered box, a large comic that previously *never*
   finished now converts reliably and stays cached.
-- The listing shows live progress — "Converting…" flips to "EPUB ✓" via a small
+- The listing shows live progress - "Converting…" flips to "EPUB ✓" via a small
   status poll, with a no-JavaScript fallback (a periodic refresh) for old e-reader
   browsers.
-- Regenerate (↻) and repeated taps behave cleanly — no duplicate rows, no
+- Regenerate (↻) and repeated taps behave cleanly - no duplicate rows, no
   stuck "Converting…" state after a restart.
 
 ### Features
@@ -492,16 +492,16 @@ Chore:
 - fix: make regen a plain link to avoid duplicate EPUB row
 - fix: restore cache LRU touch-on-serve and regen JS intercept
 
-## v0.1.0 — 2026-07-15
+## v0.1.0 - 2026-07-15
 
-First tagged release of Inkshelf — a thin, server-rendered web client for the
+First tagged release of Inkshelf - a thin, server-rendered web client for the
 Audiobookshelf (ABS) API, built for e-reader browsers with near-zero JavaScript.
 Ships as a multi-arch container image at `ghcr.io/thomaslazar/inkshelf`.
 
 ### Highlights
 - **Browse an ABS library** from a plain-HTML client: search, author/series
   filters, cycling sort links, top/bottom pagination, and a favorite-library
-  shortcut — `<form>`/`<a>` only, no client JS required.
+  shortcut - `<form>`/`<a>` only, no client JS required.
 - **Ebook delivery**: download the original ebook, or convert CBZ/CBR comics on
   demand to a device-sized, epubcheck-clean fixed-layout EPUB, cached on disk
   with an "already converted" indicator.

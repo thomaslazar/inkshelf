@@ -1,7 +1,7 @@
 # Device support matrix
 
 Which e-readers Inkshelf has been run on, and the settings each one needs. The
-values are measured on hardware — a spec sheet does not predict them.
+values are measured on hardware - a spec sheet does not predict them.
 
 <!-- An HTML table, not a markdown one, so a device can carry a Notes row spanning
      the full width. Only add one for behaviour the columns cannot express. -->
@@ -63,7 +63,7 @@ values are measured on hardware — a spec sheet does not predict them.
   </tbody>
 </table>
 
-Tolino specifics — which reader renders a comic, and what those browsers support —
+Tolino specifics - which reader renders a comic, and what those browsers support -
 are in [`tolino.md`](tolino.md). For what to change when pages come out wrong, see
 [`FAQ.md`](FAQ.md).
 

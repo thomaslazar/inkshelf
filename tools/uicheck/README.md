@@ -1,8 +1,8 @@
-# uicheck — headless-browser UI pass
+# uicheck - headless-browser UI pass
 
 A small dev-only Playwright (.NET) harness that starts Inkshelf, drives it in a
-headless browser, captures full-page screenshots, and asserts key strings — in
-English and German — across both the no-auth pages (`/login`, `/settings`) and,
+headless browser, captures full-page screenshots, and asserts key strings - in
+English and German - across both the no-auth pages (`/login`, `/settings`) and,
 against the seeded local ABS, the authenticated pages (index, a library listing,
 item detail, converted) plus a live Convert-button click.
 
@@ -30,7 +30,7 @@ sudo pwsh tools/uicheck/bin/Debug/net10.0/playwright.ps1 install-deps chromium
 
 - **Catches:** gross breakage / 500s, layout overflow, untranslated or
   English-leak strings, and JS-updated label bugs (the Convert click asserts the
-  label flips to German with no leaked HTML entity) — the class of issue a normal
+  label flips to German with no leaked HTML entity) - the class of issue a normal
   browser shows.
 - **Does not cover:** the old e-ink e-reader engine (no `object-fit`, no flex
   `gap`), so a device pass stays mandatory.
@@ -40,9 +40,9 @@ sudo pwsh tools/uicheck/bin/Debug/net10.0/playwright.ps1 install-deps chromium
 - No-auth pages: add `Check(...)` calls near the top of `Program.cs`.
 - Authenticated pages: extend the `UICHECK_AUTHED` block (login is `root`/`root`
   against the seeded ABS). The German context uses cookie `inkshelf_settings` =
-  `retina=1&gray=0&lang=de&fav=` (the `De` const in `Program.cs`) — the cookie is
+  `retina=1&gray=0&lang=de&fav=` (the `De` const in `Program.cs`) - the cookie is
   a keyed value, so a new setting is a new key rather than another position. To
   exercise the item-detail term labels, `docker/seed.sh` gives one epub
   genres/tags/narrators.
 
-Not part of `Inkshelf.sln` — it never affects the app build or `dotnet test`.
+Not part of `Inkshelf.sln` - it never affects the app build or `dotnet test`.

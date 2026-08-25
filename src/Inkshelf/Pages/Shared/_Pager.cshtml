@@ -1,6 +1,6 @@
 @model Inkshelf.Pages.LibraryModel
 <nav class="pager">
-    @* Both buttons always render — a disabled <button> when there's nowhere to
+    @* Both buttons always render - a disabled <button> when there's nowhere to
        go. Showing only the available one made the remaining button change
        position between page 1 and 2, which reads as the layout jumping. *@
     @if (Model.Pager.HasPrev)
