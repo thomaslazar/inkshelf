@@ -171,11 +171,15 @@ The one case with no ticket is a failed batch-metadata call, which already
 degrades a row to the plain "Convert" state. Such a row falls through to today's
 cookie path.
 
-**Range/resume stays out.** ABS serves the ebook endpoint with `res.sendFile`, so
-Express already honours `Range` and pass-through would work — roughly 40 lines
-against `GetEbookStreamAsync`. But after this fix the manager's transfer starts
-at zero either way, and ranges only pay off if the manager's *own* request breaks
-and it retries. Whether the shine's manager resumes at all is unobserved. The
-per-request log added in #57 will show it: a second cookie-less request carrying
-a `Range` header, or two manager attempts on one file, is the evidence that makes
-it worth building.
+**Range/resume stays out, and the device pass settled it.** ABS serves the ebook
+endpoint with `res.sendFile`, so Express already honours `Range` and pass-through
+would work. It would buy nothing. Across a full pass on the shine (10.5.0) and
+the vision 5 and epos 2 (16.2.0) the download manager never sent a `Range`
+header — not one `206` in the request log, including on `/convert`, which does
+advertise `Accept-Ranges: bytes`. It restarts from zero even when told it need
+not.
+
+The waste that costs is real and out of reach from here: the browser transfers a
+prefix and discards it at the handoff, about 92 MB thrown away across 281 MB
+delivered, worst on a 24.3 MB epub of which 15.9 MB went twice. The browser's
+decision to start is not ours to change.
