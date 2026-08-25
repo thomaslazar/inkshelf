@@ -8,7 +8,7 @@ Inkshelf running on a real e-ink reader. Click any image to enlarge.
   <a href="img/login.jpg"><img src="img/login.jpg" alt="Login screen" width="260"></a>
 </p>
 
-<p align="center"><sub>Sign in with your Audiobookshelf credentials — or, when the server is set up for it, through the same OIDC provider (here: Pocket ID).</sub></p>
+<p align="center"><sub>Sign in with your Audiobookshelf credentials - or, when the server is set up for it, through the same OIDC provider (here: Pocket ID).</sub></p>
 
 ### Libraries
 
@@ -24,7 +24,7 @@ Inkshelf running on a real e-ink reader. Click any image to enlarge.
   <a href="img/library-listing.jpg"><img src="img/library-listing.jpg" alt="Library listing filtered by series, with sort, pager, and per-row actions" width="260"></a>
 </p>
 
-<p align="center"><sub>A listing filtered by series — the filter banner (with <em>clear</em>), cycling sort links (incl. Sequence), the prev/next pager, and per-row download / convert / read actions.</sub></p>
+<p align="center"><sub>A listing filtered by series - the filter banner (with <em>clear</em>), cycling sort links (incl. Sequence), the prev/next pager, and per-row download / convert / read actions.</sub></p>
 
 ### Search
 
@@ -40,7 +40,7 @@ Inkshelf running on a real e-ink reader. Click any image to enlarge.
   <a href="img/item-detail.jpg"><img src="img/item-detail.jpg" alt="Item detail page with metadata and every downloadable file" width="260"></a>
 </p>
 
-<p align="center"><sub>Full metadata — author, series, genres (all filter links), description — and every downloadable ebook file, each with its own download and, for comics, a convert action.</sub></p>
+<p align="center"><sub>Full metadata - author, series, genres (all filter links), description - and every downloadable ebook file, each with its own download and, for comics, a convert action.</sub></p>
 
 ### Converted on this device
 
@@ -48,7 +48,7 @@ Inkshelf running on a real e-ink reader. Click any image to enlarge.
   <a href="img/converted-view.jpg"><img src="img/converted-view.jpg" alt="List of comics already converted and cached on this device" width="260"></a>
 </p>
 
-<p align="center"><sub>Everything already converted and cached for this device, across all libraries — with its own sort links, and a <code>↓</code> on the files this device has already downloaded.</sub></p>
+<p align="center"><sub>Everything already converted and cached for this device, across all libraries - with its own sort links, and a <code>↓</code> on the files this device has already downloaded.</sub></p>
 
 ### Reading a converted comic
 

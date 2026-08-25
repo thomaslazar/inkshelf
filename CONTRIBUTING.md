@@ -5,7 +5,7 @@ setup, the build/test loop, project conventions, and how to get a change merged.
 
 ## Development environment
 
-**All .NET work happens inside the devcontainer** — there is no need for a .NET
+**All .NET work happens inside the devcontainer** - there is no need for a .NET
 SDK on your host.
 
 1. Install [VS Code](https://code.visualstudio.com/) + the Dev Containers
@@ -38,7 +38,7 @@ See the [README](README.md#configuration) for all configuration variables.
 ## Project layout
 
 Before making a substantial change, read
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — it maps the overall structure
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - it maps the overall structure
 (`Endpoints/`, `Abs/`, `Convert/`, `Pages/` + `Pages/Support/`, `Auth/`) and the
 conventions behind it.
 
@@ -47,7 +47,7 @@ Roadmap items and ideas live in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 ## Audiobookshelf API reference
 
 The ABS **server source** is the authoritative reference for API behavior,
-request/response shapes, routing, and permission checks — the public API docs at
+request/response shapes, routing, and permission checks - the public API docs at
 `api.audiobookshelf.org` are stale, so don't trust them. The devcontainer clones
 the server source to `temp/audiobookshelf/` (gitignored) on create. If it's
 missing:
@@ -61,10 +61,10 @@ git clone --depth 1 --branch v2.35.1 \
 
 `docker/` contains a throwaway Audiobookshelf instance for integration testing:
 
-- `docker/docker-compose.yml` — starts a local ABS server.
-- `docker/seed.sh` — populates it with fixtures (e.g. a library large enough to
+- `docker/docker-compose.yml` - starts a local ABS server.
+- `docker/seed.sh` - populates it with fixtures (e.g. a library large enough to
   exercise pagination).
-- `docker/smoke-test.sh` — a basic end-to-end check.
+- `docker/smoke-test.sh` - a basic end-to-end check.
 
 Use it when a change touches ABS interaction and you want to exercise it against a
 real (if minimal) server rather than only unit tests.
@@ -77,12 +77,12 @@ real (if minimal) server rather than only unit tests.
 - **Defensive CSS.** Assume an old rendering engine: no `object-fit`, no flex
   `gap`, and similar modern-only features. Prefer widely-supported properties.
 - **Localise user-facing strings.** Wrap new chrome text in the injected
-  localizer (`@L["…"]`) instead of hardcoding English — see
+  localizer (`@L["…"]`) instead of hardcoding English - see
   [Localisation](#localisation).
 - **Tests stay green.** `dotnet test` must pass, and `dotnet format --verify-no-changes`
   must be clean, before you open a PR. New behavior needs tests.
 - **Verify UI changes in a browser.** Any change touching views, CSS, or
-  user-facing strings gets a headless-browser pass before the e-reader pass —
+  user-facing strings gets a headless-browser pass before the e-reader pass -
   see [Verifying UI changes](#verifying-ui-changes).
 - **Respect the non-goals** documented in `docs/ARCHITECTURE.md`.
 
@@ -90,7 +90,7 @@ real (if minimal) server rather than only unit tests.
 
 Two passes, in order:
 
-1. **Browser pass (always, in the container):** run the screenshot harness —
+1. **Browser pass (always, in the container):** run the screenshot harness -
    ```bash
    tools/uicheck/run.sh
    ```
@@ -108,13 +108,13 @@ Two passes, in order:
 ## Localisation
 
 Inkshelf's own UI chrome (nav, buttons, breadcrumbs, empty states) is
-localisable. Audiobookshelf content — titles, author names, descriptions — is
+localisable. Audiobookshelf content - titles, author names, descriptions - is
 left in whatever language ABS holds. **English is the source language: the
 English string is itself the lookup key**, so there is no English translation
 file to keep in sync. Full design in
 [`docs/superpowers/specs/2026-07-23-ui-localisation-design.md`](docs/superpowers/specs/2026-07-23-ui-localisation-design.md).
 
-Translations live in `src/Inkshelf/locales/<lang>.json` — one flat JSON file per
+Translations live in `src/Inkshelf/locales/<lang>.json` - one flat JSON file per
 language, mapping the English source string to its translation:
 
 ```json
@@ -128,7 +128,7 @@ language, mapping the English source string to its translation:
 
 - `$name` (optional) is the language's own display name shown in the Settings
   picker; omit it and the picker shows the bare code.
-- Keep `{0}`, `{1}` placeholders — you may reorder them for grammar.
+- Keep `{0}`, `{1}` placeholders - you may reorder them for grammar.
 - Any string you leave out falls back to English, so a partial translation is
   fine.
 
@@ -136,24 +136,24 @@ language, mapping the English source string to its translation:
 
 1. Create or edit `src/Inkshelf/locales/<lang>.json` (e.g. `de.json`, `fr.json`).
 2. Run the app (`ABS_URL=… dotnet run --project src/Inkshelf`), open **Settings**,
-   and pick the language — or set your browser's preferred language, since a
+   and pick the language - or set your browser's preferred language, since a
    first visit with no saved choice honours `Accept-Language`.
 
 The catalog loads from two directories, merged: the shipped baseline
 `LOCALES_PATH` (default `<content-root>/locales`) plus an optional
 `LOCALES_OVERRIDE_PATH`, whose files win per-key. So you can drop a whole new
 language or override just a few strings in the override dir without touching the
-baseline — handy for trying a translation locally
+baseline - handy for trying a translation locally
 (`LOCALES_OVERRIDE_PATH=/tmp/loc-test dotnet run …`).
 
 No rebuild is needed in a deployed container: mount your custom/extra
 `<lang>.json` files at `LOCALES_OVERRIDE_PATH` and restart. Don't bind-mount over
-`LOCALES_PATH` — a mount shadows the image directory, which would hide the
+`LOCALES_PATH` - a mount shadows the image directory, which would hide the
 shipped translations.
 
 **Adding a new UI string in code:** write the English text through the injected
 localizer (`@L["New label"]`); the English string becomes the key automatically.
-Add its translation to each `<lang>.json` — until you do, that language shows the
+Add its translation to each `<lang>.json` - until you do, that language shows the
 English text.
 
 ## Commits

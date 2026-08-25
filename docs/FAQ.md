@@ -4,7 +4,7 @@
 
 The reader is drawing the page image at its own size and will not enlarge it.
 Raise the screen override in Settings until pages fill the screen. Each change
-converts afresh — the cached file is keyed to the geometry — so just download the
+converts afresh - the cached file is keyed to the geometry - so just download the
 comic again after saving.
 
 ## The bottom of every page is clipped
