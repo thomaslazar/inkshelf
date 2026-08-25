@@ -1,5 +1,8 @@
 @page
 @model Inkshelf.Pages.IndexModel
+@{
+    Response.Headers["Cache-Control"] = "no-store";
+}
 <div class="page-head">
     <h1 class="page-title"><a href="/?all=1" class="home-link" title="@L["Libraries"]"><img src="~/img/icon-black.png" alt="" class="title-icon" /></a> @L["Libraries"]</h1>
     <form class="logout-form" method="post" action="/logout">@Html.AntiForgeryToken()<button type="submit" class="btn">@L["Log out"]</button></form>

@@ -1,7 +1,9 @@
 using System.Net;
 using Inkshelf.Abs;
 using Inkshelf.Convert;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,12 +20,27 @@ public class IndexRenderTests
         public void Dispose() { try { Directory.Delete(Path, true); } catch (IOException) { } }
     }
 
+    // Rendering the logout form's @Html.AntiForgeryToken() makes the real
+    // antiforgery service stamp Cache-Control: no-store on its own, on every
+    // request — which would mask a missing/removed no-store block on the page
+    // and make the header test below pass regardless. Swap in a fake with no
+    // such side effect so that test exercises only the page's own header.
+    private sealed class SilentAntiforgery : IAntiforgery
+    {
+        private static readonly AntiforgeryTokenSet Tokens = new("req", "cookie", "__RequestVerificationToken", "RequestVerificationToken");
+        public AntiforgeryTokenSet GetAndStoreTokens(HttpContext httpContext) => Tokens;
+        public AntiforgeryTokenSet GetTokens(HttpContext httpContext) => Tokens;
+        public Task<bool> IsRequestValidAsync(HttpContext httpContext) => Task.FromResult(true);
+        public void SetCookieTokenAndHeader(HttpContext httpContext) { }
+        public Task ValidateRequestAsync(HttpContext httpContext) => Task.CompletedTask;
+    }
+
     private static StubHandler MakeStub() => new(req =>
         req.RequestUri!.AbsolutePath == "/api/libraries"
             ? StubHandler.Json("""{"libraries":[]}""")
             : new HttpResponseMessage(HttpStatusCode.NotFound));
 
-    private static async Task<string> GetIndexHtml(string session, string lang)
+    private static async Task<HttpResponseMessage> GetIndexResponse(string session, string lang)
     {
         using var cacheDir = new TempDir();
         using var keysDir = new TempDir();
@@ -38,6 +55,7 @@ public class IndexRenderTests
                     o.HttpMessageHandlerBuilderActions.Add(hb => hb.PrimaryHandler = MakeStub()));
                 var worker = services.FirstOrDefault(s => s.ImplementationType == typeof(ConvertWorker));
                 if (worker is not null) services.Remove(worker);
+                services.AddSingleton<IAntiforgery, SilentAntiforgery>();
             });
         });
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -49,8 +67,11 @@ public class IndexRenderTests
             $"inkshelf_session={Uri.EscapeDataString(protector.Protect(session))}; "
             + $"inkshelf_settings=retina=1&gray=0&lang={lang}&fav=");
 
-        return await (await client.SendAsync(req)).Content.ReadAsStringAsync();
+        return await client.SendAsync(req);
     }
+
+    private static async Task<string> GetIndexHtml(string session, string lang) =>
+        await (await GetIndexResponse(session, lang)).Content.ReadAsStringAsync();
 
     [Fact]
     public async Task The_version_line_names_the_logged_in_user()
@@ -82,5 +103,15 @@ public class IndexRenderTests
 
         Assert.Contains("Benutzer: alice", html);
         Assert.DoesNotContain("User: alice", html);
+    }
+
+    [Fact]
+    public async Task The_page_is_never_cached()
+    {
+        // It now names the signed-in user: a cached copy served after a different
+        // family member logs in would show the previous account's name.
+        var response = await GetIndexResponse(session: "acc\nref\nalice", lang: "");
+
+        Assert.True(response.Headers.CacheControl?.NoStore == true, "Expected Cache-Control: no-store.");
     }
 }

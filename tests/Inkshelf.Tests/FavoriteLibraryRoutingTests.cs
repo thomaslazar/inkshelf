@@ -40,17 +40,15 @@ public class FavoriteLibraryRoutingTests
         return model;
     }
 
-    // Builds the HttpContext FIRST so a TokenStore can be handed a working
-    // accessor before the IndexModel exists — these tests never read
-    // Username, so the store just has to be constructible.
+    // The accessor is filled in after WithContext builds the context, so
+    // WithContext stays the only place that knows the cookie shape. These
+    // tests never read Username, so TokenStore just has to be constructible.
     private static IndexModel MakeIndex(AbsApiClient api, string? favCookie)
     {
-        var http = new DefaultHttpContext();
-        if (favCookie is not null)
-            http.Request.Headers.Cookie = $"{DeviceSettings.Cookie}=retina=1&gray=0&lang=&fav={favCookie}";
-        var accessor = new HttpContextAccessor { HttpContext = http };
-        var model = new IndexModel(api, new TokenStore(new EphemeralDataProtectionProvider(), accessor, new AbsOptions()));
-        model.PageContext = new PageContext { HttpContext = http };
+        var accessor = new HttpContextAccessor();
+        var model = WithContext(new IndexModel(api,
+            new TokenStore(new EphemeralDataProtectionProvider(), accessor, new AbsOptions())), favCookie);
+        accessor.HttpContext = model.PageContext.HttpContext;
         return model;
     }
 
