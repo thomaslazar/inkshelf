@@ -92,7 +92,9 @@ nullable field to thread through `TokenStore` and the view.
 - **A newline in the name** cannot corrupt the tokens.
 - **Render** — the libraries page shows the name when known, and shows exactly
   today's plain version line when not.
-- **uicheck** — the name appears on the libraries page in both languages.
+- **uicheck** — the name appears on the libraries page. The authed browser pass
+  runs in German only, so that covers the German string; the English one is
+  covered by the render test.
 
 ## Notes
 
