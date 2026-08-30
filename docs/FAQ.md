@@ -21,8 +21,10 @@ changes that size. Use the screen override dimensions instead.
 ## Pages are much smaller than the screen
 
 Page images are only ever shrunk to fit, never enlarged, so a reader that draws
-them at their own size shows a small page. Two settings make the images bigger:
-turn retina on, or raise the screen override.
+them at their own size shows a small page. Tick **Enlarge small pages** in
+Settings: it resamples the pages up to the screen instead of leaving them small.
+Files get bigger, which is the trade. Retina must stay on for it to have room to
+work, since the enlargement target is the screen in physical pixels.
 
 ## I have to log in again whenever I reopen the browser
 

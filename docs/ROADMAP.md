@@ -93,6 +93,13 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Enlarge small pages** - a per-device setting, default off, that resamples a
+  page image up to the screen when the comic's scans are smaller than it. Only
+  needed on a reader that ignores the declared fixed-layout viewport (the
+  Tolino standard reader, the shine's older reader): those size a page from the
+  image and never enlarge one, so a small scan used to sit small with dead
+  margin around it. Costs bytes and decode memory, unlike the free viewport
+  scaling this sits next to, which is why it defaults off.
 - **Signed-in user on the libraries page** - the version line now names which
   ABS account a device is actually signed in as, e.g. `Inkshelf v0.6.0 - User:
   root`, so a reader handed to someone else or pulled out of a drawer says whose
