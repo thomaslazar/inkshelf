@@ -5,7 +5,8 @@
 Your scans are larger than the screen override, so Inkshelf shrinks them to it
 during conversion and the reader draws them at that size, leaving the rest of
 the screen empty. Raise the screen override in Settings: raising it raises the
-cap, so less of the scan is thrown away and pages come out bigger. Each change
+cap, so less of the scan is thrown away and pages come out bigger. With no
+override set, the cap comes from the detected resolution instead. Each change
 converts afresh - the cached file is keyed to the geometry - so just download
 the comic again after saving.
 

@@ -29,7 +29,7 @@ Measured on the real library, converted at the epos 2 geometry
 | Declared viewport | 670 x 953, which fills the 953 CSS height exactly |
 | Standard reader | draws 1125 on a 1440 panel, 78% of the width |
 
-Fitting 1125 x 1600 into the 1442 x 1787 box gives 1257 x 1787: 1.117x linear,
+Fitting 1125 x 1600 into the 1442 x 1787 box gives 1256 x 1787: 1.117x linear,
 1.25x the pixels, roughly 54 MB to 67 MB per volume. Height goes from 89.5% to
 100%, width from 78% to 87%. Full width is unreachable because the comic's
 aspect is 0.703 against the screen's 0.807, so side margin is permanent. The
@@ -69,10 +69,16 @@ cover blown up to page size costs bytes for a thumbnail nobody reads.
 ### The viewport is unaffected
 
 Once the pixels fill the box, `Viewport`'s `fit` factor collapses to 1 and the
-declared viewport is the box divided by the ratio: 1257/1.875 x 1787/1.875, or
-670 x 953. Identical to what the same comic declares today. A reader that
-honours the viewport sees the same layout with denser pixels, so the setting
-cannot break the reader that already works.
+declared viewport is the box divided by the ratio: 1256/1.875 x 1787/1.875, or
+670 x 953. Identical to what the same comic declares today in the limiting
+dimension, and within 1 CSS pixel in the other: the limiting side always
+resolves exactly, because it is the one the fit factor was built from, but the
+other side is rounded twice, once inside `PageBox` and again inside
+`Viewport`, rather than clamped, so it can land a pixel off across the flag.
+Measured maximum delta is 1 pixel, never more, across five real device
+geometries. A reader that honours the viewport sees the same layout, near
+enough, with denser pixels, so the setting cannot break the reader that
+already works.
 
 ### Cache key
 

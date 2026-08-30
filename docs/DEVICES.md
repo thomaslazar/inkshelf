@@ -23,7 +23,7 @@ values are measured on hardware - a spec sheet does not predict them.
       <td>1440 × 1920</td>
       <td>1442 × 1787 @ dpr 1.875</td>
       <td>no override; page scale 98 on the beta reader; enlarge small pages
-        fills the screen on the standard reader</td>
+        fills the screen height on the standard reader</td>
       <td>Works</td>
     </tr>
     <tr>
