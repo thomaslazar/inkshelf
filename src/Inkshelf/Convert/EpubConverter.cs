@@ -56,6 +56,8 @@ public class EpubConverter
             // rotate it. A rare landscape cover gets white bars, which beats a
             // library grid stretching it.
             // A cover is not a page: never split, rotate or letterbox it.
+            // upscale is deliberately NOT passed: blowing a small cover up to page
+            // size costs bytes for a thumbnail nobody reads.
             var img = (await PageImageProcessor.ProcessAsync(c.Bytes, c.Ext, target.MaxW, target.MaxH,
                 target.Grayscale, SpreadMode.Fit, padToBox: false, ct: ct))[0];
             return new EpubWriter.Cover(img.Bytes, img.Extension);
@@ -92,7 +94,8 @@ public class EpubConverter
                 (viewW, viewH) = Viewport((boxW, boxH), target);
             }
             foreach (var img in await PageImageProcessor.ProcessAsync(raw.Bytes, ext,
-                boxW, boxH, target.Grayscale, target.Spread, padToBox: true, ct: ct))
+                boxW, boxH, target.Grayscale, target.Spread, padToBox: true,
+                upscale: target.Upscale, ct: ct))
             {
                 idx++;
                 yield return new EpubWriter.Page($"page-{idx:D4}{img.Extension}", img.Bytes,
@@ -111,7 +114,11 @@ public class EpubConverter
         if (target.MaxW <= 0 || target.MaxH <= 0) return (w, h);
         if (w > h) return (target.MaxW, target.MaxH);
         var scale = Math.Min((double)target.MaxW / w, (double)target.MaxH / h);
-        return scale >= 1 ? (w, h)
+        // Upscale off: a page already inside the cap keeps its own size, and the
+        // declared viewport does the enlarging. On: the box grows to the cap so the
+        // pixels can be resampled into it. Both guards flip together, or the pages
+        // would just get a white border padded around an unchanged image.
+        return scale >= 1 && !target.Upscale ? (w, h)
             : (Math.Max(1, (int)Math.Round(w * scale)), Math.Max(1, (int)Math.Round(h * scale)));
     }
 }

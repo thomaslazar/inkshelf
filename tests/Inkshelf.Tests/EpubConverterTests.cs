@@ -29,6 +29,43 @@ public class EpubConverterTests
         ms.Position = 0; return ms;
     }
 
+    // A CBZ of three identical undersized portrait pages, for the upscale tests.
+    private static MemoryStream SmallCbz()
+    {
+        var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            void add(string name, byte[] bytes) { using var s = zip.CreateEntry(name).Open(); s.Write(bytes); }
+            add("page-01.jpg", Img(1125, 1600, new JpegEncoder()));
+            add("page-02.jpg", Img(1125, 1600, new JpegEncoder()));
+            add("page-03.jpg", Img(1125, 1600, new JpegEncoder()));
+        }
+        ms.Position = 0; return ms;
+    }
+
+    // Pixel size of the first page image in a converted EPUB.
+    private static (int W, int H) FirstPageSize(string epubPath)
+    {
+        using var epub = ZipFile.OpenRead(epubPath);
+        var entry = epub.Entries.First(e => e.FullName.EndsWith("page-0001.jpg", StringComparison.Ordinal));
+        using var s = entry.Open();
+        using var mem = new MemoryStream();
+        s.CopyTo(mem);
+        var info = Image.Identify(mem.ToArray());
+        return (info.Width, info.Height);
+    }
+
+    // The viewport declared by the first page's xhtml, as "width=W, height=H".
+    private static string FirstPageViewport(string epubPath)
+    {
+        using var epub = ZipFile.OpenRead(epubPath);
+        var entry = epub.Entries.First(e => e.FullName.EndsWith("page-0001.xhtml", StringComparison.Ordinal));
+        using var r = new StreamReader(entry.Open());
+        var html = r.ReadToEnd();
+        var i = html.IndexOf("content=\"width=", StringComparison.Ordinal) + "content=\"".Length;
+        return html[i..html.IndexOf('"', i)];
+    }
+
     [Fact]
     public async Task Convert_produces_fixed_layout_epub_pages_in_order_no_webp()
     {
@@ -277,5 +314,59 @@ public class EpubConverterTests
         // height lands on the screen exactly: 900*1.9856/1.875 = 953.
         Assert.All(Viewports(outPath), v => Assert.Equal((635, 953), v));
         File.Delete(outPath);
+    }
+
+    [Fact]
+    public async Task Convert_without_upscale_keeps_undersized_pages_small()
+    {
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        await new EpubConverter().ConvertAsync(SmallCbz(), new EbookMeta("Vol 1", "Artist", null, null),
+            outPath, new RenderTarget(1442, 1787, 1.875, false), default);
+
+        Assert.Equal((1125, 1600), FirstPageSize(outPath));
+    }
+
+    [Fact]
+    public async Task Convert_with_upscale_enlarges_pages_to_the_box()
+    {
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        await new EpubConverter().ConvertAsync(SmallCbz(), new EbookMeta("Vol 1", "Artist", null, null),
+            outPath, new RenderTarget(1442, 1787, 1.875, false) { Upscale = true }, default);
+
+        // Fit factor 1.116875, limited by the height.
+        Assert.Equal((1256, 1787), FirstPageSize(outPath));
+    }
+
+    [Fact]
+    public async Task Convert_with_upscale_declares_the_same_viewport()
+    {
+        var noUp = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        var up = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        var target = new RenderTarget(1442, 1787, 1.875, false);
+        await new EpubConverter().ConvertAsync(SmallCbz(), new EbookMeta("Vol 1", "Artist", null, null), noUp, target, default);
+        await new EpubConverter().ConvertAsync(SmallCbz(), new EbookMeta("Vol 1", "Artist", null, null), up,
+            target with { Upscale = true }, default);
+
+        // The whole safety argument for the setting: a reader that honours the
+        // declared viewport sees an identical layout, only denser pixels.
+        Assert.Equal(FirstPageViewport(noUp), FirstPageViewport(up));
+    }
+
+    [Fact]
+    public async Task Convert_with_upscale_leaves_the_cover_alone()
+    {
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        await new EpubConverter().ConvertAsync(SmallCbz(), new EbookMeta("Vol 1", "Artist", null, null),
+            outPath, new RenderTarget(1442, 1787, 1.875, false) { Upscale = true }, default,
+            cover: (Img(600, 853, new JpegEncoder()), ".jpg"));
+
+        using var epub = ZipFile.OpenRead(outPath);
+        var entry = epub.Entries.First(e => e.FullName == "OEBPS/cover.jpg");
+        using var s = entry.Open();
+        using var mem = new MemoryStream();
+        s.CopyTo(mem);
+        var info = Image.Identify(mem.ToArray());
+        Assert.Equal(600, info.Width);
+        Assert.Equal(853, info.Height);
     }
 }
