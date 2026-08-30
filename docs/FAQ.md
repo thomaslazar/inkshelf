@@ -2,11 +2,12 @@
 
 ## A converted comic renders too small, with space around it
 
-Your scans are larger than the screen override, so the reader shrinks them to
-fit and the space is leftover screen. Raise the screen override in Settings:
-raising it raises the cap, so less of the scan is thrown away and pages come
-out bigger. Each change converts afresh - the cached file is keyed to the
-geometry - so just download the comic again after saving.
+Your scans are larger than the screen override, so Inkshelf shrinks them to it
+during conversion and the reader draws them at that size, leaving the rest of
+the screen empty. Raise the screen override in Settings: raising it raises the
+cap, so less of the scan is thrown away and pages come out bigger. Each change
+converts afresh - the cached file is keyed to the geometry - so just download
+the comic again after saving.
 
 If pages are still small after raising the override, your scans are smaller
 than the cap to start with; see "Pages are much smaller than the screen"
