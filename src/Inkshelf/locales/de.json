@@ -38,7 +38,7 @@
   "Detected resolution: {0}": "Erkannte Auflösung: {0}",
   "Retina pages (full-resolution; crisper but heavier - may strain low-memory readers)": "Retina-Seiten (volle Auflösung; schärfer, aber größere Dateien - kann Reader mit wenig Speicher belasten)",
   "Grayscale pages (smaller files on e-ink)": "Graustufen-Seiten (kleinere Dateien auf E-Ink)",
-  "Enlarge small pages (for readers that draw pages at their own size)": "Kleine Seiten vergrößern (für Reader, die Seiten in ihrer eigenen Größe zeichnen)",
+  "Enlarge small pages (for readers that leave them small)": "Kleine Seiten vergrößern (für Reader, die sie klein lassen)",
   "Page scale": "Seitenskalierung",
   "Override screen resolution": "Bildschirmauflösung überschreiben",
   "Width": "Breite",
