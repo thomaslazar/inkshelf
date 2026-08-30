@@ -34,6 +34,12 @@
         </label>
     </p>
     <p>
+        <label>
+            <input type="checkbox" name="upscale" value="on" @(Model.Settings.Upscale ? "checked" : "") />
+            @L["Enlarge small pages (for readers that draw pages at their own size)"]
+        </label>
+    </p>
+    <p>
         <span class="setting-title">@L["Two-page spreads (a wide image holding two pages)"]</span>
         <label>
             <input type="radio" name="spread" value="splitleftfirst" @(Model.Settings.Spread == SpreadMode.SplitLeftFirst ? "checked" : "") />
