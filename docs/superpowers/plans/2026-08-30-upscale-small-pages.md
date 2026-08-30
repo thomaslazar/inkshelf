@@ -74,7 +74,7 @@ Add to `tests/Inkshelf.Tests/PageImageProcessorTests.cs`:
         var r = (await PageImageProcessor.ProcessAsync(Img(2644, 3713, new JpegEncoder()), ".jpg",
             1442, 1787, grayscale: false, upscale: true))[0];
         Assert.Equal(1787, r.Height);
-        Assert.Equal(1272, r.Width);
+        Assert.Equal(1273, r.Width);
     }
 ```
 
