@@ -36,7 +36,8 @@ public static class ScreenTarget
     // An override (hand-entered geometry) wins over the cookie entirely, including
     // when the cookie is missing.
     public static RenderTarget FromCookie(string? scr, bool retina = false, bool grayscale = false,
-        SpreadMode spread = SpreadMode.Fit, int scale = 100, ScreenOverride? over = null)
+        SpreadMode spread = SpreadMode.Fit, int scale = 100, ScreenOverride? over = null,
+        bool upscale = false)
     {
         // FIRST, before the cookie is even looked at. Being merely "preferred over a
         // bad value" would not help: the no-probe case returns at the bottom of this
@@ -53,10 +54,10 @@ public static class ScreenTarget
             // at ratio 2. Ignoring retina here would leave it an inert control, which
             // was the only reason the UI ever had to disable it.
             return retina
-                ? new RenderTarget(ow, oh, od, grayscale) { Spread = spread, Scale = scale }
+                ? new RenderTarget(ow, oh, od, grayscale) { Spread = spread, Scale = scale, Upscale = upscale }
                 : new RenderTarget(Math.Max(1, (int)Math.Round(ow / od)),
                                    Math.Max(1, (int)Math.Round(oh / od)), 1, grayscale)
-                { Spread = spread, Scale = scale };
+                { Spread = spread, Scale = scale, Upscale = upscale };
         }
         if (!string.IsNullOrEmpty(scr))
         {
@@ -71,14 +72,14 @@ public static class ScreenTarget
                     dpr = RoundDpr(Math.Min(dpr, MaxDpr));
                     var w = Math.Min((int)Math.Round(cw * dpr), MaxDimension);
                     var h = Math.Min((int)Math.Round(ch * dpr), MaxDimension);
-                    return new RenderTarget(w, h, dpr, grayscale) { Spread = spread, Scale = scale };
+                    return new RenderTarget(w, h, dpr, grayscale) { Spread = spread, Scale = scale, Upscale = upscale };
                 }
-                return new RenderTarget(Math.Min(cw, MaxDimension), Math.Min(ch, MaxDimension), 1, grayscale) { Spread = spread, Scale = scale };
+                return new RenderTarget(Math.Min(cw, MaxDimension), Math.Min(ch, MaxDimension), 1, grayscale) { Spread = spread, Scale = scale, Upscale = upscale };
             }
             // Legacy 2-part physical cookie, transient until the script rewrites it.
             if (p.Length == 2 && int.TryParse(p[0], out var w2) && int.TryParse(p[1], out var h2) && w2 > 0 && h2 > 0)
-                return new RenderTarget(Math.Min(w2, MaxDimension), Math.Min(h2, MaxDimension), 1, grayscale) { Spread = spread, Scale = scale };
+                return new RenderTarget(Math.Min(w2, MaxDimension), Math.Min(h2, MaxDimension), 1, grayscale) { Spread = spread, Scale = scale, Upscale = upscale };
         }
-        return new RenderTarget(0, 0, 1, grayscale) { Spread = spread, Scale = scale };
+        return new RenderTarget(0, 0, 1, grayscale) { Spread = spread, Scale = scale, Upscale = upscale };
     }
 }
