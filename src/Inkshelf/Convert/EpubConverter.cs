@@ -57,7 +57,7 @@ public class EpubConverter
             // library grid stretching it.
             // A cover is not a page: never split, rotate or letterbox it.
             var img = (await PageImageProcessor.ProcessAsync(c.Bytes, c.Ext, target.MaxW, target.MaxH,
-                target.Grayscale, SpreadMode.Fit, padToBox: false, ct))[0];
+                target.Grayscale, SpreadMode.Fit, padToBox: false, ct: ct))[0];
             return new EpubWriter.Cover(img.Bytes, img.Extension);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -92,7 +92,7 @@ public class EpubConverter
                 (viewW, viewH) = Viewport((boxW, boxH), target);
             }
             foreach (var img in await PageImageProcessor.ProcessAsync(raw.Bytes, ext,
-                boxW, boxH, target.Grayscale, target.Spread, padToBox: true, ct))
+                boxW, boxH, target.Grayscale, target.Spread, padToBox: true, ct: ct))
             {
                 idx++;
                 yield return new EpubWriter.Page($"page-{idx:D4}{img.Extension}", img.Bytes,

@@ -30,6 +30,12 @@ public readonly record struct RenderTarget(int MaxW, int MaxH, double Dpr, bool 
     // in a slightly smaller box. This is the manual fix for a reader that cuts a strip
     // off the page: see EpubWriter. Init property so positional construction still works.
     public int Scale { get; init; } = 100;
+
+    // Resample pages UP to the box when the scans are smaller than the screen.
+    // Off by default: a reader that honours the declared viewport already enlarges
+    // them for free (see EpubConverter.Viewport), so this exists only for the
+    // readers that size a page from the image and never enlarge one.
+    public bool Upscale { get; init; }
 }
 
 // A hand-entered screen geometry, replacing the "scr" probe. W/H are physical
