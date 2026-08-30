@@ -93,9 +93,12 @@ public class EpubConverter
                 (boxW, boxH) = PageBox(Image.Identify(raw.Bytes), target);
                 (viewW, viewH) = Viewport((boxW, boxH), target);
             }
+            // MaxW/MaxH > 0 is required here too: with no cap, PageBox returns page
+            // 1's own size, not a screen, so upscaling to it would enlarge later
+            // pages to match page 1 rather than to fit any screen.
             foreach (var img in await PageImageProcessor.ProcessAsync(raw.Bytes, ext,
                 boxW, boxH, target.Grayscale, target.Spread, padToBox: true,
-                upscale: target.Upscale, ct: ct))
+                upscale: target.Upscale && target.MaxW > 0 && target.MaxH > 0, ct: ct))
             {
                 idx++;
                 yield return new EpubWriter.Page($"page-{idx:D4}{img.Extension}", img.Bytes,
