@@ -3,6 +3,56 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v0.7.0 - 2026-08-31
+
+### Highlights
+- **Enlarge small pages.** A new per-device setting, off by default, for readers
+  that leave a small comic small. Page images were only ever shrunk to fit, never
+  enlarged, so a comic whose scans are smaller than the screen was drawn small
+  with dead margin around it on any reader that sizes a page from the image
+  itself. Tick the setting and the pages are resampled up to the screen instead.
+  Files get bigger, which is the trade.
+- **The FAQ no longer gives advice that cannot work.** It used to say retina or
+  the screen override would enlarge small pages. Neither can: both only raise a
+  ceiling, and a scan already below it is untouched. The entry now points at the
+  new setting, and the neighbouring entry about the opposite cause, scans larger
+  than the screen, is distinguished from it.
+
+### Features
+- feat: add the enlarge-small-pages checkbox
+- feat: carry the upscale flag in the device settings
+- feat: grow the page box when upscaling is on
+- feat: key the epub cache on the upscale flag
+- feat: let the page processor enlarge undersized pages
+
+### Fixes
+- fix: do not upscale when there is no screen cap
+
+### Internal
+
+Docs:
+- docs: correct a rounded test value in the plan
+- docs: correct upscale spec claims and add FAQ note
+- docs: distinguish oversized from undersized scans in FAQ
+- docs: document the enlarge-small-pages setting
+- docs: name inkshelf, not the reader, as what shrinks scans
+- docs: plan the enlarge-small-pages setting
+- docs: reword the enlarge-small-pages label
+- docs: spec the enlarge-small-pages setting
+
+Tests:
+- test: pin the upscale checkbox's checked binding
+
+### Notes
+
+Nothing already cached is invalidated: the new setting is part of the cache
+filename, and existing files carry no marker and are read as not upscaled, which
+is what they are. Turning the setting on converts afresh.
+
+The setting only matters on readers that ignore the page size a book declares.
+Readers that honour it already enlarge small pages themselves, for free, and see
+an unchanged layout either way.
+
 ## v0.6.1 - 2026-08-25
 
 ### Highlights
