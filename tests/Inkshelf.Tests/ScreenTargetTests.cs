@@ -158,4 +158,24 @@ public class ScreenTargetTests
         Assert.Equal(SpreadMode.RotateLeft, t.Spread);
         Assert.Equal(90, t.Scale);
     }
+
+    [Fact]
+    public void FromCookie_carries_upscale_into_the_target()
+    {
+        Assert.True(ScreenTarget.FromCookie("769x953x1.875", retina: true, upscale: true).Upscale);
+        Assert.False(ScreenTarget.FromCookie("769x953x1.875", retina: true).Upscale);
+    }
+
+    [Fact]
+    public void FromCookie_carries_upscale_on_the_override_path()
+    {
+        var over = new ScreenOverride(1442, 1787, 1.875);
+        Assert.True(ScreenTarget.FromCookie(null, retina: true, over: over, upscale: true).Upscale);
+    }
+
+    [Fact]
+    public void FromCookie_carries_upscale_when_there_is_no_probe()
+    {
+        Assert.True(ScreenTarget.FromCookie(null, upscale: true).Upscale);
+    }
 }

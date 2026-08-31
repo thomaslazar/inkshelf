@@ -29,6 +29,89 @@ public class EpubConverterTests
         ms.Position = 0; return ms;
     }
 
+    // A CBZ of three identical undersized portrait pages, for the upscale tests.
+    private static MemoryStream SmallCbz()
+    {
+        var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            void add(string name, byte[] bytes) { using var s = zip.CreateEntry(name).Open(); s.Write(bytes); }
+            add("page-01.jpg", Img(1125, 1600, new JpegEncoder()));
+            add("page-02.jpg", Img(1125, 1600, new JpegEncoder()));
+            add("page-03.jpg", Img(1125, 1600, new JpegEncoder()));
+        }
+        ms.Position = 0; return ms;
+    }
+
+    // Two pages where the second is smaller than the first in both dimensions and a
+    // different aspect ratio, for the upscale-with-a-smaller-later-page tests: a
+    // stretch to fill the box (wrong) is distinguishable from a scale-then-pad
+    // (right) because the mismatched aspect shows up in the pixel measurements.
+    private static MemoryStream SmallerSecondPageCbz()
+    {
+        var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            void add(string name, byte[] bytes) { using var s = zip.CreateEntry(name).Open(); s.Write(bytes); }
+            add("p-01.jpg", Img(1125, 1600, new JpegEncoder()));
+            add("p-02.jpg", Img(900, 1000, new JpegEncoder()));
+        }
+        ms.Position = 0; return ms;
+    }
+
+    // Pixel size of a named page image in a converted EPUB.
+    private static (int W, int H) PageImageSize(string epubPath, string fileName)
+    {
+        using var epub = ZipFile.OpenRead(epubPath);
+        var entry = epub.Entries.First(e => e.FullName.EndsWith(fileName, StringComparison.Ordinal));
+        using var s = entry.Open();
+        using var mem = new MemoryStream();
+        s.CopyTo(mem);
+        var info = Image.Identify(mem.ToArray());
+        return (info.Width, info.Height);
+    }
+
+    private static (int W, int H) FirstPageSize(string epubPath) => PageImageSize(epubPath, "page-0001.jpg");
+
+    // The pixel extent of the non-white content within a page image, found by
+    // scanning the middle row and column for anything darker than white padding.
+    // Pad always forces the OUTER canvas to the box regardless of whether the
+    // content inside was enlarged first, so the outer size alone can't tell a
+    // stretch-to-fill from a scale-then-pad. This can.
+    private static (int W, int H) ContentBox(string epubPath, string fileName)
+    {
+        using var epub = ZipFile.OpenRead(epubPath);
+        var entry = epub.Entries.First(e => e.FullName.EndsWith(fileName, StringComparison.Ordinal));
+        using var s = entry.Open();
+        using var mem = new MemoryStream();
+        s.CopyTo(mem);
+        using var img = Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(mem.ToArray());
+        bool Dark(SixLabors.ImageSharp.PixelFormats.Rgba32 p) => p.R + p.G + p.B < 600;
+
+        var midY = img.Height / 2;
+        int left = -1, right = -1;
+        for (var x = 0; x < img.Width; x++)
+            if (Dark(img[x, midY])) { if (left < 0) left = x; right = x; }
+
+        var midX = img.Width / 2;
+        int top = -1, bottom = -1;
+        for (var y = 0; y < img.Height; y++)
+            if (Dark(img[midX, y])) { if (top < 0) top = y; bottom = y; }
+
+        return (right - left + 1, bottom - top + 1);
+    }
+
+    // The viewport declared by the first page's xhtml, as "width=W, height=H".
+    private static string FirstPageViewport(string epubPath)
+    {
+        using var epub = ZipFile.OpenRead(epubPath);
+        var entry = epub.Entries.First(e => e.FullName.EndsWith("page-0001.xhtml", StringComparison.Ordinal));
+        using var r = new StreamReader(entry.Open());
+        var html = r.ReadToEnd();
+        var i = html.IndexOf("content=\"width=", StringComparison.Ordinal) + "content=\"".Length;
+        return html[i..html.IndexOf('"', i)];
+    }
+
     [Fact]
     public async Task Convert_produces_fixed_layout_epub_pages_in_order_no_webp()
     {
@@ -277,5 +360,103 @@ public class EpubConverterTests
         // height lands on the screen exactly: 900*1.9856/1.875 = 953.
         Assert.All(Viewports(outPath), v => Assert.Equal((635, 953), v));
         File.Delete(outPath);
+    }
+
+    [Fact]
+    public async Task Convert_without_upscale_keeps_undersized_pages_small()
+    {
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        await new EpubConverter().ConvertAsync(SmallCbz(), new EbookMeta("Vol 1", "Artist", null, null),
+            outPath, new RenderTarget(1442, 1787, 1.875, false), default);
+
+        Assert.Equal((1125, 1600), FirstPageSize(outPath));
+    }
+
+    [Fact]
+    public async Task Convert_with_upscale_enlarges_pages_to_the_box()
+    {
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        await new EpubConverter().ConvertAsync(SmallCbz(), new EbookMeta("Vol 1", "Artist", null, null),
+            outPath, new RenderTarget(1442, 1787, 1.875, false) { Upscale = true }, default);
+
+        // Fit factor 1.116875, limited by the height.
+        Assert.Equal((1256, 1787), FirstPageSize(outPath));
+    }
+
+    [Fact]
+    public async Task Convert_with_upscale_declares_the_same_viewport()
+    {
+        var noUp = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        var up = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        var target = new RenderTarget(1442, 1787, 1.875, false);
+        await new EpubConverter().ConvertAsync(SmallCbz(), new EbookMeta("Vol 1", "Artist", null, null), noUp, target, default);
+        await new EpubConverter().ConvertAsync(SmallCbz(), new EbookMeta("Vol 1", "Artist", null, null), up,
+            target with { Upscale = true }, default);
+
+        // The whole safety argument for the setting: a reader that honours the
+        // declared viewport sees an identical layout, only denser pixels.
+        // This pins ONE geometry where the height limits, so both paths land on
+        // the same viewport exactly. The non-limiting dimension can differ from
+        // the flag-off viewport by 1 CSS pixel elsewhere - do not over-generalise
+        // from this one case.
+        Assert.Equal(FirstPageViewport(noUp), FirstPageViewport(up));
+    }
+
+    [Fact]
+    public async Task Convert_with_upscale_and_no_cap_does_not_enlarge_a_smaller_later_page()
+    {
+        // With no screen cap (MaxW/MaxH = 0), PageBox falls back to page 1's own
+        // size - that is not a screen to upscale TO, so the flag must be a no-op
+        // for every later page: same content extent with the flag on or off.
+        var off = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        var on = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        var target = new RenderTarget(0, 0, 1, false);
+        await new EpubConverter().ConvertAsync(SmallerSecondPageCbz(), new EbookMeta("T", "A", null, null), off, target, default);
+        await new EpubConverter().ConvertAsync(SmallerSecondPageCbz(), new EbookMeta("T", "A", null, null), on,
+            target with { Upscale = true }, default);
+
+        Assert.Equal(ContentBox(off, "page-0002.jpg"), ContentBox(on, "page-0002.jpg"));
+    }
+
+    [Fact]
+    public async Task Convert_with_upscale_pads_a_smaller_later_page_without_stretching_it()
+    {
+        // Every existing end-to-end upscale test uses identically-sized pages, so
+        // the pad after the resize is a no-op in all of them. This exercises a
+        // real cap, the flag on, and a later page smaller than the first.
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        var target = new RenderTarget(1442, 1787, 1.875, false) { Upscale = true };
+        await new EpubConverter().ConvertAsync(SmallerSecondPageCbz(), new EbookMeta("T", "A", null, null),
+            outPath, target, default);
+
+        // Padding forces every page onto the shared box - see
+        // Convert_with_upscale_enlarges_pages_to_the_box for how 1256x1787 follows
+        // from page 1.
+        Assert.Equal((1256, 1787), PageImageSize(outPath, "page-0002.jpg"));
+
+        // Fit factor for page 2 is min(1256/900, 1787/1000) = 1.395556, width
+        // limited: 900*1.395556 = 1256, 1000*1.395556 = 1395.56 -> 1396. A stretch
+        // to fill the box instead would leave no white border and a content height
+        // of 1787; a content height around 1396 proves it was scaled then padded.
+        var (_, contentH) = ContentBox(outPath, "page-0002.jpg");
+        Assert.InRange(contentH, 1390, 1400);
+    }
+
+    [Fact]
+    public async Task Convert_with_upscale_leaves_the_cover_alone()
+    {
+        var outPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".epub");
+        await new EpubConverter().ConvertAsync(SmallCbz(), new EbookMeta("Vol 1", "Artist", null, null),
+            outPath, new RenderTarget(1442, 1787, 1.875, false) { Upscale = true }, default,
+            cover: (Img(600, 853, new JpegEncoder()), ".jpg"));
+
+        using var epub = ZipFile.OpenRead(outPath);
+        var entry = epub.Entries.First(e => e.FullName == "OEBPS/cover.jpg");
+        using var s = entry.Open();
+        using var mem = new MemoryStream();
+        s.CopyTo(mem);
+        var info = Image.Identify(mem.ToArray());
+        Assert.Equal(600, info.Width);
+        Assert.Equal(853, info.Height);
     }
 }

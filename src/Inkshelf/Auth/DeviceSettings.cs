@@ -40,6 +40,16 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // free number with a floor rather than a menu.
     public const int MinScale = 50;
 
+    // Resample pages UP to the screen box when the scans are smaller than it. An
+    // init property for the same reason as Fav: the existing three-argument
+    // construction sites keep compiling.
+    //
+    // Off by default and deliberately NOT folded into Retina. Retina is on by
+    // default, so folding it in would change every existing conversion, including
+    // for readers that honour the declared viewport and already get the
+    // enlargement for free. This is only for the readers that do not.
+    public bool Upscale { get; init; }
+
     // A hand-entered screen geometry, used INSTEAD of the "scr" probe when
     // OverrideScreen is set. The numbers are kept even while the override is off,
     // so switching it off does not throw them away and the fields can show what
@@ -75,7 +85,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     public string Serialize() =>
         $"retina={(Retina ? 1 : 0)}&gray={(Grayscale ? 1 : 0)}"
         + $"&lang={SanitizeLang(Lang)}&fav={SanitizeId(Fav)}&did={SanitizeId(Did)}"
-        + $"&spread={Spread.ToString().ToLowerInvariant()}&scale={Scale}"
+        + $"&spread={Spread.ToString().ToLowerInvariant()}&scale={Scale}&up={(Upscale ? 1 : 0)}"
         + $"&ovr={(OverrideScreen ? 1 : 0)}&ovrw={SanitizeDim(OverrideW)}&ovrh={SanitizeDim(OverrideH)}"
         + $"&ovrd={SanitizeDpr(OverrideDpr).ToString(CultureInfo.InvariantCulture)}";
 
@@ -99,7 +109,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // The keys Serialize writes, and nothing else. A query carrying none of them
     // is not a settings payload - `range`/`scalerange` are warning markers.
     private static readonly string[] Keys =
-        ["retina", "gray", "lang", "fav", "did", "spread", "scale", "ovr", "ovrw", "ovrh", "ovrd"];
+        ["retina", "gray", "lang", "fav", "did", "spread", "scale", "up", "ovr", "ovrw", "ovrh", "ovrd"];
 
     // Settings from a URL query, or null when it carries none of Keys. The cookie
     // and a bookmarked URL are the same wire format, so both go through Parse and
@@ -125,6 +135,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
                 ? sm : Default.Spread,
             Scale = q.TryGetValue("scale", out var sc) && int.TryParse(sc.ToString(), out var pc)
                 ? SanitizeScale(pc) : Default.Scale,
+            Upscale = Flag(q, "up", Default.Upscale),
             OverrideScreen = Flag(q, "ovr", Default.OverrideScreen),
             OverrideW = q.TryGetValue("ovrw", out var ow) && int.TryParse(ow.ToString(), out var owv)
                 ? SanitizeDim(owv) : 0,

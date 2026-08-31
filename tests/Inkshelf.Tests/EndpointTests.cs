@@ -431,6 +431,66 @@ public class EndpointTests
     }
 
     [Fact]
+    public async Task Saving_upscale_records_it_and_absence_clears_it()
+    {
+        // Unchecked checkboxes submit nothing, so absent means off - the same
+        // convention retina and grayscale already rely on.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var on = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["upscale"] = "on",
+        }));
+        Assert.Contains("up=1", on.Headers.Location!.OriginalString);
+
+        var off = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+        }));
+        Assert.Contains("up=0", off.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
+    public async Task Settings_page_renders_the_upscale_checkbox()
+    {
+        // Beyond presence on a fresh GET, pin that a saved "on" comes back ticked
+        // and a saved "off" comes back unticked - the checked binding itself,
+        // scoped to the upscale input (the page has several checkboxes).
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var fresh = await (await client.GetAsync("/settings")).Content.ReadAsStringAsync();
+        Assert.Contains("name=\"upscale\"", fresh);
+
+        await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["upscale"] = "on",
+        }));
+
+        var onHtml = await (await client.GetAsync("/settings")).Content.ReadAsStringAsync();
+        var onInput = Regex.Match(onHtml, "<input[^>]*name=\"upscale\"[^>]*>").Value;
+        Assert.Contains("checked", onInput);
+
+        await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+        }));
+
+        var offHtml = await (await client.GetAsync("/settings")).Content.ReadAsStringAsync();
+        var offInput = Regex.Match(offHtml, "<input[^>]*name=\"upscale\"[^>]*>").Value;
+        Assert.DoesNotContain("checked", offInput);
+    }
+
+    [Fact]
     public async Task Read_post_without_antiforgery_returns_bad_request()
     {
         using var factory = CreateFactory();

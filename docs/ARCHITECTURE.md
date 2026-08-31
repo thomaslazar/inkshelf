@@ -192,7 +192,11 @@ from the repo root (inside the devcontainer) must stay green, and
   screen size) is drawn small with dead margin around it - measured on device at 78%
   of the width for 1125×1600 scans. `EpubConverter.Viewport` scales the box to the
   cap; the image keeps its own pixels and the reader upscales it, so this costs no
-  bytes and no decode memory.
+  bytes and no decode memory, unless "Enlarge small pages" is on, which resamples
+  the image itself for readers that ignore the declared viewport. Its guard in
+  `EpubConverter.PageBox` and the one in `PageImageProcessor.FinishAsync` must
+  always flip together - enlarging the box alone just pads a white border around
+  an unchanged image.
 - **The reader cuts a strip off the page and we cannot measure it.** Its usable box
   is smaller than the screen the `scr` probe reports, it never scales a page to
   fit, and nothing in the EPUB reaches a fixed-layout path - a commercially

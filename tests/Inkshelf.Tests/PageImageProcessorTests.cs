@@ -189,4 +189,43 @@ public class PageImageProcessorTests
             grayscale: false, SpreadMode.Fit))[0];
         Assert.Same(bytes, r.Bytes);
     }
+
+    [Fact]
+    public async Task ProcessAsync_leaves_undersized_alone_without_upscale()
+    {
+        var r = (await PageImageProcessor.ProcessAsync(Img(1125, 1600, new JpegEncoder()), ".jpg",
+            1442, 1787, grayscale: false))[0];
+        Assert.Equal(1125, r.Width);
+        Assert.Equal(1600, r.Height);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_enlarges_undersized_with_upscale_keeping_aspect()
+    {
+        var r = (await PageImageProcessor.ProcessAsync(Img(1125, 1600, new JpegEncoder()), ".jpg",
+            1442, 1787, grayscale: false, upscale: true))[0];
+        // Fit factor is min(1442/1125, 1787/1600) = 1.116875, limited by the height.
+        Assert.Equal(1787, r.Height);
+        Assert.Equal(1256, r.Width);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_upscale_without_a_cap_changes_nothing()
+    {
+        var r = (await PageImageProcessor.ProcessAsync(Img(80, 120, new JpegEncoder()), ".jpg",
+            0, 0, grayscale: false, upscale: true))[0];
+        Assert.Equal(80, r.Width);
+        Assert.Equal(120, r.Height);
+    }
+
+    [Fact]
+    public async Task ProcessAsync_upscale_still_downscales_oversized()
+    {
+        var r = (await PageImageProcessor.ProcessAsync(Img(2644, 3713, new JpegEncoder()), ".jpg",
+            1442, 1787, grayscale: false, upscale: true))[0];
+        // Fit factor is min(1442/2644, 1787/3713) = 1787/3713, limited by the height.
+        // 2644 * 1787/3713 = 1272.5096, which rounds to 1273.
+        Assert.Equal(1787, r.Height);
+        Assert.Equal(1273, r.Width);
+    }
 }

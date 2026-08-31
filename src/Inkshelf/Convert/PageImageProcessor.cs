@@ -25,7 +25,7 @@ public static class PageImageProcessor
 
     public static async Task<ProcessedImage[]> ProcessAsync(byte[] bytes, string extension,
         int maxWidth, int maxHeight, bool grayscale, SpreadMode spread = SpreadMode.Fit,
-        bool padToBox = false, CancellationToken ct = default)
+        bool padToBox = false, bool upscale = false, CancellationToken ct = default)
     {
         var info = Image.Identify(bytes);
         // ponytail: any landscape page counts as a spread. Tighten to
@@ -43,8 +43,8 @@ public static class PageImageProcessor
             var (first, second) = spread == SpreadMode.SplitRightFirst ? (right, left) : (left, right);
             return
             [
-                await FinishAsync(first, maxWidth, maxHeight, grayscale, padToBox, ct),
-                await FinishAsync(second, maxWidth, maxHeight, grayscale, padToBox, ct),
+                await FinishAsync(first, maxWidth, maxHeight, grayscale, padToBox, upscale, ct),
+                await FinishAsync(second, maxWidth, maxHeight, grayscale, padToBox, upscale, ct),
             ];
         }
 
@@ -55,25 +55,33 @@ public static class PageImageProcessor
         // An image already exactly the box needs no padding - the common case for an
         // ordinary page, and it keeps the pass-through path below alive.
         var needsPad = padToBox && box && (w != maxWidth || h != maxHeight);
-        if (oversized || rotate || needsPad || extension == ".webp" || grayscale)
+        // `upscale && box` joins the list: an undersized page is not oversized and
+        // needs no pad once it fills the box, so without this it would take the
+        // pass-through path and never be enlarged.
+        if (oversized || rotate || needsPad || (upscale && box) || extension == ".webp" || grayscale)
         {
             var img = Image.Load(bytes);
             if (rotate) img.Mutate(x => x.Rotate(
                 spread == SpreadMode.RotateLeft ? RotateMode.Rotate270 : RotateMode.Rotate90));
-            return [await FinishAsync(img, maxWidth, maxHeight, grayscale, padToBox, ct)];
+            return [await FinishAsync(img, maxWidth, maxHeight, grayscale, padToBox, upscale, ct)];
         }
         return [new ProcessedImage(bytes, extension, w, h)];
     }
 
-    // Downscale to fit the cap (aspect preserved), optionally letterbox onto the
-    // full cap box, desaturate, encode as JPEG. Takes ownership of img.
+    // Resize to fit the cap (aspect preserved), optionally letterbox onto the full
+    // cap box, desaturate, encode as JPEG. Takes ownership of img.
+    //
+    // Without `upscale` this only ever SHRINKS: a page smaller than the cap keeps
+    // its pixels and the declared viewport does the enlarging. With it, the same
+    // fit factor is applied whichever side of 1 it falls, which is the whole point
+    // of the setting.
     private static async Task<ProcessedImage> FinishAsync(Image img,
-        int maxWidth, int maxHeight, bool grayscale, bool pad, CancellationToken ct)
+        int maxWidth, int maxHeight, bool grayscale, bool pad, bool upscale, CancellationToken ct)
     {
         using (img)
         {
             var cap = maxWidth > 0 && maxHeight > 0;
-            if (cap && (img.Width > maxWidth || img.Height > maxHeight))
+            if (cap && (upscale || img.Width > maxWidth || img.Height > maxHeight))
             {
                 var scale = Math.Min((double)maxWidth / img.Width, (double)maxHeight / img.Height);
                 img.Mutate(x => x.Resize(Math.Max(1, (int)Math.Round(img.Width * scale)),

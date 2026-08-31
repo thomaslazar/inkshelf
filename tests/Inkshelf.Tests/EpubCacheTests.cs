@@ -46,6 +46,47 @@ public class EpubCacheTests
     }
 
     [Fact]
+    public void PathFor_upscale_differs_from_plain()
+    {
+        var c = new EpubCache(TempDirPath());
+        Assert.NotEqual(
+            c.PathFor("i1", 100, 200, 1442, 1787, upscale: false),
+            c.PathFor("i1", 100, 200, 1442, 1787, upscale: true));
+    }
+
+    [Fact]
+    public void PathFor_marks_upscale_between_grayscale_and_spread()
+    {
+        var c = new EpubCache(TempDirPath());
+        Assert.EndsWith("i1-100-200-1442x1787-g-u-f.epub",
+            c.PathFor("i1", 100, 200, 1442, 1787, grayscale: true, upscale: true));
+    }
+
+    [Fact]
+    public void ListVariants_round_trips_upscale()
+    {
+        using var d = new TempDir();
+        var c = new EpubCache(d.Path);
+        File.WriteAllText(c.PathFor("i1", 100, 200, 1442, 1787, grayscale: true,
+            spread: SpreadMode.RotateLeft, scale: 98, dpr: 1.875, upscale: true), "x");
+        var v = Assert.Single(c.ListVariants());
+        Assert.True(v.Upscale);
+        Assert.Equal(SpreadMode.RotateLeft, v.Spread);
+        Assert.Equal(98, v.Scale);
+        Assert.Equal(1.875, v.Dpr);
+        Assert.True(v.Grayscale);
+    }
+
+    [Fact]
+    public void ListVariants_reads_a_name_without_the_marker_as_not_upscaled()
+    {
+        using var d = new TempDir();
+        var c = new EpubCache(d.Path);
+        File.WriteAllText(c.PathFor("i1", 100, 200, 1442, 1787, grayscale: true), "x");
+        Assert.False(Assert.Single(c.ListVariants()).Upscale);
+    }
+
+    [Fact]
     public void SweepTemp_deletes_tmp_but_keeps_epub()
     {
         using var dir = new TempDir();

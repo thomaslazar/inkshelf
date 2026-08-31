@@ -14,7 +14,9 @@ device. Which is active decides how converted comics look:
 - **standard** - ignores the declared viewport and sizes pages from the image
   itself, never enlarging one. Page scale does nothing here, and **retina must
   stay on**: with it off, images are capped at the panel divided by the pixel
-  ratio and pages come out at roughly half size.
+  ratio and pages come out at roughly half size. This is the reader "Enlarge
+  small pages" exists for: it is what fills the screen height when the scans
+  are smaller than it.
 
 16.2.0 is the last release the epos 2, vision 5 and page 2 receive, so both
 engines stay relevant. The shine (10.5.0) has neither, only its own older reader,

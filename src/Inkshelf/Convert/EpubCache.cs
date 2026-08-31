@@ -18,9 +18,10 @@ public class EpubCache
     // Dpr is emitted only when it is not 1 - see the dpr test for why it has to be
     // in the key at all.
     public string PathFor(string itemId, long size, long mtimeMs, int maxW, int maxH,
-        bool grayscale = false, SpreadMode spread = SpreadMode.Fit, int scale = 100, double dpr = 1) =>
+        bool grayscale = false, SpreadMode spread = SpreadMode.Fit, int scale = 100, double dpr = 1,
+        bool upscale = false) =>
         Path.Combine(_dir, $"{itemId}-{size}-{mtimeMs}-{maxW}x{maxH}{(grayscale ? "-g" : "")}"
-            + $"-{Letter(spread)}{(scale == 100 ? "" : $"-s{scale}")}"
+            + $"{(upscale ? "-u" : "")}-{Letter(spread)}{(scale == 100 ? "" : $"-s{scale}")}"
             + (dpr == 1 ? "" : $"-d{dpr.ToString(CultureInfo.InvariantCulture)}") + ".epub");
 
     // One letter per spread mode. Deliberately NOT reusing the letters an earlier
@@ -91,7 +92,8 @@ public class EpubCache
     // "when was this converted" wants ConvertedAtUtc.
     public sealed record CachedVariant(
         string ItemId, long Size, long MtimeMs, int MaxW, int MaxH, bool Grayscale, string Path,
-        DateTime ConvertedAtUtc, SpreadMode Spread = SpreadMode.Fit, int Scale = 100, double Dpr = 1);
+        DateTime ConvertedAtUtc, SpreadMode Spread = SpreadMode.Fit, int Scale = 100, double Dpr = 1,
+        bool Upscale = false);
 
     // Enumerate cached EPUBs, parsing each filename back into its parts. Parsed
     // RIGHT-TO-LEFT (dims, then mtime, then size) so an item id containing '-'
@@ -109,7 +111,7 @@ public class EpubCache
         var path = file.FullName;
         var name = System.IO.Path.GetFileNameWithoutExtension(path); // drops ".epub"
 
-        // Parsed in the reverse of PathFor's order: dpr, scale, spread, grayscale, dims.
+        // Parsed in the reverse of PathFor's order: dpr, scale, spread, upscale, grayscale, dims.
         var dpr = 1.0;
         var di = name.LastIndexOf("-d", StringComparison.Ordinal);
         if (di > 0 && double.TryParse(name[(di + 2)..], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedDpr))
@@ -124,6 +126,11 @@ public class EpubCache
         // that predates spread handling, and its pages are laid out differently.
         if (name.Length < 2 || name[^2] != '-' || ModeOf(name[^1]) is not { } spread) return null;
         name = name[..^2];
+
+        // Absent in every file written before this setting existed, and absent is
+        // exactly right for those: they were converted without upscaling.
+        var upscale = name.EndsWith("-u", StringComparison.Ordinal);
+        if (upscale) name = name[..^2];
 
         var grayscale = name.EndsWith("-g", StringComparison.Ordinal);
         if (grayscale) name = name[..^2];
@@ -148,6 +155,6 @@ public class EpubCache
         var itemId = name[..d3];
         if (itemId.Length == 0) return null;
         return new CachedVariant(itemId, size, mtimeMs, maxW, maxH, grayscale, path,
-            file.LastWriteTimeUtc, spread, scale, dpr);
+            file.LastWriteTimeUtc, spread, scale, dpr, upscale);
     }
 }

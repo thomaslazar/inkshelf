@@ -70,8 +70,9 @@ await Check("settings-de", De, "/settings",
     mustContain: ["Einstellungen", "Sprache", "Speichern", "Bibliotheken", "Deutsch",
                   "Doppelseiten", "linke Hälfte zuerst", "rechte Hälfte zuerst",
                   "Um 90° nach rechts drehen", "Um 90° nach links drehen", "Seitenskalierung", "Prozent.",
-                  "Bildschirmauflösung überschreiben", "Pixelverhältnis", "Automatisch", "als Lesezeichen speichern"],
-    mustNotContain: ["Save", "Language", "Split into two pages", "Page scale"]);
+                  "Bildschirmauflösung überschreiben", "Pixelverhältnis", "Automatisch", "als Lesezeichen speichern",
+                  "Kleine Seiten vergrößern"],
+    mustNotContain: ["Save", "Language", "Split into two pages", "Page scale", "Enlarge small pages"]);
 
 await Check("login-en", null, "/login",
     mustContain: ["Log in", "Password", "Username", "Log in with SSO"],
@@ -81,7 +82,8 @@ await Check("settings-en", null, "/settings",
     mustContain: ["Settings", "Language", "Save", "Libraries", "English",
                   "Two-page spreads", "left half first", "right half first",
                   "Rotate 90° to the right", "Rotate 90° to the left", "Page scale", "Percent.",
-                  "Override screen resolution", "Pixel ratio", "Automatic", "Bookmark this page"],
+                  "Override screen resolution", "Pixel ratio", "Automatic", "Bookmark this page",
+                  "Enlarge small pages"],
     mustNotContain: []);
 
 // The capability probe. Its measured rows are what an engine with no CSS.supports()

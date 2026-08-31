@@ -24,6 +24,7 @@ public static class SettingsEndpoints
             {
                 Retina = form.ContainsKey("retina"),
                 Grayscale = form.ContainsKey("grayscale"),
+                Upscale = form.ContainsKey("upscale"),
                 Lang = form["lang"].ToString(),
                 Spread = Enum.TryParse<SpreadMode>(form["spread"].ToString(), true, out var sp)
                     ? sp : DeviceSettings.Default.Spread,
