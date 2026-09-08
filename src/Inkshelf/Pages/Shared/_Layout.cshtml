@@ -126,9 +126,9 @@
                             var hidden = f.querySelector('input[name="read"]');
                             if (!btn || !hidden) { return; } // let the form post normally
                             e.preventDefault();
-                            // Remember the label so a failure can put it back. The check
-                            // mark is part of the read label, so rebuild it rather than
-                            // trying to preserve a glyph node.
+                            // Remember the label so a failure can put it back. It reads the
+                            // composed label off I18N rather than preserving a glyph node,
+                            // so the check mark can't drift out of sync with that label.
                             // ponytail: 3+ rapid taps on the SAME button can let an older
                             // response land after a newer one and briefly paint a stale
                             // label. Accepted ceiling: no cheap client-side guard fixes
@@ -152,7 +152,11 @@
                                     btn.setAttribute('title', nowRead ? I18N.untitle : I18N.title);
                                 } else if (xhr.status === 401) {
                                     // The session is gone; the user must be told rather
-                                    // than shown a button that silently did nothing.
+                                    // than shown a button that silently did nothing. Restore
+                                    // the label first: the /login navigation can be slow or
+                                    // never land (the 401 often means ABS or the network just
+                                    // went away), and the button must stay honest either way.
+                                    btn.firstChild.nodeValue = wasRead ? I18N.readLabel : I18N.markRead;
                                     window.location.href = '/login';
                                 } else {
                                     // No error UI on purpose: a button that did not change

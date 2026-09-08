@@ -733,6 +733,11 @@ public class ListingRenderTests
         Assert.Contains("\"marking\":", i18n.Value);
         Assert.Contains("\"readLabel\":", i18n.Value);
         Assert.Contains("\"markRead\":", i18n.Value);
+        // Pins the check mark and its single trailing space inside readLabel, so a
+        // regression that drops the glyph or doubles the space isn't silently
+        // uncaught. JsonSerializer writes non-ASCII as an escape sequence, so
+        // that is what shows up on the wire, not the literal character.
+        Assert.Contains("\"readLabel\":\"\\u2713 Read\"", i18n.Value);
         Assert.DoesNotContain("&#x", i18n.Value);
         Assert.DoesNotContain("&amp;", i18n.Value);
     }
