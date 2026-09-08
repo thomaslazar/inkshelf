@@ -116,6 +116,14 @@
                         // Remember the label so a failure can put it back. The check
                         // mark is part of the read label, so rebuild it rather than
                         // trying to preserve a glyph node.
+                        // ponytail: wasRead/nowRead are captured per-closure with no
+                        // request id, so 3+ rapid taps on the SAME button can let an
+                        // older response land after a newer one and briefly paint a
+                        // stale label/hidden value. Every path still ends tappable, so
+                        // this is left as is. Upgrade: a per-request sequence number
+                        // checked in onreadystatechange, not an in-flight flag - a flag
+                        // latches forever on a request that never returns (dropped
+                        // wifi) and permanently kills the button, which is worse.
                         var wasRead = hidden.value === '0';
                         btn.firstChild.nodeValue = I18N.marking;
                         var xhr = new XMLHttpRequest();
