@@ -79,6 +79,27 @@ public class ItemRenderTests
     }
 
     [Fact]
+    public async Task The_item_read_form_carries_everything_the_no_js_path_needs()
+    {
+        // Same contract as the listing's form. The two used to be separate copies
+        // of this markup, so pin both.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(Request(factory, $"/item/{ItemId}"))).Content.ReadAsStringAsync();
+
+        var form = System.Text.RegularExpressions.Regex.Match(html, "<form class=\"read-form\"[\\s\\S]*?</form>");
+        Assert.True(form.Success, "Expected a read form on the rendered item page.");
+        Assert.Contains("method=\"post\"", form.Value);
+        Assert.Contains($"action=\"/read/{ItemId}\"", form.Value);
+        Assert.Contains("__RequestVerificationToken", form.Value);
+        Assert.Contains("name=\"read\" value=\"1\"", form.Value);
+        Assert.Contains($"name=\"return\" value=\"/item/{ItemId}\"", form.Value);
+    }
+
+    [Fact]
     public async Task Shows_metadata_files_and_cached_primary()
     {
         using var cacheDir = new TempDir();

@@ -1,0 +1,17 @@
+@model Inkshelf.Pages.ReadButtonModel
+<form class="read-form" method="post" action="/read/@Model.ItemId">
+    @Html.AntiForgeryToken()
+    @* The ABSOLUTE desired state, not a toggle. That is what makes a retry after
+       a failed request safe: tapping again re-sends the same intent instead of
+       flipping the book back. *@
+    <input type="hidden" name="read" value="@(Model.Read ? "0" : "1")" />
+    <input type="hidden" name="return" value="@Model.ReturnUrl" />
+    @if (Model.Read)
+    {
+        <button type="submit" class="btn read-btn" title="@L["Mark as unread"]">&#10003; @L["Read"]</button>
+    }
+    else
+    {
+        <button type="submit" class="btn read-btn" title="@L["Mark as read"]">@L["Mark read"]</button>
+    }
+</form>

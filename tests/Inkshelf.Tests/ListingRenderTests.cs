@@ -380,6 +380,27 @@ public class ListingRenderTests
     }
 
     [Fact]
+    public async Task The_listing_read_form_carries_everything_the_no_js_path_needs()
+    {
+        // With JS off this form IS the feature: method, action, the antiforgery
+        // token and the absolute desired state all have to be in the markup.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        var form = Regex.Match(html, "<form class=\"read-form\"[\\s\\S]*?</form>");
+        Assert.True(form.Success, "Expected a read form in the rendered listing.");
+        Assert.Contains("method=\"post\"", form.Value);
+        Assert.Contains($"action=\"/read/{ItemId}\"", form.Value);
+        Assert.Contains("__RequestVerificationToken", form.Value);
+        Assert.Contains("name=\"read\" value=\"1\"", form.Value);
+        Assert.Contains("name=\"return\"", form.Value);
+    }
+
+    [Fact]
     public async Task Read_row_shows_checked_toggle_that_unmarks()
     {
         using var cacheDir = new TempDir();

@@ -57,19 +57,7 @@
                 {
                     <partial name="_ConvertAction" model="new Inkshelf.Pages.ConvertActionModel(item.Id, null, Model.State, Model.ReturnUrl, Model.EpubDownloaded, Ticket: Model.EpubTicket)" />
                 }
-                <form class="read-form" method="post" action="/read/@item.Id">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="read" value="@(Model.Read ? "0" : "1")" />
-                    <input type="hidden" name="return" value="@Model.ReturnUrl" />
-                    @if (Model.Read)
-                    {
-                        <button type="submit" class="btn read-btn" title="@L["Mark as unread"]">&#10003; @L["Read"]</button>
-                    }
-                    else
-                    {
-                        <button type="submit" class="btn read-btn" title="@L["Mark as read"]">@L["Mark read"]</button>
-                    }
-                </form>
+                <partial name="_ReadButton" model="new Inkshelf.Pages.ReadButtonModel(item.Id, Model.Read, Model.ReturnUrl)" />
             </div>
         }
     </div>
