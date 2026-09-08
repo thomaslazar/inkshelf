@@ -283,6 +283,39 @@ public class ListingRenderTests
         Assert.DoesNotContain("class=\"btn regen\"", html);
     }
 
+    [Fact]
+    public async Task The_download_anchor_is_marked_for_the_return_after_download_script()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        var anchor = Regex.Match(html, "<a [^>]*href=\"/download/[^\"]*\"[^>]*>");
+        Assert.True(anchor.Success, "Expected a download anchor in the rendered listing.");
+        Assert.Contains("data-dlreturn", anchor.Value);
+    }
+
+    [Fact]
+    public async Task A_convert_anchor_that_never_navigates_is_not_marked()
+    {
+        // The poller calls preventDefault on data-warm anchors, so a record stored
+        // there would never be spent and would bounce the reader on their next
+        // deliberate navigation.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        var convert = PrimaryConvertAnchor(html);
+        Assert.Contains("data-warm", convert);
+        Assert.DoesNotContain("data-dlreturn", convert);
+    }
+
     // Task 6: row-state must be keyed on the SAME RenderTarget (scr probe + the
     // inkshelf_settings cookie's grayscale flag) the real conversion uses - a
     // grayscale-variant cache file only counts as "converted" when the request

@@ -168,11 +168,11 @@ public class ItemRenderTests
         Assert.DoesNotContain("&#8595;", secondary.Groups[1].Value);
 
         // Raw Download arrow: primary (no file=) shows it, the pdf's (file=2) does not.
-        var primaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?t=[^\"]*\">([^<]*)</a>");
+        var primaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?t=[^\"]*\"[^>]*>([^<]*)</a>");
         Assert.True(primaryDownload.Success, "Expected the primary file's download anchor.");
         Assert.Contains("&#8595;", primaryDownload.Groups[1].Value);
 
-        var secondaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?file=2&amp;t=[^\"]*\">([^<]*)</a>");
+        var secondaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?file=2&amp;t=[^\"]*\"[^>]*>([^<]*)</a>");
         Assert.True(secondaryDownload.Success, "Expected the non-primary file's download anchor.");
         Assert.DoesNotContain("&#8595;", secondaryDownload.Groups[1].Value);
     }

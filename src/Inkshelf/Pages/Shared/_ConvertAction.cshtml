@@ -13,7 +13,10 @@
     @switch (Model.State)
     {
         case ConvertRowState.Cached:
-            <a class="btn" href="@baseHref" title="@L["Already converted - downloads right away"]">@if (Model.Downloaded) { <text>EPUB &#8595;</text> } else { <text>EPUB</text> }</a>
+            @* The ONLY convert state that serves a file. The data-warm states are
+               intercepted by the poller and never navigate, so arming them would
+               leave a stored record that nothing spends. *@
+            <a class="btn" href="@baseHref" data-dlreturn title="@L["Already converted - downloads right away"]">@if (Model.Downloaded) { <text>EPUB &#8595;</text> } else { <text>EPUB</text> }</a>
             break;
         case ConvertRowState.Converting:
             <a class="btn" href="@baseHref" data-warm data-poll data-why="@whyHref">@L["Converting…"]</a>
