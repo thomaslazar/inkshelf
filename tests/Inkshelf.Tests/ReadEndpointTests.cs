@@ -135,6 +135,56 @@ public class ReadEndpointTests
     }
 
     [Fact]
+    public async Task Xhr_in_the_form_body_is_ignored_and_still_redirects()
+    {
+        // xhr binds from the query string only. A form field of the same name
+        // must not be able to opt into the no-redirect response.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        var rec = new Recorder();
+        using var factory = CreateFactory(MakeStub(rec), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var token = await GetAntiforgeryTokenAsync(client);
+        var req = new HttpRequestMessage(HttpMethod.Post, $"/read/{ItemId}")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["read"] = "1",
+                ["return"] = "/converted",
+                ["xhr"] = "1",
+            }),
+        };
+        req.Headers.Add("Cookie", SessionCookie(factory));
+        var res = await client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.Redirect, res.StatusCode);
+        Assert.Equal(1, rec.Patches);
+    }
+
+    [Fact]
+    public async Task Xhr_read_without_a_valid_antiforgery_token_returns_bad_request()
+    {
+        // xhr=1 must not bypass antiforgery validation.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        var rec = new Recorder();
+        using var factory = CreateFactory(MakeStub(rec), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var req = new HttpRequestMessage(HttpMethod.Post, $"/read/{ItemId}?xhr=1")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["read"] = "1" }),
+        };
+        req.Headers.Add("Cookie", SessionCookie(factory));
+        var res = await client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+        Assert.Equal(0, rec.Patches);
+    }
+
+    [Fact]
     public async Task Xhr_read_with_token_but_no_session_returns_401_not_a_redirect()
     {
         // Finding 1: an expired session must not let an XHR read follow a 302 to
