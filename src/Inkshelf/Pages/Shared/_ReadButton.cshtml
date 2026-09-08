@@ -12,10 +12,12 @@
     <input type="hidden" name="return" value="@(Model.ReturnUrl)#item-@Model.ItemId" />
     @if (Model.Read)
     {
-        <button type="submit" class="btn read-btn" title="@L["Mark as unread"]">&#10003; @L["Read"]</button>
+        <button type="submit" class="btn read-btn" title="@L["Mark as unread"]"
+                data-title="@L["Mark as read"]" data-untitle="@L["Mark as unread"]">&#10003; @L["Read"]</button>
     }
     else
     {
-        <button type="submit" class="btn read-btn" title="@L["Mark as read"]">@L["Mark read"]</button>
+        <button type="submit" class="btn read-btn" title="@L["Mark as read"]"
+                data-title="@L["Mark as read"]" data-untitle="@L["Mark as unread"]">@L["Mark read"]</button>
     }
 </form>

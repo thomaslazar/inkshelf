@@ -714,4 +714,26 @@ public class ListingRenderTests
 
         Assert.DoesNotContain("item-", PrimaryConvertAnchor(html));
     }
+
+    [Fact]
+    public async Task The_layout_ships_the_read_labels_as_json_not_entities()
+    {
+        // Razor HTML-encodes localizer output, so a label assigned via nodeValue
+        // would show "&#x2026;" literally. The I18N object exists to dodge that;
+        // these two strings have to travel through it like the convert ones.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        var i18n = Regex.Match(html, "var I18N = \\{.*\\};");
+        Assert.True(i18n.Success, "Expected the I18N object in the layout.");
+        Assert.Contains("\"marking\":", i18n.Value);
+        Assert.Contains("\"read\":", i18n.Value);
+        Assert.Contains("\"markRead\":", i18n.Value);
+        Assert.DoesNotContain("&#x", i18n.Value);
+        Assert.DoesNotContain("&amp;", i18n.Value);
+    }
 }

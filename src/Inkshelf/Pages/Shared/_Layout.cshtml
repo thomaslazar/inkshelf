@@ -41,7 +41,7 @@
     // JSON-serialised, not localizer lookups inside quotes: Razor HTML-encodes
     // localizer output, so an ellipsis/quote/ampersand would arrive as an entity
     // and show literally when the JS assigns it via nodeValue. JSON is JS-safe.
-    var I18N = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { convert = L["Convert"], converting = L["Converting…"], retry = L["Convert (retry)"] }));
+    var I18N = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { convert = L["Convert"], converting = L["Converting…"], retry = L["Convert (retry)"], marking = L["Marking…"], read = L["Read"], markRead = L["Mark read"] }));
     (function () {
         try {
             var POLL_MS = 5000;
@@ -96,6 +96,61 @@
                         poll(a); // already converting server-side → resume
                     }
                 })(links[i]);
+            }
+        } catch (e) {}
+    })();
+    /* Mark read without a reload. The form below stays a real form: with JS off it
+       posts and comes back to the row via the #item- anchor in its return field.
+       With JS we post the same fields ourselves and repaint the button.
+       ES5 + try/catch for old e-readers, same as the poller above. */
+    (function () {
+        try {
+            var forms = document.querySelectorAll('form.read-form');
+            for (var i = 0; i < forms.length; i++) {
+                (function (f) {
+                    f.addEventListener('submit', function (e) {
+                        var btn = f.querySelector('button.read-btn');
+                        var hidden = f.querySelector('input[name="read"]');
+                        if (!btn || !hidden) { return; } // let the form post normally
+                        e.preventDefault();
+                        // Remember the label so a failure can put it back. The check
+                        // mark is part of the read label, so rebuild it rather than
+                        // trying to preserve a glyph node.
+                        var wasRead = hidden.value === '0';
+                        btn.firstChild.nodeValue = I18N.marking;
+                        var xhr = new XMLHttpRequest();
+                        var url = f.getAttribute('action') + '?xhr=1';
+                        xhr.open('POST', url);
+                        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                        xhr.onreadystatechange = function () {
+                            if (xhr.readyState !== 4) { return; }
+                            if (xhr.status === 204 || xhr.status === 200) {
+                                // Flip to the state we just asked for, and flip the
+                                // hidden field so the next tap asks for the opposite.
+                                var nowRead = !wasRead;
+                                btn.firstChild.nodeValue = nowRead ? '✓ ' + I18N.read : I18N.markRead;
+                                hidden.value = nowRead ? '0' : '1';
+                                btn.setAttribute('title', nowRead ? btn.getAttribute('data-untitle') || '' : btn.getAttribute('data-title') || '');
+                            } else {
+                                // No error UI on purpose: a button that did not change
+                                // IS the signal, and the form posts an absolute state
+                                // so tapping again is safe.
+                                btn.firstChild.nodeValue = wasRead ? '✓ ' + I18N.read : I18N.markRead;
+                            }
+                        };
+                        xhr.send(serialize(f));
+                    });
+                })(forms[i]);
+            }
+            function serialize(f) {
+                var parts = [];
+                var els = f.elements;
+                for (var j = 0; j < els.length; j++) {
+                    var el = els[j];
+                    if (!el.name || el.disabled) { continue; }
+                    parts.push(encodeURIComponent(el.name) + '=' + encodeURIComponent(el.value));
+                }
+                return parts.join('&');
             }
         } catch (e) {}
     })();
