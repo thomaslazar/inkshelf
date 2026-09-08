@@ -731,7 +731,7 @@ public class ListingRenderTests
         var i18n = Regex.Match(html, "var I18N = \\{.*\\};");
         Assert.True(i18n.Success, "Expected the I18N object in the layout.");
         Assert.Contains("\"marking\":", i18n.Value);
-        Assert.Contains("\"read\":", i18n.Value);
+        Assert.Contains("\"readLabel\":", i18n.Value);
         Assert.Contains("\"markRead\":", i18n.Value);
         Assert.DoesNotContain("&#x", i18n.Value);
         Assert.DoesNotContain("&amp;", i18n.Value);
