@@ -109,48 +109,60 @@
             for (var i = 0; i < forms.length; i++) {
                 (function (f) {
                     f.addEventListener('submit', function (e) {
-                        var btn = f.querySelector('button.read-btn');
-                        var hidden = f.querySelector('input[name="read"]');
-                        if (!btn || !hidden) { return; } // let the form post normally
-                        e.preventDefault();
-                        // Remember the label so a failure can put it back. The check
-                        // mark is part of the read label, so rebuild it rather than
-                        // trying to preserve a glyph node.
-                        // ponytail: wasRead/nowRead are captured per-closure with no
-                        // request id, so 3+ rapid taps on the SAME button can let an
-                        // older response land after a newer one and briefly paint a
-                        // stale label/hidden value. Every path still ends tappable, so
-                        // this is left as is. Upgrade: a per-request sequence number
-                        // checked in onreadystatechange, not an in-flight flag - a flag
-                        // latches forever on a request that never returns (dropped
-                        // wifi) and permanently kills the button, which is worse.
-                        var wasRead = hidden.value === '0';
-                        btn.firstChild.nodeValue = I18N.marking;
-                        var xhr = new XMLHttpRequest();
-                        var url = f.getAttribute('action') + '?xhr=1';
-                        xhr.open('POST', url);
-                        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                        xhr.onreadystatechange = function () {
-                            if (xhr.readyState !== 4) { return; }
-                            if (xhr.status === 204 || xhr.status === 200) {
-                                // Flip to the state we just asked for, and flip the
-                                // hidden field so the next tap asks for the opposite.
-                                var nowRead = !wasRead;
-                                btn.firstChild.nodeValue = nowRead ? '✓ ' + I18N.read : I18N.markRead;
-                                hidden.value = nowRead ? '0' : '1';
-                                btn.setAttribute('title', nowRead ? btn.getAttribute('data-untitle') || '' : btn.getAttribute('data-title') || '');
-                            } else if (xhr.status === 401) {
-                                // The session is gone; the user must be told rather
-                                // than shown a button that silently did nothing.
-                                window.location.href = '/login';
-                            } else {
-                                // No error UI on purpose: a button that did not change
-                                // IS the signal, and the form posts an absolute state
-                                // so tapping again is safe.
-                                btn.firstChild.nodeValue = wasRead ? '✓ ' + I18N.read : I18N.markRead;
-                            }
-                        };
-                        xhr.send(serialize(f));
+                        // The outer try/catch around this whole block only covers the
+                        // binding pass, not a later tap: JS try/catch is dynamic, not
+                        // lexical, so it does not protect code that runs inside this
+                        // handler. Without a try here, a throw after preventDefault()
+                        // below would swallow the real post and leave a dead button.
+                        try {
+                            var btn = f.querySelector('button.read-btn');
+                            var hidden = f.querySelector('input[name="read"]');
+                            if (!btn || !hidden) { return; } // let the form post normally
+                            e.preventDefault();
+                            // Remember the label so a failure can put it back. The check
+                            // mark is part of the read label, so rebuild it rather than
+                            // trying to preserve a glyph node.
+                            // ponytail: wasRead/nowRead are captured per-closure with no
+                            // request id, so 3+ rapid taps on the SAME button can let an
+                            // older response land after a newer one and briefly paint a
+                            // stale label/hidden value. Every path still ends tappable, so
+                            // this is left as is. Upgrade: a per-request sequence number
+                            // checked in onreadystatechange, not an in-flight flag - a flag
+                            // latches forever on a request that never returns (dropped
+                            // wifi) and permanently kills the button, which is worse.
+                            var wasRead = hidden.value === '0';
+                            btn.firstChild.nodeValue = I18N.marking;
+                            var xhr = new XMLHttpRequest();
+                            var url = f.getAttribute('action') + '?xhr=1';
+                            xhr.open('POST', url);
+                            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                            xhr.onreadystatechange = function () {
+                                if (xhr.readyState !== 4) { return; }
+                                if (xhr.status === 204 || xhr.status === 200) {
+                                    // Flip to the state we just asked for, and flip the
+                                    // hidden field so the next tap asks for the opposite.
+                                    var nowRead = !wasRead;
+                                    btn.firstChild.nodeValue = nowRead ? '✓ ' + I18N.read : I18N.markRead;
+                                    hidden.value = nowRead ? '0' : '1';
+                                    btn.setAttribute('title', nowRead ? btn.getAttribute('data-untitle') || '' : btn.getAttribute('data-title') || '');
+                                } else if (xhr.status === 401) {
+                                    // The session is gone; the user must be told rather
+                                    // than shown a button that silently did nothing.
+                                    window.location.href = '/login';
+                                } else {
+                                    // No error UI on purpose: a button that did not change
+                                    // IS the signal, and the form posts an absolute state
+                                    // so tapping again is safe.
+                                    btn.firstChild.nodeValue = wasRead ? '✓ ' + I18N.read : I18N.markRead;
+                                }
+                            };
+                            xhr.send(serialize(f));
+                        } catch (err) {
+                            // f.submit() does not re-fire the 'submit' event (per spec),
+                            // so this cannot recurse. It is the same fallback a missing
+                            // btn/hidden already takes above.
+                            f.submit();
+                        }
                     });
                 })(forms[i]);
             }
