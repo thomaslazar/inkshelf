@@ -139,6 +139,10 @@
                                 btn.firstChild.nodeValue = nowRead ? '✓ ' + I18N.read : I18N.markRead;
                                 hidden.value = nowRead ? '0' : '1';
                                 btn.setAttribute('title', nowRead ? btn.getAttribute('data-untitle') || '' : btn.getAttribute('data-title') || '');
+                            } else if (xhr.status === 401) {
+                                // The session is gone; the user must be told rather
+                                // than shown a button that silently did nothing.
+                                window.location.href = '/login';
                             } else {
                                 // No error UI on purpose: a button that did not change
                                 // IS the signal, and the form posts an absolute state

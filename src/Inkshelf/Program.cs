@@ -134,14 +134,19 @@ app.UseStaticFiles();
 // AbsUnauthorizedException instead. Pages send the user to /login; endpoints that
 // answer with a file or bare text get a 401 in plain text instead, because a
 // download manager following that redirect would save the login page as the book
-// (see NonHtmlEndpoint).
+// (see NonHtmlEndpoint). An xhr=1 request gets the same 401 treatment even
+// though its endpoint carries no NonHtmlEndpoint metadata: XMLHttpRequest
+// follows a 302 to /login transparently and turns it into a GET that returns
+// the login page with status 200, which the read script reads as success and
+// reports a book marked read that was never touched.
 app.Use(async (ctx, next) =>
 {
     try { await next(); }
     catch (Exception ex) when (ex is AbsAuthException or AbsUnauthorizedException)
     {
         if (ctx.Response.HasStarted) return;
-        if (ctx.GetEndpoint()?.Metadata.GetMetadata<NonHtmlEndpoint>() is null)
+        if (ctx.GetEndpoint()?.Metadata.GetMetadata<NonHtmlEndpoint>() is null
+            && ctx.Request.Query["xhr"] != "1")
         {
             ctx.Response.Redirect("/login");
             return;

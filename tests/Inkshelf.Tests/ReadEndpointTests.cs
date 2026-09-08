@@ -135,6 +135,60 @@ public class ReadEndpointTests
     }
 
     [Fact]
+    public async Task Xhr_read_with_token_but_no_session_returns_401_not_a_redirect()
+    {
+        // Finding 1: an expired session must not let an XHR read follow a 302 to
+        // /login (200, no-JS-visible body) and have the script read that as
+        // success. The auth middleware must answer 401 plain text for xhr=1
+        // instead, same as any other NonHtmlEndpoint.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        var rec = new Recorder();
+        using var factory = CreateFactory(MakeStub(rec), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var token = await GetAntiforgeryTokenAsync(client);
+        var req = new HttpRequestMessage(HttpMethod.Post, $"/read/{ItemId}?xhr=1")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["read"] = "1",
+            }),
+        };
+        var res = await client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
+        Assert.Equal(0, rec.Patches);
+    }
+
+    [Fact]
+    public async Task Non_xhr_read_with_token_but_no_session_still_redirects_to_login()
+    {
+        // Pinned alongside the test above: without xhr=1 the existing redirect
+        // behaviour must be unchanged.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        var rec = new Recorder();
+        using var factory = CreateFactory(MakeStub(rec), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var token = await GetAntiforgeryTokenAsync(client);
+        var req = new HttpRequestMessage(HttpMethod.Post, $"/read/{ItemId}")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+                ["read"] = "1",
+            }),
+        };
+        var res = await client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.Redirect, res.StatusCode);
+        Assert.Equal("/login", res.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
     public async Task An_offsite_return_is_still_rejected_by_the_guard()
     {
         // The open-redirect guard predates this change and must survive it.
