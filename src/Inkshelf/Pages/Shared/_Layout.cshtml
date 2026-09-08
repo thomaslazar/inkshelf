@@ -230,8 +230,13 @@
                     // only ever suppress a correction that should have happened.
                     // want.charAt(1) !== '/' rules out a protocol-relative path
                     // (a doubled leading slash), which location.replace would
-                    // send off-origin.
-                    if (want !== here() && want.charAt(0) === '/' && want.charAt(1) !== '/') {
+                    // send off-origin. want.charAt(1) !== '\\' closes the same
+                    // category for the backslash form the URL parser folds to
+                    // '/' in the authority position. Unreachable from the only
+                    // writer (location.pathname never carries a raw backslash,
+                    // and search can never be the second character), so this is
+                    // hardening rather than a live hole.
+                    if (want !== here() && want.charAt(0) === '/' && want.charAt(1) !== '/' && want.charAt(1) !== '\\') {
                         window.location.replace(want);
                     }
                 }

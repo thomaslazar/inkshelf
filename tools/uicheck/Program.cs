@@ -404,11 +404,16 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
 
         // Arming check, BEFORE the correction half below seeds its own record:
         // click a real data-dlreturn anchor on the listing and confirm the
-        // page's own listener wrote it, with the value proving here() ran at
-        // click time rather than bind time. Cleared afterwards so this cannot
-        // leak a record into the correction check and mask or corrupt it.
-        var hasAnchor = await retPage.EvaluateAsync<bool>(
-            "document.querySelector('a[data-dlreturn]') !== null");
+        // page's own listener wrote it, with the value matching the listing's
+        // own pathname + search. This does not prove here() ran at click time
+        // rather than bind time - the two happen on the same document with no
+        // intervening URL change, so either timing yields the same string.
+        // Cleared afterwards so this cannot leak a record into the correction
+        // check and mask or corrupt it.
+        var hasAnchor = await retPage.EvaluateAsync<bool>(@"(function () {
+            var els = document.querySelectorAll('a[data-dlreturn]');
+            return els.length > 0;
+        })()");
         if (!hasAnchor)
         {
             failures.Add("dlreturn-arm: no a[data-dlreturn] anchor on the listing");
@@ -416,7 +421,8 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         else
         {
             await retPage.EvaluateAsync(@"(function () {
-                var a = document.querySelector('a[data-dlreturn]');
+                var els = document.querySelectorAll('a[data-dlreturn]');
+                var a = els[els.length - 1];
                 a.addEventListener('click', function (e) { e.preventDefault(); });
                 a.click();
             })()");
@@ -457,8 +463,13 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         // No-op case: a record naming the page we are already on must not navigate.
         // The URL comparison alone does not prove that: a wrongly-taken
         // location.replace(want) would target the page we are already on, so it
-        // would hold either way. The load-bearing assertion is the one below it,
-        // that the record was cleared.
+        // would hold either way. Nor does the record-cleared assertion below it:
+        // clear-before-decide runs removeItem regardless of which way the
+        // comparison goes, so it holds in both worlds too. What it actually
+        // proves is that the script ran and spent the record on a plain load.
+        // Distinguishing a wrongly-taken same-URL replace would need a load
+        // counter, deliberately not built - clear-before-decide already makes a
+        // redirect loop structurally impossible, so the machinery is not worth it.
         await retPage.EvaluateAsync(
             "sessionStorage.setItem('inkshelf.dlreturn', location.pathname + location.search)");
         var beforeReload = retPage.Url;
