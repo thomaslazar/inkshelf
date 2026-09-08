@@ -222,6 +222,16 @@ git commit -m "feat: add a return-to-the-list-after-download setting"
 
 ### Task 2: Mark the links that serve a file
 
+> **Superseded during implementation.** This task's premise was wrong: it assumed
+> the `data-warm` convert anchors never navigate. They do, as soon as the poller
+> marks one `data-ready="1"`, at which point its click handler stops calling
+> `preventDefault`. So the steps below that mark "the Cached EPUB anchor only",
+> and the test asserting a `data-warm` anchor is NOT marked, were both replaced:
+> every download anchor is marked, and the layout script skips writing a record
+> while a `data-warm` anchor is not yet ready. See the spec's "Which links are
+> armed" section for the corrected rule. The steps are left as written for the
+> record; do not follow them as-is.
+
 **Files:**
 - Modify: `src/Inkshelf/Pages/Shared/_ItemRow.cshtml:55`
 - Modify: `src/Inkshelf/Pages/Item.cshtml:99`

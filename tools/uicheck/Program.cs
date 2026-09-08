@@ -448,10 +448,19 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
             "document.querySelector('a[data-warm]').getAttribute('data-ready') !== '1'");
         if (!notReady)
         {
-            failures.Add("dlreturn-notready: expected \"Corrupt Archive\" to still be Failed (data-warm, not data-ready)");
+            failures.Add("dlreturn-notready: the \"Corrupt Archive\" convert anchor is already data-ready, so this check cannot exercise the not-ready skip");
         }
         else
         {
+            // Also assert the anchor IS armed. Without this the no-record
+            // assertion below would pass just as happily if the marker or the
+            // whole script had gone missing, i.e. it would stop testing the skip
+            // and start testing nothing.
+            var warmArmed = await retPage.EvaluateAsync<bool>(
+                "document.querySelector('a[data-warm]').hasAttribute('data-dlreturn')");
+            if (!warmArmed)
+                failures.Add("dlreturn-notready: the data-warm anchor carries no data-dlreturn, so the not-ready skip is untested");
+
             await retPage.Locator("a[data-warm]").First.ClickAsync();
             var storedOnNotReady = await retPage.EvaluateAsync<string?>(
                 "sessionStorage.getItem('inkshelf.dlreturn')");

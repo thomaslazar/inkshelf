@@ -151,8 +151,12 @@ per book.
 
 - The setting round-trips through the cookie wire format and defaults to off.
 - With the setting off, no script block is rendered.
-- The marker appears on the raw Download anchor and on the Cached EPUB anchor
-  regardless of the setting, and NEVER on a `data-warm` convert anchor.
+- The marker appears on every download anchor regardless of the setting: the raw
+  Download anchor, the Cached EPUB anchor, and the `data-warm` convert anchors.
+  The skip for a not-yet-ready `data-warm` anchor lives in the layout script,
+  not in the markup.
+- uicheck: clicking a `data-warm` anchor that is not yet `data-ready` stores no
+  record, since that click is intercepted and never navigates.
 - uicheck, in a real browser: with the setting on, seed `sessionStorage` with a
   record naming page A, load page B, and assert the browser ends up on page A.
   A download cannot be made to misbehave in headless Chromium, but the

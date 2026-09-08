@@ -247,6 +247,11 @@
                     // backslash anywhere in the path, not only at position 1,
                     // can fold into a protocol-relative authority once the URL
                     // parser strips a tab or newline elsewhere in the string.
+                    // That tab case is not itself closed here, and does not need
+                    // to be: the only writer is location.pathname + search, and
+                    // the parser has already percent-encoded any tab by then, so
+                    // a record can never carry one. This is hardening against a
+                    // future writer, not a live hole.
                     if (want !== here() && want.charAt(0) === '/' && want.charAt(1) !== '/' && want.indexOf('\\') < 0) {
                         window.location.replace(want);
                     }
