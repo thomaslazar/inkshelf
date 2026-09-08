@@ -104,9 +104,13 @@ from the repo root (inside the devcontainer) must stay green, and
 - **Razor Pages for HTML, minimal APIs for streams and actions.** Keep the split.
 - **`LibraryLinks` is the single URL authority.** Don't rebuild library URLs in a
   view.
-- **Near-zero JS.** Only two inline scripts exist (`_Layout.cshtml`: the screen
-  probe, the convert-warm XHR). Anything touching them needs a real-device test
-  before merge. CSS stays defensive - no `object-fit`, no flex `gap`.
+- **Near-zero JS.** Three inline scripts exist (`_Layout.cshtml`: the screen
+  probe, the convert-warm XHR, the mark-read submit). Anything touching them
+  needs a real-device test before merge. CSS stays defensive - no `object-fit`,
+  no flex `gap`. The mark-read form always posts the absolute desired state
+  (`read=1` or `read=0`), never a toggle: the script can't tell a lost response
+  from a request that never arrived, so a retry has to resend the same intent
+  rather than flip it.
 - **No device-class detection; layout branches on width alone.** `@media
   (monochrome)` reports 0 on e-ink, `(update: slow)` postdates the target engine,
   and UA sniffing only ever knows the readers we enumerated - this project has
