@@ -7,7 +7,7 @@
     // Prefer the arrays: they separate multiple authors/series correctly and never
     // mistake a comma inside one name for a separator.
 }
-<div class="item">
+<div class="item" id="item-@item.Id">
     <a class="cover-link" href="/item/@item.Id">
     @if (!string.IsNullOrEmpty(item.Media?.CoverPath))
     {

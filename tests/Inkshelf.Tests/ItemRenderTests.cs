@@ -96,7 +96,7 @@ public class ItemRenderTests
         Assert.Contains($"action=\"/read/{ItemId}\"", form.Value);
         Assert.Contains("__RequestVerificationToken", form.Value);
         Assert.Contains("name=\"read\" value=\"1\"", form.Value);
-        Assert.Contains($"name=\"return\" value=\"/item/{ItemId}\"", form.Value);
+        Assert.Contains($"name=\"return\" value=\"/item/{ItemId}#item-{ItemId}\"", form.Value);
     }
 
     [Fact]

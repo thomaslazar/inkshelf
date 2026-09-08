@@ -680,4 +680,38 @@ public class ListingRenderTests
         Assert.NotNull(ticket);
         Assert.Equal("newacc", ticket!.Access);
     }
+
+    [Fact]
+    public async Task The_listing_row_is_anchorable_and_the_read_form_returns_to_it()
+    {
+        // With JS off, marking read reloads. The fragment is what puts the reader
+        // back on the row they tapped instead of the top of the listing.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        Assert.Contains($"id=\"item-{ItemId}\"", html);
+        var form = Regex.Match(html, "<form class=\"read-form\"[\\s\\S]*?</form>");
+        Assert.True(form.Success, "Expected a read form in the rendered listing.");
+        Assert.Contains($"name=\"return\" value=\"/library/{LibId}#item-{ItemId}\"", form.Value);
+    }
+
+    [Fact]
+    public async Task The_convert_href_does_not_carry_the_row_anchor()
+    {
+        // The anchor belongs to the read form alone. ItemRowModel.ReturnUrl feeds
+        // the convert links too, so appending it there would put a fragment on
+        // every convert href.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        Assert.DoesNotContain("item-", PrimaryConvertAnchor(html));
+    }
 }
