@@ -163,8 +163,10 @@ In `src/Inkshelf/Pages/Shared/_ItemRow.cshtml`, replace the whole `<form class="
 In `src/Inkshelf/Pages/Item.cshtml`, replace the whole `<form class="read-form">…</form>` block with:
 
 ```razor
-<partial name="_ReadButton" model="new Inkshelf.Pages.ReadButtonModel(Model.Id, Model.Read, $"/item/{Model.Id}")" />
+<partial name="_ReadButton" model='new Inkshelf.Pages.ReadButtonModel(Model.Id, Model.Read, $"/item/{Model.Id}")' />
 ```
+
+Note the SINGLE-quoted `model=` attribute. Razor cannot parse a nested `$"..."` inside a double-quoted attribute value: the inner quote closes the attribute. The listing call site above needs no such treatment because it interpolates nothing.
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
