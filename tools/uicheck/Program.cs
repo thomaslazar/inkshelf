@@ -375,9 +375,11 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
     await noJsCtx.CloseAsync();
 
     // Return-after-download: a download cannot be made to misbehave in headless
-    // Chromium, so the arming half is not reproducible here. The CORRECTING half
-    // is where the bugs live and it is testable directly: seed the record the
-    // script would have written, land somewhere else, and assert it sends us back.
+    // Chromium, so making it misbehave is not reproducible here. But the click
+    // handler that ARMS the record is a plain DOM listener and the listing this
+    // check already loads has real a[data-dlreturn] anchors, so that half is
+    // checked too - a listener that never binds, a selector that stops matching,
+    // or here() moved to bind time would otherwise be caught by nothing.
     // Needs its own BrowserContext because the setting rides in a cookie, and its
     // own login because cookies do not cross contexts.
     var retCtx = await browser.NewContextAsync(new()
@@ -398,6 +400,33 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         await retPage.ClickAsync("a[href^='/library/']");
         await retPage.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 15000 });
         var listingUrl = retPage.Url;
+        var listingPath = await retPage.EvaluateAsync<string>("location.pathname + location.search");
+
+        // Arming check, BEFORE the correction half below seeds its own record:
+        // click a real data-dlreturn anchor on the listing and confirm the
+        // page's own listener wrote it, with the value proving here() ran at
+        // click time rather than bind time. Cleared afterwards so this cannot
+        // leak a record into the correction check and mask or corrupt it.
+        var hasAnchor = await retPage.EvaluateAsync<bool>(
+            "document.querySelector('a[data-dlreturn]') !== null");
+        if (!hasAnchor)
+        {
+            failures.Add("dlreturn-arm: no a[data-dlreturn] anchor on the listing");
+        }
+        else
+        {
+            await retPage.EvaluateAsync(@"(function () {
+                var a = document.querySelector('a[data-dlreturn]');
+                a.addEventListener('click', function (e) { e.preventDefault(); });
+                a.click();
+            })()");
+            var armed = await retPage.EvaluateAsync<string?>(
+                "sessionStorage.getItem('inkshelf.dlreturn')");
+            if (armed != listingPath)
+                failures.Add($"dlreturn-arm: expected record \"{listingPath}\", got \"{armed ?? "null"}\"");
+            await retPage.EvaluateAsync("sessionStorage.removeItem('inkshelf.dlreturn')");
+        }
+
         await retPage.EvaluateAsync(
             "sessionStorage.setItem('inkshelf.dlreturn', location.pathname + location.search)");
 
@@ -405,7 +434,17 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         // script to correct it - a bare load-state wait here would race the
         // location.replace and make the assertion flaky.
         await retPage.GotoAsync(baseUrl + "/");
-        await retPage.WaitForURLAsync(u => u == listingUrl, new() { Timeout = 15000 });
+        try
+        {
+            await retPage.WaitForURLAsync(u => u == listingUrl, new() { Timeout = 15000 });
+        }
+        catch (TimeoutException)
+        {
+            // Swallowed here on purpose: fall through to the explicit check below,
+            // which names both the expected and actual URL. Otherwise this would
+            // throw straight to the outer catch and the failure would surface as
+            // a bare Playwright timeout naming neither.
+        }
         await Shot("dlreturn-de", retPage);
 
         if (retPage.Url != listingUrl)
@@ -416,8 +455,10 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
             failures.Add($"dlreturn: record was not spent, still \"{spent}\"");
 
         // No-op case: a record naming the page we are already on must not navigate.
-        // No navigation happens here, so there is nothing to wait for - a bare
-        // URL comparison right after reload is the correct shape.
+        // The URL comparison alone does not prove that: a wrongly-taken
+        // location.replace(want) would target the page we are already on, so it
+        // would hold either way. The load-bearing assertion is the one below it,
+        // that the record was cleared.
         await retPage.EvaluateAsync(
             "sessionStorage.setItem('inkshelf.dlreturn', location.pathname + location.search)");
         var beforeReload = retPage.Url;
