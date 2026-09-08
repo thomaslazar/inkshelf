@@ -94,8 +94,8 @@ public class DeviceSettingsTests
     [Fact]
     public void Serialize_emits_keyed_pairs()
     {
-        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=splitleftfirst&scale=100&up=0&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, false, "de").Serialize());
-        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=splitleftfirst&scale=100&up=0&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, true, "").Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=splitleftfirst&scale=100&up=0&ret=0&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, false, "de").Serialize());
+        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=splitleftfirst&scale=100&up=0&ret=0&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, true, "").Serialize());
     }
 
     [Fact]
@@ -192,7 +192,7 @@ public class DeviceSettingsTests
     public void Serialize_includes_fav()
     {
         var s = new DeviceSettings(true, false, "de") { Fav = "lib_abc" };
-        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=splitleftfirst&scale=100&up=0&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=splitleftfirst&scale=100&up=0&ret=0&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
     }
 
     [Fact]
@@ -241,7 +241,7 @@ public class DeviceSettingsTests
     public void Fav_is_sanitized_on_the_way_into_the_cookie(string raw, string expected)
     {
         var s = new DeviceSettings(true, false, "") { Fav = raw };
-        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=splitleftfirst&scale=100&up=0&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
+        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=splitleftfirst&scale=100&up=0&ret=0&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
     }
 
     [Fact]
@@ -539,5 +539,33 @@ public class DeviceSettingsTests
     {
         var q = new QueryCollection(QueryHelpers.ParseQuery("up=1"));
         Assert.True(DeviceSettings.FromQuery(q)!.Upscale);
+    }
+
+    [Fact]
+    public void ReturnAfterDownload_defaults_off()
+    {
+        Assert.False(DeviceSettings.Default.ReturnAfterDownload);
+    }
+
+    [Fact]
+    public void ReturnAfterDownload_round_trips_through_the_wire_format()
+    {
+        var q = new QueryCollection(QueryHelpers.ParseQuery(
+            (DeviceSettings.Default with { ReturnAfterDownload = true }).Serialize()));
+        Assert.True(DeviceSettings.FromQuery(q)!.ReturnAfterDownload);
+    }
+
+    [Fact]
+    public void ReturnAfterDownload_absent_from_an_older_cookie_reads_as_off()
+    {
+        var q = new QueryCollection(QueryHelpers.ParseQuery("retina=1&gray=0&lang=&fav="));
+        Assert.False(DeviceSettings.FromQuery(q)!.ReturnAfterDownload);
+    }
+
+    [Fact]
+    public void ReturnAfterDownload_alone_is_enough_to_recognise_a_settings_query()
+    {
+        var q = new QueryCollection(QueryHelpers.ParseQuery("ret=1"));
+        Assert.True(DeviceSettings.FromQuery(q)!.ReturnAfterDownload);
     }
 }

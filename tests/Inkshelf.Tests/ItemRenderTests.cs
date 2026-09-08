@@ -124,6 +124,17 @@ public class ItemRenderTests
         // NOT by a bare ">EPUB", which the file-format span also emits for a raw epub.
         Assert.Contains("title=\"Already converted", html);          // primary cbz cached (shared key)
         Assert.Contains($"action=\"/read/{ItemId}\"", html);         // read toggle
+
+        // Every per-file Download anchor (Item.cshtml:99) and the Cached EPUB
+        // anchor (_ConvertAction.cshtml) both carry the return-after-download
+        // marker.
+        var rawDownload = Regex.Match(html, "<a [^>]*href=\"/download/[^\"]*\"[^>]*>");
+        Assert.True(rawDownload.Success, "Expected a raw download anchor.");
+        Assert.Contains("data-dlreturn", rawDownload.Value);
+
+        var cachedEpub = Regex.Match(html, "<a [^>]*title=\"Already converted[^>]*>");
+        Assert.True(cachedEpub.Success, "Expected the Cached EPUB anchor.");
+        Assert.Contains("data-dlreturn", cachedEpub.Value);
     }
 
     [Fact]
@@ -168,11 +179,11 @@ public class ItemRenderTests
         Assert.DoesNotContain("&#8595;", secondary.Groups[1].Value);
 
         // Raw Download arrow: primary (no file=) shows it, the pdf's (file=2) does not.
-        var primaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?t=[^\"]*\">([^<]*)</a>");
+        var primaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?t=[^\"]*\"[^>]*>([^<]*)</a>");
         Assert.True(primaryDownload.Success, "Expected the primary file's download anchor.");
         Assert.Contains("&#8595;", primaryDownload.Groups[1].Value);
 
-        var secondaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?file=2&amp;t=[^\"]*\">([^<]*)</a>");
+        var secondaryDownload = Regex.Match(html, $"<a [^>]*href=\"/download/{ItemId}\\?file=2&amp;t=[^\"]*\"[^>]*>([^<]*)</a>");
         Assert.True(secondaryDownload.Success, "Expected the non-primary file's download anchor.");
         Assert.DoesNotContain("&#8595;", secondaryDownload.Groups[1].Value);
     }

@@ -71,8 +71,9 @@ await Check("settings-de", De, "/settings",
                   "Doppelseiten", "linke Hälfte zuerst", "rechte Hälfte zuerst",
                   "Um 90° nach rechts drehen", "Um 90° nach links drehen", "Seitenskalierung", "Prozent.",
                   "Bildschirmauflösung überschreiben", "Pixelverhältnis", "Automatisch", "als Lesezeichen speichern",
-                  "Kleine Seiten vergrößern"],
-    mustNotContain: ["Save", "Language", "Split into two pages", "Page scale", "Enlarge small pages"]);
+                  "Kleine Seiten vergrößern", "Nach dem Herunterladen zur Liste zurück"],
+    mustNotContain: ["Save", "Language", "Split into two pages", "Page scale", "Enlarge small pages",
+                      "Return to the list after a download"]);
 
 await Check("login-en", null, "/login",
     mustContain: ["Log in", "Password", "Username", "Log in with SSO"],
@@ -83,7 +84,7 @@ await Check("settings-en", null, "/settings",
                   "Two-page spreads", "left half first", "right half first",
                   "Rotate 90° to the right", "Rotate 90° to the left", "Page scale", "Percent.",
                   "Override screen resolution", "Pixel ratio", "Automatic", "Bookmark this page",
-                  "Enlarge small pages"],
+                  "Enlarge small pages", "Return to the list after a download"],
     mustNotContain: []);
 
 // The capability probe. Its measured rows are what an engine with no CSS.supports()
@@ -373,6 +374,161 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         try { await Shot("read-nojs-error", noJsPage); } catch { }
     }
     await noJsCtx.CloseAsync();
+
+    // Return-after-download: a download cannot be made to misbehave in headless
+    // Chromium, so making it misbehave is not reproducible here. But the click
+    // handler that ARMS the record is a plain DOM listener and the listing this
+    // check already loads has real a[data-dlreturn] anchors, so that half is
+    // checked too - a listener that never binds, a selector that stops matching,
+    // or here() moved to bind time would otherwise be caught by nothing.
+    // Needs its own BrowserContext because the setting rides in a cookie, and its
+    // own login because cookies do not cross contexts.
+    var retCtx = await browser.NewContextAsync(new()
+    {
+        ViewportSize = new() { Width = vpW, Height = vpH },
+    });
+    await retCtx.AddCookiesAsync([ new() { Name = "inkshelf_settings", Value = De + "&ret=1", Url = baseUrl } ]);
+    var retPage = await retCtx.NewPageAsync();
+    try
+    {
+        await retPage.GotoAsync(baseUrl + "/login");
+        await retPage.FillAsync("input[name=Username]", "root");
+        await retPage.FillAsync("input[name=Password]", "root");
+        await retPage.ClickAsync("button[type=submit]");
+        await retPage.WaitForSelectorAsync("text=Bibliotheken", new() { Timeout = 15000 });
+
+        // Land on a listing and seed the record the arming half would have stored.
+        await retPage.ClickAsync("a[href^='/library/']");
+        await retPage.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 15000 });
+        var listingUrl = retPage.Url;
+        var listingPath = await retPage.EvaluateAsync<string>("location.pathname + location.search");
+
+        // Arming check, BEFORE the correction half below seeds its own record:
+        // click a real data-dlreturn anchor on the listing and confirm the
+        // page's own listener wrote it, with the value matching the listing's
+        // own pathname + search. This does not prove here() ran at click time
+        // rather than bind time - the two happen on the same document with no
+        // intervening URL change, so either timing yields the same string.
+        // Cleared afterwards so this cannot leak a record into the correction
+        // check and mask or corrupt it.
+        var hasAnchor = await retPage.EvaluateAsync<bool>(@"(function () {
+            var els = document.querySelectorAll('a[data-dlreturn]');
+            return els.length > 0;
+        })()");
+        if (!hasAnchor)
+        {
+            failures.Add("dlreturn-arm: no a[data-dlreturn] anchor on the listing");
+        }
+        else
+        {
+            await retPage.EvaluateAsync(@"(function () {
+                var els = document.querySelectorAll('a[data-dlreturn]');
+                var a = els[els.length - 1];
+                a.addEventListener('click', function (e) { e.preventDefault(); });
+                a.click();
+            })()");
+            var armed = await retPage.EvaluateAsync<string?>(
+                "sessionStorage.getItem('inkshelf.dlreturn')");
+            if (armed != listingPath)
+                failures.Add($"dlreturn-arm: expected record \"{listingPath}\", got \"{armed ?? "null"}\"");
+            await retPage.EvaluateAsync("sessionStorage.removeItem('inkshelf.dlreturn')");
+        }
+
+        // Not-ready arming must be a no-op: a data-warm anchor without
+        // data-ready="1" is intercepted by the poller (preventDefault, no
+        // navigation), so a record stored on that click would sit unspent and
+        // hijack the reader's next deliberate navigation. "Corrupt Archive" is
+        // permanently Failed by this point in the run (the ConvertShouldExplain
+        // calls above fail it deterministically), so its convert anchor is
+        // data-warm with no data-ready - exactly the not-ready case.
+        await retPage.FillAsync("input[name=q]", "Corrupt Archive");
+        await retPage.PressAsync("input[name=q]", "Enter");
+        await retPage.WaitForSelectorAsync("a[data-warm]", new() { Timeout = 15000 });
+        var notReady = await retPage.EvaluateAsync<bool>(
+            "document.querySelector('a[data-warm]').getAttribute('data-ready') !== '1'");
+        if (!notReady)
+        {
+            failures.Add("dlreturn-notready: the \"Corrupt Archive\" convert anchor is already data-ready, so this check cannot exercise the not-ready skip");
+        }
+        else
+        {
+            // Also assert the anchor IS armed. Without this the no-record
+            // assertion below would pass just as happily if the marker or the
+            // whole script had gone missing, i.e. it would stop testing the skip
+            // and start testing nothing.
+            var warmArmed = await retPage.EvaluateAsync<bool>(
+                "document.querySelector('a[data-warm]').hasAttribute('data-dlreturn')");
+            if (!warmArmed)
+                failures.Add("dlreturn-notready: the data-warm anchor carries no data-dlreturn, so the not-ready skip is untested");
+
+            await retPage.Locator("a[data-warm]").First.ClickAsync();
+            var storedOnNotReady = await retPage.EvaluateAsync<string?>(
+                "sessionStorage.getItem('inkshelf.dlreturn')");
+            if (storedOnNotReady is not null)
+                failures.Add($"dlreturn-notready: expected no record from a not-ready click, got \"{storedOnNotReady}\"");
+        }
+        // Back to the original listing: the correction check below relies on
+        // `listingUrl` naming the page the browser gets sent back to.
+        await retPage.GotoAsync(listingUrl);
+        await retPage.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 15000 });
+
+        await retPage.EvaluateAsync(
+            "sessionStorage.setItem('inkshelf.dlreturn', location.pathname + location.search)");
+
+        // Go somewhere else, as the stale restore would, then wait for the
+        // script to correct it - a bare load-state wait here would race the
+        // location.replace and make the assertion flaky.
+        await retPage.GotoAsync(baseUrl + "/");
+        try
+        {
+            await retPage.WaitForURLAsync(u => u == listingUrl, new() { Timeout = 15000 });
+        }
+        catch (TimeoutException)
+        {
+            // Swallowed here on purpose: fall through to the explicit check below,
+            // which names both the expected and actual URL. Otherwise this would
+            // throw straight to the outer catch and the failure would surface as
+            // a bare Playwright timeout naming neither.
+        }
+        await Shot("dlreturn-de", retPage);
+
+        if (retPage.Url != listingUrl)
+            failures.Add($"dlreturn: expected to be sent back to {listingUrl}, got {retPage.Url}");
+        var spent = await retPage.EvaluateAsync<string?>(
+            "sessionStorage.getItem('inkshelf.dlreturn')");
+        if (spent is not null)
+            failures.Add($"dlreturn: record was not spent, still \"{spent}\"");
+
+        // No-op case: a record naming the page we are already on must not navigate.
+        // The URL comparison alone does not prove that: a wrongly-taken
+        // location.replace(want) would target the page we are already on, so it
+        // would hold either way. Nor does the record-cleared assertion below it:
+        // clear-before-decide runs removeItem regardless of which way the
+        // comparison goes, so it holds in both worlds too. What it actually
+        // proves is that the script ran and spent the record on a plain load.
+        // Distinguishing a wrongly-taken same-URL replace would need a load
+        // counter, deliberately not built - clear-before-decide already makes a
+        // redirect loop structurally impossible, so the machinery is not worth it.
+        await retPage.EvaluateAsync(
+            "sessionStorage.setItem('inkshelf.dlreturn', location.pathname + location.search)");
+        var beforeReload = retPage.Url;
+        await retPage.ReloadAsync();
+        await retPage.WaitForLoadStateAsync();
+        if (retPage.Url != beforeReload)
+            failures.Add($"dlreturn-noop: navigated from {beforeReload} to {retPage.Url}");
+        var spentNoop = await retPage.EvaluateAsync<string?>(
+            "sessionStorage.getItem('inkshelf.dlreturn')");
+        if (spentNoop is not null)
+            failures.Add($"dlreturn-noop: record was not cleared, still \"{spentNoop}\"");
+
+        Console.WriteLine("[authed] return-after-download correction and no-op captured");
+    }
+    catch (Exception ex)
+    {
+        failures.Add($"dlreturn: {ex.Message}");
+        try { await Shot("dlreturn-error", retPage); } catch { }
+    }
+    await retCtx.CloseAsync();
 }
 
 Console.WriteLine();

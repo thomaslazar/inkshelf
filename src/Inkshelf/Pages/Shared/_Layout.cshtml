@@ -188,5 +188,77 @@
         } catch (e) {}
     })();
     </script>
+    @* Rendered only when the setting is on. A reader engine whose browser is
+       killed while its book reader holds the foreground comes back restored from
+       a stale snapshot, losing the listing the download started from. Nothing in
+       the markup can prevent that: target, a named iframe and pushState padding
+       were all measured on device and all failed (see the spec). So this lets the
+       restore land wrong and corrects from the page it lands on, which IS a fresh
+       document load and therefore runs this script.
+
+       Gated in Razor rather than in JavaScript so a device that does not need the
+       workaround never receives it.
+
+       The record is spent only by the next document load. A download that does
+       NOT trigger the kill/restore leaves it armed, so the user's next deliberate
+       tap gets replaced back to the listing once. Known and accepted, not a
+       defect - see the spec. *@
+    @if (Inkshelf.Auth.DeviceSettings.Read(Context.Request).ReturnAfterDownload)
+    {
+        <script>
+        (function () {
+            var KEY = 'inkshelf.dlreturn';
+            function here() { return window.location.pathname + window.location.search; }
+            try {
+                // Arm: remember the page a download was started from.
+                var links = document.querySelectorAll('a[data-dlreturn]');
+                for (var i = 0; i < links.length; i++) {
+                    (function (el) {
+                        el.addEventListener('click', function () {
+                            try {
+                                // A data-warm anchor is intercepted by the poller
+                                // (_Layout.cshtml above) until it marks data-ready="1":
+                                // that click calls preventDefault and never navigates,
+                                // so a record stored here would sit unspent and hijack
+                                // the reader's next deliberate navigation instead.
+                                // preventDefault does not stop this second listener from
+                                // running, so the skip has to happen here.
+                                if (el.hasAttribute('data-warm') && el.getAttribute('data-ready') !== '1') { return; }
+                                sessionStorage.setItem(KEY, here());
+                            } catch (e) {}
+                        });
+                    })(links[i]);
+                }
+
+                // Correct: if the restore landed elsewhere, go back.
+                var want = sessionStorage.getItem(KEY);
+                if (want) {
+                    // Cleared BEFORE deciding: a wrong comparison then costs one
+                    // needless navigation, never a redirect loop.
+                    sessionStorage.removeItem(KEY);
+                    // No age limit on purpose. The record is spent by the first
+                    // scripted load after the download either way, and a real
+                    // reading session measured 154 seconds, so any window would
+                    // only ever suppress a correction that should have happened.
+                    // want.charAt(1) !== '/' rules out a protocol-relative path
+                    // (a doubled leading slash), which location.replace would
+                    // send off-origin. want.indexOf('\\') < 0 mirrors the
+                    // server's own guard (ConvertEndpoints.LocalReturn): a
+                    // backslash anywhere in the path, not only at position 1,
+                    // can fold into a protocol-relative authority once the URL
+                    // parser strips a tab or newline elsewhere in the string.
+                    // That tab case is not itself closed here, and does not need
+                    // to be: the only writer is location.pathname + search, and
+                    // the parser has already percent-encoded any tab by then, so
+                    // a record can never carry one. This is hardening against a
+                    // future writer, not a live hole.
+                    if (want !== here() && want.charAt(0) === '/' && want.charAt(1) !== '/' && want.indexOf('\\') < 0) {
+                        window.location.replace(want);
+                    }
+                }
+            } catch (e) {}
+        })();
+        </script>
+    }
 </body>
 </html>

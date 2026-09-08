@@ -51,6 +51,13 @@ restarted or updated since the page was opened.
 
 Either way, go to the book again from the library and download from that page.
 
+## After I download a book, the reader leaves the page I was on
+
+Some readers close and reopen the browser to hand the file to their reader app,
+and it comes back on an older page instead of the one you were reading. Tick
+**Return to the list after a download** in Settings: it sends you back to the
+page each download started from. It costs one extra page load per download.
+
 ## Where do I find my device's numbers?
 
 Settings shows a *Detected resolution* line. [`DEVICES.md`](DEVICES.md) lists the

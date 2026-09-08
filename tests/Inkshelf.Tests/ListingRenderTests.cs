@@ -252,7 +252,7 @@ public class ListingRenderTests
         Assert.True(response.Headers.CacheControl?.NoStore == true, "Expected Cache-Control: no-store.");
 
         Assert.Contains($"/convert/{ItemId}?return=", html);
-        Assert.Contains("data-warm data-poll", html);
+        Assert.Contains("data-warm data-dlreturn data-poll", html);
         Assert.Contains("Converting&#x2026;", html);
         Assert.Contains("<noscript><meta http-equiv=\"refresh\" content=\"30\" /></noscript>", html);
 
@@ -283,6 +283,40 @@ public class ListingRenderTests
         Assert.DoesNotContain("class=\"btn regen\"", html);
     }
 
+    [Fact]
+    public async Task The_download_anchor_is_marked_for_the_return_after_download_script()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        var anchor = Regex.Match(html, "<a [^>]*href=\"/download/[^\"]*\"[^>]*>");
+        Assert.True(anchor.Success, "Expected a download anchor in the rendered listing.");
+        Assert.Contains("data-dlreturn", anchor.Value);
+    }
+
+    [Fact]
+    public async Task A_data_warm_convert_anchor_is_marked_too()
+    {
+        // A data-warm anchor becomes a live download link once the poller marks it
+        // data-ready="1" and repaints the label to EPUB, so it must be armed like
+        // any other download anchor. The gated script (not this render) is what
+        // keeps a not-yet-ready click from writing a record.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        var convert = PrimaryConvertAnchor(html);
+        Assert.Contains("data-warm", convert);
+        Assert.Contains("data-dlreturn", convert);
+    }
+
     // Task 6: row-state must be keyed on the SAME RenderTarget (scr probe + the
     // inkshelf_settings cookie's grayscale flag) the real conversion uses - a
     // grayscale-variant cache file only counts as "converted" when the request
@@ -310,13 +344,14 @@ public class ListingRenderTests
         var grayHtml = await grayResponse.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, grayResponse.StatusCode);
         Assert.DoesNotContain("data-warm", PrimaryConvertAnchor(grayHtml));
+        Assert.Contains("data-dlreturn", PrimaryConvertAnchor(grayHtml)); // Cached EPUB anchor, the motivating case
 
         // No settings cookie → default (colour) target; the "-g" file isn't its
         // cache path, so the row is still plain "Convert".
         var colourResponse = await client.SendAsync(LibraryRequest(factory));
         var colourHtml = await colourResponse.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, colourResponse.StatusCode);
-        Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(colourHtml));
+        Assert.Contains("data-warm data-dlreturn data-why=", PrimaryConvertAnchor(colourHtml));
         Assert.Contains(">Convert</a>", PrimaryConvertAnchor(colourHtml));
     }
 
@@ -339,7 +374,7 @@ public class ListingRenderTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Results for", html); // confirm we rendered the search branch
         Assert.Contains($"/convert/{ItemId}?return=", html);
-        Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(html));
+        Assert.Contains("data-warm data-dlreturn data-why=", PrimaryConvertAnchor(html));
         Assert.Contains(">Convert</a>", PrimaryConvertAnchor(html));
     }
 
@@ -542,7 +577,7 @@ public class ListingRenderTests
         var plain = $"retina=0&gray=0&lang=&fav=&spread=splitleftfirst&scale={DeviceSettings.Default.Scale}"
             + "&ovr=0&ovrw=1000&ovrh=2000&ovrd=1";
         var off = await client.SendAsync(LibraryRequest(factory, plain, includeScr: false));
-        Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(await off.Content.ReadAsStringAsync()));
+        Assert.Contains("data-warm data-dlreturn data-why=", PrimaryConvertAnchor(await off.Content.ReadAsStringAsync()));
     }
 
     // Query settings are honoured on /settings ONLY. A link is allowed to change
@@ -583,7 +618,7 @@ public class ListingRenderTests
         var html2 = await res2.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, res2.StatusCode);
-        Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(html2));
+        Assert.Contains("data-warm data-dlreturn data-why=", PrimaryConvertAnchor(html2));
     }
 
     [Fact]
@@ -740,5 +775,33 @@ public class ListingRenderTests
         Assert.Contains("\"readLabel\":\"\\u2713 Read\"", i18n.Value);
         Assert.DoesNotContain("&#x", i18n.Value);
         Assert.DoesNotContain("&amp;", i18n.Value);
+    }
+
+    [Fact]
+    public async Task The_return_after_download_script_is_absent_unless_the_setting_is_on()
+    {
+        // CLAUDE.md allows client JS only where unavoidable, and this is a
+        // workaround for one reader engine. Nobody else should receive it.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        Assert.DoesNotContain("inkshelf.dlreturn", html);
+    }
+
+    [Fact]
+    public async Task The_return_after_download_script_is_present_when_the_setting_is_on()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory, "retina=1&gray=0&lang=en&fav=&ret=1"))).Content.ReadAsStringAsync();
+
+        Assert.Contains("inkshelf.dlreturn", html);
     }
 }

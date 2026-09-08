@@ -13,17 +13,23 @@
     @switch (Model.State)
     {
         case ConvertRowState.Cached:
-            <a class="btn" href="@baseHref" title="@L["Already converted - downloads right away"]">@if (Model.Downloaded) { <text>EPUB &#8595;</text> } else { <text>EPUB</text> }</a>
+            @* The only convert state that serves a file outright. *@
+            <a class="btn" href="@baseHref" data-dlreturn title="@L["Already converted - downloads right away"]">@if (Model.Downloaded) { <text>EPUB &#8595;</text> } else { <text>EPUB</text> }</a>
             break;
         case ConvertRowState.Converting:
-            <a class="btn" href="@baseHref" data-warm data-poll data-why="@whyHref">@L["Converting…"]</a>
+            @* data-warm anchors carry data-dlreturn too: the poller intercepts a
+               click before the conversion finishes (preventDefault, no
+               navigation), so nothing is stored yet - but once it marks the
+               anchor data-ready="1" the SAME anchor is a live download link, and
+               the gated script only writes the record from that point on. *@
+            <a class="btn" href="@baseHref" data-warm data-dlreturn data-poll data-why="@whyHref">@L["Converting…"]</a>
             break;
         case ConvertRowState.Failed:
-            <a class="btn" href="@baseHref" data-warm data-why="@whyHref">@L["Convert (retry)"]</a>
+            <a class="btn" href="@baseHref" data-warm data-dlreturn data-why="@whyHref">@L["Convert (retry)"]</a>
             <a class="btn why" href="@whyHref">@L["why?"]</a>
             break;
         default:
-            <a class="btn" href="@baseHref" data-warm data-why="@whyHref">@L["Convert"]</a>
+            <a class="btn" href="@baseHref" data-warm data-dlreturn data-why="@whyHref">@L["Convert"]</a>
             break;
     }
     @if (Model.ShowRegen)

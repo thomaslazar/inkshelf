@@ -45,7 +45,10 @@ public class SettingsModel : PageModel
         // Localizer.CurrentLang() reads the REQUEST cookie; this only writes the
         // response cookie, so this first render still uses the previous locale - the
         // next request picks up the restored language. Not worth re-architecting the
-        // localizer over.
+        // localizer over. Same skew for `ret`: `_Layout.cshtml`'s script gate reads
+        // `Context.Request`, so a restored `ret=1` shows the checkbox ticked on this
+        // render while the script itself is not yet emitted. Self-corrects the same
+        // way, on the next request.
         var restored = DeviceSettings.FromQuery(Request.Query);
         Settings = restored is { } r ? DeviceSettings.Set(Response, r) : DeviceSettings.Read(Request);
         // A restored override that is stored yet unusable (e.g. a hand-typed ovrw of

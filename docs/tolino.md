@@ -27,6 +27,20 @@ The reader is not the browser and cannot be probed: Inkshelf's JavaScript runs i
 the browser, while comic layout happens in the reader app. Everything above comes
 from looking at pages on hardware.
 
+## The reader taking the foreground kills the browser
+
+Tapping a download hands the file to the reader app, and when it takes the
+foreground the browser is killed, then restored later from a stale snapshot.
+`window.history.length` grows across the event rather than shrinking, so this is
+not history navigation - what looks like "went back two pages" is a restore to
+an older point. Because nothing is navigating, no markup change can steer it:
+`target="_blank"`, a named hidden iframe target, `history.pushState` padding and
+the `download` attribute were each tried on hardware and each failed. The
+"Return to the list after a download" setting works around it by recording
+the page a download started from and correcting the next page load if it lands
+somewhere else. Measured on a Tolino epos 2, firmware 16.2.0; full findings in
+`docs/superpowers/specs/2026-09-08-return-after-download-design.md`.
+
 ## Browser engine
 
 Inkshelf targets these built-in browsers, which are old and limited. Design
