@@ -40,6 +40,12 @@
         </label>
     </p>
     <p>
+        <label>
+            <input type="checkbox" name="returndl" value="on" @(Model.Settings.ReturnAfterDownload ? "checked" : "") />
+            @L["Return to the list after a download"]
+        </label>
+    </p>
+    <p>
         <span class="setting-title">@L["Two-page spreads (a wide image holding two pages)"]</span>
         <label>
             <input type="radio" name="spread" value="splitleftfirst" @(Model.Settings.Spread == SpreadMode.SplitLeftFirst ? "checked" : "") />

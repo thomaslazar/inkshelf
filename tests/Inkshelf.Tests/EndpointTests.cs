@@ -491,6 +491,40 @@ public class EndpointTests
     }
 
     [Fact]
+    public async Task Saving_return_after_download_records_it_and_absence_clears_it()
+    {
+        // Unchecked checkboxes submit nothing, so absent means off, the same
+        // convention retina, grayscale and upscale already rely on.
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var on = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["returndl"] = "on",
+        }));
+        Assert.Contains("ret=1", on.Headers.Location!.OriginalString);
+
+        var off = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+        }));
+        Assert.Contains("ret=0", off.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
+    public async Task Settings_page_renders_the_return_after_download_checkbox()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+        var html = await (await client.GetAsync("/settings")).Content.ReadAsStringAsync();
+        Assert.Contains("name=\"returndl\"", html);
+    }
+
+    [Fact]
     public async Task Read_post_without_antiforgery_returns_bad_request()
     {
         using var factory = CreateFactory();
