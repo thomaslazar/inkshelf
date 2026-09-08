@@ -103,20 +103,26 @@ gating the script alone achieves it.
 
 ### Which links are armed
 
-Exactly those that navigate and serve a file:
+Every download link, plus the `data-warm` convert anchors, since they become a
+download link too once conversion finishes in-page:
 
 - `_ItemRow.cshtml`, the raw Download anchor.
 - `Item.cshtml`, the per-file Download anchors.
-- `_ConvertAction.cshtml`, the **Cached** EPUB anchor only.
+- `_ConvertAction.cshtml`, every state except Regenerate: the Cached EPUB
+  anchor, and the Convert / Converting / Convert-retry anchors (`data-warm`).
 
-The convert URL answers three different ways depending on state, and only one is
-a download, so the other states must NOT be armed:
+The convert URL answers three different ways depending on state:
 
 - The `data-warm` states (Convert, Converting, Convert-retry) are intercepted by
-  the background-convert script, which calls `preventDefault`, so the page never
-  navigates. Arming them would store a record that nothing spends, and the next
-  page load the user triggered themselves would then bounce them somewhere they
-  did not ask to go.
+  the background-convert script only while not yet ready: it calls
+  `preventDefault`, so a click before the conversion completes does not
+  navigate. Once the poller marks the anchor `data-ready="1"` and repaints the
+  label to EPUB, the same anchor is a live download link with nothing left to
+  intercept it. `preventDefault` does not stop a second listener on the same
+  element, so the arming script stays on these anchors and only skips writing
+  the record while not yet ready - otherwise a click before completion would
+  store a record that nothing spends, and the user's next deliberate
+  navigation would get bounced by it.
 - Regenerate navigates but only redirects back to the same listing. Arming it
   would be harmless, since the record would match the page it lands on and be
   discarded, but it would also be pointless.

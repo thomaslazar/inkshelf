@@ -252,7 +252,7 @@ public class ListingRenderTests
         Assert.True(response.Headers.CacheControl?.NoStore == true, "Expected Cache-Control: no-store.");
 
         Assert.Contains($"/convert/{ItemId}?return=", html);
-        Assert.Contains("data-warm data-poll", html);
+        Assert.Contains("data-warm data-dlreturn data-poll", html);
         Assert.Contains("Converting&#x2026;", html);
         Assert.Contains("<noscript><meta http-equiv=\"refresh\" content=\"30\" /></noscript>", html);
 
@@ -299,11 +299,12 @@ public class ListingRenderTests
     }
 
     [Fact]
-    public async Task A_convert_anchor_that_never_navigates_is_not_marked()
+    public async Task A_data_warm_convert_anchor_is_marked_too()
     {
-        // The poller calls preventDefault on data-warm anchors, so a record stored
-        // there would never be spent and would bounce the reader on their next
-        // deliberate navigation.
+        // A data-warm anchor becomes a live download link once the poller marks it
+        // data-ready="1" and repaints the label to EPUB, so it must be armed like
+        // any other download anchor. The gated script (not this render) is what
+        // keeps a not-yet-ready click from writing a record.
         using var cacheDir = new TempDir();
         using var keysDir = new TempDir();
         using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
@@ -313,7 +314,7 @@ public class ListingRenderTests
 
         var convert = PrimaryConvertAnchor(html);
         Assert.Contains("data-warm", convert);
-        Assert.DoesNotContain("data-dlreturn", convert);
+        Assert.Contains("data-dlreturn", convert);
     }
 
     // Task 6: row-state must be keyed on the SAME RenderTarget (scr probe + the
@@ -343,13 +344,14 @@ public class ListingRenderTests
         var grayHtml = await grayResponse.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, grayResponse.StatusCode);
         Assert.DoesNotContain("data-warm", PrimaryConvertAnchor(grayHtml));
+        Assert.Contains("data-dlreturn", PrimaryConvertAnchor(grayHtml)); // Cached EPUB anchor, the motivating case
 
         // No settings cookie → default (colour) target; the "-g" file isn't its
         // cache path, so the row is still plain "Convert".
         var colourResponse = await client.SendAsync(LibraryRequest(factory));
         var colourHtml = await colourResponse.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, colourResponse.StatusCode);
-        Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(colourHtml));
+        Assert.Contains("data-warm data-dlreturn data-why=", PrimaryConvertAnchor(colourHtml));
         Assert.Contains(">Convert</a>", PrimaryConvertAnchor(colourHtml));
     }
 
@@ -372,7 +374,7 @@ public class ListingRenderTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Results for", html); // confirm we rendered the search branch
         Assert.Contains($"/convert/{ItemId}?return=", html);
-        Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(html));
+        Assert.Contains("data-warm data-dlreturn data-why=", PrimaryConvertAnchor(html));
         Assert.Contains(">Convert</a>", PrimaryConvertAnchor(html));
     }
 
@@ -575,7 +577,7 @@ public class ListingRenderTests
         var plain = $"retina=0&gray=0&lang=&fav=&spread=splitleftfirst&scale={DeviceSettings.Default.Scale}"
             + "&ovr=0&ovrw=1000&ovrh=2000&ovrd=1";
         var off = await client.SendAsync(LibraryRequest(factory, plain, includeScr: false));
-        Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(await off.Content.ReadAsStringAsync()));
+        Assert.Contains("data-warm data-dlreturn data-why=", PrimaryConvertAnchor(await off.Content.ReadAsStringAsync()));
     }
 
     // Query settings are honoured on /settings ONLY. A link is allowed to change
@@ -616,7 +618,7 @@ public class ListingRenderTests
         var html2 = await res2.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, res2.StatusCode);
-        Assert.Contains("data-warm data-why=", PrimaryConvertAnchor(html2));
+        Assert.Contains("data-warm data-dlreturn data-why=", PrimaryConvertAnchor(html2));
     }
 
     [Fact]

@@ -71,8 +71,9 @@ await Check("settings-de", De, "/settings",
                   "Doppelseiten", "linke Hälfte zuerst", "rechte Hälfte zuerst",
                   "Um 90° nach rechts drehen", "Um 90° nach links drehen", "Seitenskalierung", "Prozent.",
                   "Bildschirmauflösung überschreiben", "Pixelverhältnis", "Automatisch", "als Lesezeichen speichern",
-                  "Kleine Seiten vergrößern"],
-    mustNotContain: ["Save", "Language", "Split into two pages", "Page scale", "Enlarge small pages"]);
+                  "Kleine Seiten vergrößern", "Nach dem Herunterladen zur Liste zurück"],
+    mustNotContain: ["Save", "Language", "Split into two pages", "Page scale", "Enlarge small pages",
+                      "Return to the list after a download"]);
 
 await Check("login-en", null, "/login",
     mustContain: ["Log in", "Password", "Username", "Log in with SSO"],
@@ -83,7 +84,7 @@ await Check("settings-en", null, "/settings",
                   "Two-page spreads", "left half first", "right half first",
                   "Rotate 90° to the right", "Rotate 90° to the left", "Page scale", "Percent.",
                   "Override screen resolution", "Pixel ratio", "Automatic", "Bookmark this page",
-                  "Enlarge small pages"],
+                  "Enlarge small pages", "Return to the list after a download"],
     mustNotContain: []);
 
 // The capability probe. Its measured rows are what an engine with no CSS.supports()
@@ -432,6 +433,35 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
                 failures.Add($"dlreturn-arm: expected record \"{listingPath}\", got \"{armed ?? "null"}\"");
             await retPage.EvaluateAsync("sessionStorage.removeItem('inkshelf.dlreturn')");
         }
+
+        // Not-ready arming must be a no-op: a data-warm anchor without
+        // data-ready="1" is intercepted by the poller (preventDefault, no
+        // navigation), so a record stored on that click would sit unspent and
+        // hijack the reader's next deliberate navigation. "Corrupt Archive" is
+        // permanently Failed by this point in the run (the ConvertShouldExplain
+        // calls above fail it deterministically), so its convert anchor is
+        // data-warm with no data-ready - exactly the not-ready case.
+        await retPage.FillAsync("input[name=q]", "Corrupt Archive");
+        await retPage.PressAsync("input[name=q]", "Enter");
+        await retPage.WaitForSelectorAsync("a[data-warm]", new() { Timeout = 15000 });
+        var notReady = await retPage.EvaluateAsync<bool>(
+            "document.querySelector('a[data-warm]').getAttribute('data-ready') !== '1'");
+        if (!notReady)
+        {
+            failures.Add("dlreturn-notready: expected \"Corrupt Archive\" to still be Failed (data-warm, not data-ready)");
+        }
+        else
+        {
+            await retPage.Locator("a[data-warm]").First.ClickAsync();
+            var storedOnNotReady = await retPage.EvaluateAsync<string?>(
+                "sessionStorage.getItem('inkshelf.dlreturn')");
+            if (storedOnNotReady is not null)
+                failures.Add($"dlreturn-notready: expected no record from a not-ready click, got \"{storedOnNotReady}\"");
+        }
+        // Back to the original listing: the correction check below relies on
+        // `listingUrl` naming the page the browser gets sent back to.
+        await retPage.GotoAsync(listingUrl);
+        await retPage.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 15000 });
 
         await retPage.EvaluateAsync(
             "sessionStorage.setItem('inkshelf.dlreturn', location.pathname + location.search)");

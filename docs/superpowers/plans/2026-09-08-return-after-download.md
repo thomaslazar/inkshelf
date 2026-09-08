@@ -234,10 +234,10 @@ git commit -m "feat: add a return-to-the-list-after-download setting"
 
 The markers are always rendered, regardless of the setting. They are inert without the script. The spec explains why they are not gated: gating them too would mean threading the flag through `ItemRowModel`, `ConvertActionModel` and `Item.cshtml.cs`'s `FileRow` plus every construction site, to remove a few bytes per row that no user can observe.
 
-**Which anchors, and why not the others.** The convert URL answers three ways and only one is a download:
+**Which anchors, and why not Regenerate.** The convert URL answers three ways:
 
 - `Cached` renders a plain anchor that serves the file. Arm it.
-- The `data-warm` states (Convert, Converting, Convert-retry) are intercepted by the background-convert script in `_Layout.cshtml`, which calls `preventDefault`, so the page never navigates. Arming them would store a record that nothing spends, and the next page load the user triggered themselves would then bounce them somewhere they did not ask to go. Do NOT arm them.
+- The `data-warm` states (Convert, Converting, Convert-retry) are intercepted by the background-convert script in `_Layout.cshtml` only while not yet ready: it calls `preventDefault`, so a click before the conversion completes does not navigate. Once the poller marks the anchor `data-ready="1"` the same anchor is a live download link. Arm these too, but the layout script must skip writing the record while not yet ready - `preventDefault` does not stop a second listener on the same element, so an unconditional record would sit unspent and bounce the user's next deliberate navigation.
 - Regenerate navigates but only redirects back to the same listing, so arming it would be harmless and pointless. Do NOT arm it.
 
 - [ ] **Step 1: Write the failing tests**

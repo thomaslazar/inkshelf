@@ -124,6 +124,17 @@ public class ItemRenderTests
         // NOT by a bare ">EPUB", which the file-format span also emits for a raw epub.
         Assert.Contains("title=\"Already converted", html);          // primary cbz cached (shared key)
         Assert.Contains($"action=\"/read/{ItemId}\"", html);         // read toggle
+
+        // Every per-file Download anchor (Item.cshtml:99) and the Cached EPUB
+        // anchor (_ConvertAction.cshtml) both carry the return-after-download
+        // marker.
+        var rawDownload = Regex.Match(html, "<a [^>]*href=\"/download/[^\"]*\"[^>]*>");
+        Assert.True(rawDownload.Success, "Expected a raw download anchor.");
+        Assert.Contains("data-dlreturn", rawDownload.Value);
+
+        var cachedEpub = Regex.Match(html, "<a [^>]*title=\"Already converted[^>]*>");
+        Assert.True(cachedEpub.Success, "Expected the Cached EPUB anchor.");
+        Assert.Contains("data-dlreturn", cachedEpub.Value);
     }
 
     [Fact]
