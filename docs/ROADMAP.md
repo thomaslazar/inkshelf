@@ -93,6 +93,11 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Return to the list after a download** (#68) - a per-device setting, default
+  off, that sends the browser back to the page a download started from. Works
+  around a Tolino behaviour where the reader app taking the foreground kills
+  the browser and restores it from a stale snapshot, which no markup change
+  can prevent; the setting corrects for it on the next page load instead.
 - **Read without a reload** (#66) - marking a book read/unread no longer costs a
   full page reload. `POST /read/{id}?xhr=1` answers `204 No Content` while a
   plain post still redirects, the shared read form's `return` field carries a
