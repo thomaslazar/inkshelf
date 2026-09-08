@@ -10,13 +10,17 @@ public static class ReadEndpoints
     {
         app.MapPost("/read/{id}", async (string id, HttpContext ctx, IAntiforgery antiforgery,
             AbsApiClient api, [FromForm] string? read, [FromForm(Name = "return")] string? @return,
-            CancellationToken ct) =>
+            string? xhr, CancellationToken ct) =>
         {
             try { await antiforgery.ValidateRequestAsync(ctx); }
             catch (AntiforgeryValidationException) { return Results.BadRequest(); }
 
             await api.SetReadAsync(id, read == "1", ct);
-            return Results.Redirect(LocalReturn(@return));
+            // The script updates the button itself and has no use for a listing it
+            // would only throw away, so answer with nothing. Signalled by a query
+            // parameter rather than a header to match how convert already says what
+            // it wants (?warm=1, ?status=1).
+            return xhr == "1" ? Results.NoContent() : Results.Redirect(LocalReturn(@return));
         }).DisableAntiforgery();
     }
 
