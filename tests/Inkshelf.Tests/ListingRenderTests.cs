@@ -774,4 +774,32 @@ public class ListingRenderTests
         Assert.DoesNotContain("&#x", i18n.Value);
         Assert.DoesNotContain("&amp;", i18n.Value);
     }
+
+    [Fact]
+    public async Task The_return_after_download_script_is_absent_unless_the_setting_is_on()
+    {
+        // CLAUDE.md allows client JS only where unavoidable, and this is a
+        // workaround for one reader engine. Nobody else should receive it.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        Assert.DoesNotContain("inkshelf.dlreturn", html);
+    }
+
+    [Fact]
+    public async Task The_return_after_download_script_is_present_when_the_setting_is_on()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory, "retina=1&gray=0&lang=en&fav=&ret=1"))).Content.ReadAsStringAsync();
+
+        Assert.Contains("inkshelf.dlreturn", html);
+    }
 }

@@ -188,5 +188,46 @@
         } catch (e) {}
     })();
     </script>
+    @* Rendered only when the setting is on. A reader engine whose browser is
+       killed while its book reader holds the foreground comes back restored from
+       a stale snapshot, losing the listing the download started from. Nothing in
+       the markup can prevent that: target, a named iframe and pushState padding
+       were all measured on device and all failed (see the spec). So this lets the
+       restore land wrong and corrects from the page it lands on, which IS a fresh
+       document load and therefore runs this script.
+
+       Gated in Razor rather than in JavaScript so a device that does not need the
+       workaround never receives it. *@
+    @if (Inkshelf.Auth.DeviceSettings.Read(Context.Request).ReturnAfterDownload)
+    {
+        <script>
+        (function () {
+            var KEY = 'inkshelf.dlreturn';
+            function here() { return window.location.pathname + window.location.search; }
+            try {
+                // Arm: remember the page a download was started from.
+                var links = document.querySelectorAll('a[data-dlreturn]');
+                for (var i = 0; i < links.length; i++) {
+                    links[i].addEventListener('click', function () {
+                        try { sessionStorage.setItem(KEY, here()); } catch (e) {}
+                    });
+                }
+
+                // Correct: if the restore landed elsewhere, go back.
+                var want = sessionStorage.getItem(KEY);
+                if (want) {
+                    // Cleared BEFORE deciding: a wrong comparison then costs one
+                    // needless navigation, never a redirect loop.
+                    sessionStorage.removeItem(KEY);
+                    // No age limit on purpose. The record is spent by the first
+                    // scripted load after the download either way, and a real
+                    // reading session measured 154 seconds, so any window would
+                    // only ever suppress a correction that should have happened.
+                    if (want !== here()) { window.location.replace(want); }
+                }
+            } catch (e) {}
+        })();
+        </script>
+    }
 </body>
 </html>

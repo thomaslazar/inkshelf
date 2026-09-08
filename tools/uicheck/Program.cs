@@ -373,6 +373,71 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         try { await Shot("read-nojs-error", noJsPage); } catch { }
     }
     await noJsCtx.CloseAsync();
+
+    // Return-after-download: a download cannot be made to misbehave in headless
+    // Chromium, so the arming half is not reproducible here. The CORRECTING half
+    // is where the bugs live and it is testable directly: seed the record the
+    // script would have written, land somewhere else, and assert it sends us back.
+    // Needs its own BrowserContext because the setting rides in a cookie, and its
+    // own login because cookies do not cross contexts.
+    var retCtx = await browser.NewContextAsync(new()
+    {
+        ViewportSize = new() { Width = vpW, Height = vpH },
+    });
+    await retCtx.AddCookiesAsync([ new() { Name = "inkshelf_settings", Value = De + "&ret=1", Url = baseUrl } ]);
+    var retPage = await retCtx.NewPageAsync();
+    try
+    {
+        await retPage.GotoAsync(baseUrl + "/login");
+        await retPage.FillAsync("input[name=Username]", "root");
+        await retPage.FillAsync("input[name=Password]", "root");
+        await retPage.ClickAsync("button[type=submit]");
+        await retPage.WaitForSelectorAsync("text=Bibliotheken", new() { Timeout = 15000 });
+
+        // Land on a listing and seed the record the arming half would have stored.
+        await retPage.ClickAsync("a[href^='/library/']");
+        await retPage.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 15000 });
+        var listingUrl = retPage.Url;
+        await retPage.EvaluateAsync(
+            "sessionStorage.setItem('inkshelf.dlreturn', location.pathname + location.search)");
+
+        // Go somewhere else, as the stale restore would, then wait for the
+        // script to correct it - a bare load-state wait here would race the
+        // location.replace and make the assertion flaky.
+        await retPage.GotoAsync(baseUrl + "/");
+        await retPage.WaitForURLAsync(u => u == listingUrl, new() { Timeout = 15000 });
+        await Shot("dlreturn-de", retPage);
+
+        if (retPage.Url != listingUrl)
+            failures.Add($"dlreturn: expected to be sent back to {listingUrl}, got {retPage.Url}");
+        var spent = await retPage.EvaluateAsync<string?>(
+            "sessionStorage.getItem('inkshelf.dlreturn')");
+        if (spent is not null)
+            failures.Add($"dlreturn: record was not spent, still \"{spent}\"");
+
+        // No-op case: a record naming the page we are already on must not navigate.
+        // No navigation happens here, so there is nothing to wait for - a bare
+        // URL comparison right after reload is the correct shape.
+        await retPage.EvaluateAsync(
+            "sessionStorage.setItem('inkshelf.dlreturn', location.pathname + location.search)");
+        var beforeReload = retPage.Url;
+        await retPage.ReloadAsync();
+        await retPage.WaitForLoadStateAsync();
+        if (retPage.Url != beforeReload)
+            failures.Add($"dlreturn-noop: navigated from {beforeReload} to {retPage.Url}");
+        var spentNoop = await retPage.EvaluateAsync<string?>(
+            "sessionStorage.getItem('inkshelf.dlreturn')");
+        if (spentNoop is not null)
+            failures.Add($"dlreturn-noop: record was not cleared, still \"{spentNoop}\"");
+
+        Console.WriteLine("[authed] return-after-download correction and no-op captured");
+    }
+    catch (Exception ex)
+    {
+        failures.Add($"dlreturn: {ex.Message}");
+        try { await Shot("dlreturn-error", retPage); } catch { }
+    }
+    await retCtx.CloseAsync();
 }
 
 Console.WriteLine();
