@@ -221,6 +221,30 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         if (page.Url != urlBeforeRead)
             failures.Add($"read-clicked: page navigated from {urlBeforeRead} to {page.Url}");
 
+        // Live Read-button click, XHR FAILS: there is deliberately no error UI, so
+        // the un-flipped label IS the failure signal. That only works if the
+        // script's revert branch actually restores the pre-click label - if it
+        // does not, the button is stuck on "Markiere..." (the working label)
+        // forever, which is the dead-button outcome the design forbids. Scoped to
+        // this page/route pair and unrouted right after so it cannot catch a
+        // later check's request.
+        Func<string, bool> matchReadXhr = url => url.Contains("/read/") && url.Contains("xhr=1");
+        Func<IRoute, Task> failReadXhr = route => route.FulfillAsync(new() { Status = 500 });
+        await page.RouteAsync(matchReadXhr, failReadXhr);
+        var readLabelBeforeFail = await readBtn.InnerTextAsync();
+        var urlBeforeReadFail = page.Url;
+        await readBtn.ClickAsync();
+        await page.WaitForTimeoutAsync(1500); // let the JS revert branch run
+        var readLabelAfterFail = await readBtn.InnerTextAsync();
+        await page.UnrouteAsync(matchReadXhr, failReadXhr);
+        await Shot("read-clicked-fail-de");
+        if (readLabelAfterFail != readLabelBeforeFail)
+            failures.Add($"read-clicked-fail: label did not revert (\"{readLabelBeforeFail}\" -> \"{readLabelAfterFail}\")");
+        if (readLabelAfterFail.Contains("Markiere", StringComparison.Ordinal))
+            failures.Add($"read-clicked-fail: label stuck on the working state \"{readLabelAfterFail}\"");
+        if (page.Url != urlBeforeReadFail)
+            failures.Add($"read-clicked-fail: page navigated from {urlBeforeReadFail} to {page.Url}");
+
         // Failure reasons: each seeded broken comic must land on the German reason
         // page (poll-JS auto-nav on failure) with the right explanation.
         //   Big Comic      → over the run's tiny ceiling → TooLarge
