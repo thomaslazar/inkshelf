@@ -83,14 +83,23 @@ submits nothing, so absent means off.
 
 ### Gated server-side, not in the script
 
-With the setting off, the rendered HTML is unchanged: no marker attributes, no
-script block. The script and the markers are emitted only when the setting is on.
+With the setting off, the script block is not rendered at all. The marker
+attributes on the anchors ARE always rendered, and are completely inert without
+the script.
 
 This matters beyond tidiness. `CLAUDE.md` allows client JavaScript only where
 unavoidable, and this is a workaround for one reader engine's behaviour. Shipping
 the script to every device and gating it in JavaScript would put dead code on
 every page for every user of every deployment. Gating in Razor means a device
 that does not need this never receives it.
+
+The markers are deliberately NOT gated. `_Layout.cshtml` can read the setting
+directly off `Context.Request`, which is one read per page and no plumbing, but
+the partials cannot: gating the markers too would mean threading the flag through
+`ItemRowModel`, `ConvertActionModel` and `Item.cshtml.cs`'s `FileRow` plus every
+construction site, to remove a few bytes per row that no user can observe. The
+intent of this section is that no unnecessary JavaScript reaches a device, and
+gating the script alone achieves it.
 
 ### Which links are armed
 
@@ -135,9 +144,9 @@ per book.
 ## Tests
 
 - The setting round-trips through the cookie wire format and defaults to off.
-- With the setting off, no marker attribute and no script block are rendered.
-- With it on, the marker appears on the raw Download anchor and on the Cached
-  EPUB anchor, and NOT on a `data-warm` convert anchor.
+- With the setting off, no script block is rendered.
+- The marker appears on the raw Download anchor and on the Cached EPUB anchor
+  regardless of the setting, and NEVER on a `data-warm` convert anchor.
 - uicheck, in a real browser: with the setting on, seed `sessionStorage` with a
   record naming page A, load page B, and assert the browser ends up on page A.
   A download cannot be made to misbehave in headless Chromium, but the
