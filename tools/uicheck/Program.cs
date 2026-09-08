@@ -105,8 +105,10 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
     await ctx.AddCookiesAsync([ new() { Name = "inkshelf_settings", Value = De, Url = baseUrl } ]);
     var page = await ctx.NewPageAsync();
 
-    async Task Shot(string label) =>
-        await page.ScreenshotAsync(new() { Path = Path.Combine(outDir, label + ".png"), FullPage = true });
+    // forPage defaults to the shared authed page; the no-JS check below passes
+    // its own second-context page so it can reuse this same helper.
+    async Task Shot(string label, IPage? forPage = null) =>
+        await (forPage ?? page).ScreenshotAsync(new() { Path = Path.Combine(outDir, label + ".png"), FullPage = true });
     void Expect(string label, string body, params string[] needles)
     {
         foreach (var s in needles)
@@ -305,6 +307,72 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         try { await Shot("authed-error"); } catch { }
     }
     await ctx.CloseAsync();
+
+    // No-JavaScript round trip. The read-form's whole reason for existing is
+    // that it degrades to a plain POST plus a redirect-with-fragment when JS
+    // is off - that is the justification for allowing any JS in this project
+    // at all - but the maintainer's e-reader has no way to turn JavaScript
+    // off, so this path has never been exercised end to end on real hardware.
+    // Playwright can disable JS where a device can't, which is why this check
+    // exists. It needs its own BrowserContext (JavaScriptEnabled can't be
+    // flipped on an existing one) and, since cookies don't cross contexts,
+    // its own login - hence logging in a second time here.
+    var noJsCtx = await browser.NewContextAsync(new()
+    {
+        ViewportSize = new() { Width = vpW, Height = vpH },
+        JavaScriptEnabled = false,
+    });
+    await noJsCtx.AddCookiesAsync([ new() { Name = "inkshelf_settings", Value = De, Url = baseUrl } ]);
+    var noJsPage = await noJsCtx.NewPageAsync();
+    try
+    {
+        await noJsPage.GotoAsync(baseUrl + "/login");
+        await noJsPage.FillAsync("input[name=Username]", "root");
+        await noJsPage.FillAsync("input[name=Password]", "root");
+        await noJsPage.ClickAsync("button[type=submit]");
+        await noJsPage.WaitForSelectorAsync("text=Bibliotheken", new() { Timeout = 15000 });
+
+        // Act on the LISTING, not the item page: the fragment only means
+        // anything on a page with more than one row, and this is also the
+        // first coverage of the listing's own copy of the read-form (the JS
+        // click test above runs on the item page). "Field Manual" is a
+        // different seeded item from "The Silent Sea" - the only item that
+        // earlier test touches - so the two checks cannot race each other's
+        // read state.
+        await noJsPage.ClickAsync("a[href^='/library/']");
+        await noJsPage.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 15000 });
+        await noJsPage.FillAsync("input[name=q]", "Field Manual");
+        await noJsPage.PressAsync("input[name=q]", "Enter");
+        await noJsPage.WaitForSelectorAsync("form.read-form button.read-btn", new() { Timeout = 15000 });
+
+        var noJsRow = noJsPage.Locator("div.item:has-text('Field Manual')").First;
+        var rowId = await noJsRow.GetAttributeAsync("id"); // "item-<abs item id>"
+        var noJsBtn = noJsRow.Locator("form.read-form button.read-btn").First;
+        var noJsLabelBefore = await noJsBtn.InnerTextAsync();
+
+        // With JS off this is a real native form POST and a real navigation,
+        // not an XHR - Playwright's click auto-waits for it, so just wait for
+        // the resulting page to settle rather than a fixed timeout.
+        await noJsBtn.ClickAsync();
+        await noJsPage.WaitForLoadStateAsync(LoadState.NetworkIdle);
+
+        await Shot("read-nojs-de", noJsPage);
+        if (!noJsPage.Url.EndsWith("#" + rowId, StringComparison.Ordinal))
+            failures.Add($"read-nojs: expected the URL to end with #{rowId}, got {noJsPage.Url}");
+        if (await noJsPage.Locator($"[id='{rowId}']").CountAsync() == 0)
+            failures.Add($"read-nojs: no element with id \"{rowId}\" on the landed page");
+        var noJsLabelAfter = await noJsPage.Locator($"[id='{rowId}'] form.read-form button.read-btn").First.InnerTextAsync();
+        if (noJsLabelAfter == noJsLabelBefore)
+            failures.Add($"read-nojs: label did not change after the no-JS POST (\"{noJsLabelBefore}\")");
+
+        Console.WriteLine("[authed] no-JS read-form round trip captured");
+    }
+    catch (Exception ex)
+    {
+        failures.Add($"no-JS read flow error: {ex.Message}");
+        try { await Shot("read-nojs-error", noJsPage); } catch { }
+    }
+    await noJsCtx.CloseAsync();
 }
 
 Console.WriteLine();
