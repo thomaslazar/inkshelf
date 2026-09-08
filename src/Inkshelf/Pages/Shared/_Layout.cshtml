@@ -197,7 +197,12 @@
        document load and therefore runs this script.
 
        Gated in Razor rather than in JavaScript so a device that does not need the
-       workaround never receives it. *@
+       workaround never receives it.
+
+       The record is spent only by the next document load. A download that does
+       NOT trigger the kill/restore leaves it armed, so the user's next deliberate
+       tap gets replaced back to the listing once. Known and accepted, not a
+       defect - see the spec. *@
     @if (Inkshelf.Auth.DeviceSettings.Read(Context.Request).ReturnAfterDownload)
     {
         <script>
@@ -223,7 +228,12 @@
                     // scripted load after the download either way, and a real
                     // reading session measured 154 seconds, so any window would
                     // only ever suppress a correction that should have happened.
-                    if (want !== here()) { window.location.replace(want); }
+                    // want.charAt(1) !== '/' rules out a protocol-relative path
+                    // (a doubled leading slash), which location.replace would
+                    // send off-origin.
+                    if (want !== here() && want.charAt(0) === '/' && want.charAt(1) !== '/') {
+                        window.location.replace(want);
+                    }
                 }
             } catch (e) {}
         })();
