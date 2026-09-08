@@ -9,8 +9,8 @@ one, which on e-ink is slow enough to make the feature unpleasant.
 ## Why a reload happens today
 
 `POST /read/{id}` sets the state on ABS and redirects to the listing
-(`ReadEndpoints.cs:19`). With no JavaScript that is a full navigation, so the
-browser starts at the top. Nothing anchors the view either: `_ItemRow.cshtml:10`
+(`ReadEndpoints.cs`). With no JavaScript that is a full navigation, so the
+browser starts at the top. Nothing anchors the view either: `_ItemRow.cshtml`
 renders `<div class="item">` with no `id`, so there is no position to return to.
 
 ## Approach
@@ -38,16 +38,28 @@ on every `form.read-form` and:
 2. sets the button label to a working state
 3. posts the form's own fields by `XMLHttpRequest` to the form's action, with
    `xhr=1` added to the query string
-4. on HTTP 200, flips the label to the read state, flips the hidden `read` input
-   to the opposite value, and swaps the `title` attribute
-5. on anything else, restores the original label
+4. on HTTP 204 (the designed response) or 200 (see below), flips the label to
+   the read state, flips the hidden `read` input to the opposite value, and
+   swaps the `title` attribute
+5. on 401, navigates to `/login`, since being logged out has to be visible
+6. on anything else, restores the original label
 
 Feature-detected and wrapped in `try/catch`, so an engine that cannot run it
 leaves the plain form untouched.
 
+The 200 tolerance is for rollback, not a normal response this endpoint sends
+today: a cached page from this version, submitted after the binary behind it
+was rolled back to a build that still redirects on success, gets a 302 that
+XHR follows transparently into a 200. Treating only 204 as success would read
+that as a failure and revert the label even though the PATCH really happened.
+The auth middleware's redirect-to-login carries the same 200 status, which is
+exactly why an `xhr=1` request must never reach that redirect branch: it has
+to get the 401 fallback instead, or the same tolerance that protects rollback
+would read an expired session as success.
+
 ### No error affordance, deliberately
 
-The label only flips on a 200, so a failure leaves the button reading
+The label only flips on 204 or 200, so a failure leaves the button reading
 "Mark read". That is the error signal, and it needs no new UI.
 
 Two failure shapes exist and the browser cannot tell them apart: the request
@@ -55,7 +67,7 @@ arrived and succeeded but the response was lost, in which case the state is
 already correct on the server and the next reload shows it; or the request never
 arrived, in which case nothing was changed. Tapping again is safe in both cases,
 because the form posts an ABSOLUTE desired state rather than a toggle
-(`_ItemRow.cshtml:62` sends `read=1` or `read=0`, and `ReadEndpoints.cs:18`
+(`_ReadButton.cshtml` sends `read=1` or `read=0`, and `ReadEndpoints.cs`
 passes it through as `isFinished`). A second tap re-sends the same intent; it
 cannot flip the book back.
 
@@ -109,8 +121,8 @@ is allowed to use JavaScript at all.
 
 ## The duplicated read form
 
-The read form exists twice, near-verbatim: `_ItemRow.cshtml:60-72` for the
-listings and `Item.cshtml:77-89` for the detail page. Extract a
+The read form exists twice, near-verbatim: `_ItemRow.cshtml` for the
+listings and `Item.cshtml` for the detail page. Extract a
 `_ReadButton.cshtml` partial and use it from both.
 
 This is in scope because it is exactly the markup this change edits. The working
@@ -144,12 +156,10 @@ already works.
   same row does not.
 - Both the listing row and the detail page render the read button through the
   new partial.
-- uicheck: the button still renders in both languages, and the form still
-  carries its method, action and antiforgery token, which is what the
-  no-JavaScript path needs.
-
-The script itself is not unit-testable in this project. Its behaviour is
-verified by the device pass.
+- uicheck: the button still renders in both languages, the form still carries
+  its method, action and antiforgery token (which is what the no-JavaScript
+  path needs), and a live click both flips the label on success and reverts
+  it on a failed XHR without navigating.
 
 ## Verification
 

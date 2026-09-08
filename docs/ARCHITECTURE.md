@@ -56,7 +56,8 @@ src/Inkshelf/
   Localization/         File-backed JSON catalog keyed by the English source string.
   Pages/                Razor Pages (+ models); Shared/ partials.
     Support/            Non-page helpers: LibraryLinks, ItemRowModel, Pager,
-                        SortLinks, ConvertRowStateResolver, ConvertActionModel.
+                        SortLinks, ConvertRowStateResolver, ConvertActionModel,
+                        ReadButtonModel.
 ```
 
 Tests live in `tests/Inkshelf.Tests/`, roughly one file per unit. `dotnet test`
