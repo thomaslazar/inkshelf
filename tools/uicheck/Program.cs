@@ -197,6 +197,30 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         if (!label.Contains("Konvert", StringComparison.Ordinal) && label != "EPUB")
             failures.Add($"convert-clicked: unexpected label \"{label}\"");
 
+        // Live Read-button click: label must flip without a reload, never leak an
+        // HTML entity, and never get stuck on the "Markiere…" working label - that
+        // would mean the XHR success/failure branch in the layout script never ran.
+        await page.GotoAsync(libUrl);
+        await page.FillAsync("input[name=q]", "The Silent Sea");
+        await page.PressAsync("input[name=q]", "Enter");
+        await page.ClickAsync("a[href^='/item/']:has-text('The Silent Sea')");
+        await page.WaitForSelectorAsync("form.read-form button.read-btn", new() { Timeout = 15000 });
+        var readBtn = page.Locator("form.read-form button.read-btn").First;
+        var readLabelBefore = await readBtn.InnerTextAsync();
+        var urlBeforeRead = page.Url;
+        await readBtn.ClickAsync();
+        await page.WaitForTimeoutAsync(1500); // let the JS swap the label
+        var readLabelAfter = await readBtn.InnerTextAsync();
+        await Shot("read-clicked-de");
+        if (readLabelAfter == readLabelBefore)
+            failures.Add($"read-clicked: label did not change after click (\"{readLabelBefore}\")");
+        if (readLabelAfter.Contains("Markiere", StringComparison.Ordinal))
+            failures.Add($"read-clicked: label stuck on the working state \"{readLabelAfter}\"");
+        if (readLabelAfter.Contains("&#", StringComparison.Ordinal))
+            failures.Add($"read-clicked: HTML entity leaked into JS label: \"{readLabelAfter}\"");
+        if (page.Url != urlBeforeRead)
+            failures.Add($"read-clicked: page navigated from {urlBeforeRead} to {page.Url}");
+
         // Failure reasons: each seeded broken comic must land on the German reason
         // page (poll-JS auto-nav on failure) with the right explanation.
         //   Big Comic      → over the run's tiny ceiling → TooLarge
@@ -249,7 +273,7 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         if (convertedHtml.Contains("EPUB &#8595;", StringComparison.Ordinal))
             failures.Add("converted-sorted-de: a download arrow is rendered before anything was downloaded");
 
-        Console.WriteLine("[authed] index / library / item / converted / convert-click / convert-failed (toolarge/badarchive/converterror) / failed-row / converted-sorted captured");
+        Console.WriteLine("[authed] index / library / item / converted / convert-click / read-click / convert-failed (toolarge/badarchive/converterror) / failed-row / converted-sorted captured");
     }
     catch (Exception ex)
     {
