@@ -41,7 +41,14 @@
     // JSON-serialised, not localizer lookups inside quotes: Razor HTML-encodes
     // localizer output, so an ellipsis/quote/ampersand would arrive as an entity
     // and show literally when the JS assigns it via nodeValue. JSON is JS-safe.
-    var I18N = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { convert = L["Convert"], converting = L["Converting…"], retry = L["Convert (retry)"] }));
+    @* readLabel is composed once here, not rebuilt in the script, so the check
+       mark and its trailing space can't drift out of sync with the Razor-side
+       rendering of the same label. The ✓ escape keeps this line ASCII, the
+       same instinct as the &#10003; entity in _ReadButton.cshtml. title/untitle
+       are the read-button tooltip strings: they used to travel per-row as
+       data-title/data-untitle, but the values never vary per row, so sending
+       them once here instead saves repeating them on every listing row. *@
+    var I18N = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { convert = L["Convert"], converting = L["Converting…"], retry = L["Convert (retry)"], marking = L["Marking…"], readLabel = "\u2713 " + L["Read"], markRead = L["Mark read"], title = L["Mark as read"], untitle = L["Mark as unread"] }));
     (function () {
         try {
             var POLL_MS = 5000;
@@ -96,6 +103,87 @@
                         poll(a); // already converting server-side → resume
                     }
                 })(links[i]);
+            }
+        } catch (e) {}
+    })();
+    /* Mark read without a reload. The form below stays a real form: with JS off it
+       posts and comes back to the row via the #item- anchor in its return field.
+       With JS we post the same fields ourselves and repaint the button.
+       ES5 + try/catch for old e-readers, same as the poller above. */
+    (function () {
+        try {
+            var forms = document.querySelectorAll('form.read-form');
+            for (var i = 0; i < forms.length; i++) {
+                (function (f) {
+                    f.addEventListener('submit', function (e) {
+                        // The outer try/catch around this whole block only covers the
+                        // binding pass, not a later tap: JS try/catch is dynamic, not
+                        // lexical, so it does not protect code that runs inside this
+                        // handler. Without a try here, a throw after preventDefault()
+                        // below would swallow the real post and leave a dead button.
+                        try {
+                            var btn = f.querySelector('button.read-btn');
+                            var hidden = f.querySelector('input[name="read"]');
+                            if (!btn || !hidden) { return; } // let the form post normally
+                            e.preventDefault();
+                            // Remember the label so a failure can put it back. It reads the
+                            // composed label off I18N rather than preserving a glyph node,
+                            // so the check mark can't drift out of sync with that label.
+                            // ponytail: 3+ rapid taps on the SAME button can let an older
+                            // response land after a newer one and briefly paint a stale
+                            // label. Accepted ceiling: no cheap client-side guard fixes
+                            // it, because the requests can reach the SERVER out of order
+                            // too, so a client-side sequence number would just pick a
+                            // different, still-wrong, lie.
+                            var wasRead = hidden.value === '0';
+                            btn.firstChild.nodeValue = I18N.marking;
+                            var xhr = new XMLHttpRequest();
+                            var url = f.getAttribute('action') + '?xhr=1';
+                            xhr.open('POST', url);
+                            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                            xhr.onreadystatechange = function () {
+                                if (xhr.readyState !== 4) { return; }
+                                if (xhr.status === 204 || xhr.status === 200) {
+                                    // Flip to the state we just asked for, and flip the
+                                    // hidden field so the next tap asks for the opposite.
+                                    var nowRead = !wasRead;
+                                    btn.firstChild.nodeValue = nowRead ? I18N.readLabel : I18N.markRead;
+                                    hidden.value = nowRead ? '0' : '1';
+                                    btn.setAttribute('title', nowRead ? I18N.untitle : I18N.title);
+                                } else if (xhr.status === 401) {
+                                    // The session is gone; the user must be told rather
+                                    // than shown a button that silently did nothing. Restore
+                                    // the label first: the /login navigation can be slow or
+                                    // never land (the 401 often means ABS or the network just
+                                    // went away), and the button must stay honest either way.
+                                    btn.firstChild.nodeValue = wasRead ? I18N.readLabel : I18N.markRead;
+                                    window.location.href = '/login';
+                                } else {
+                                    // No error UI on purpose: a button that did not change
+                                    // IS the signal, and the form posts an absolute state
+                                    // so tapping again is safe.
+                                    btn.firstChild.nodeValue = wasRead ? I18N.readLabel : I18N.markRead;
+                                }
+                            };
+                            xhr.send(serialize(f));
+                        } catch (err) {
+                            // f.submit() does not re-fire the 'submit' event (per spec),
+                            // so this cannot recurse. It is the same fallback a missing
+                            // btn/hidden already takes above.
+                            f.submit();
+                        }
+                    });
+                })(forms[i]);
+            }
+            function serialize(f) {
+                var parts = [];
+                var els = f.elements;
+                for (var j = 0; j < els.length; j++) {
+                    var el = els[j];
+                    if (!el.name || el.disabled) { continue; }
+                    parts.push(encodeURIComponent(el.name) + '=' + encodeURIComponent(el.value));
+                }
+                return parts.join('&');
             }
         } catch (e) {}
     })();

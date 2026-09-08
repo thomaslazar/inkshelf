@@ -105,8 +105,10 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
     await ctx.AddCookiesAsync([ new() { Name = "inkshelf_settings", Value = De, Url = baseUrl } ]);
     var page = await ctx.NewPageAsync();
 
-    async Task Shot(string label) =>
-        await page.ScreenshotAsync(new() { Path = Path.Combine(outDir, label + ".png"), FullPage = true });
+    // forPage defaults to the shared authed page; the no-JS check below passes
+    // its own second-context page so it can reuse this same helper.
+    async Task Shot(string label, IPage? forPage = null) =>
+        await (forPage ?? page).ScreenshotAsync(new() { Path = Path.Combine(outDir, label + ".png"), FullPage = true });
     void Expect(string label, string body, params string[] needles)
     {
         foreach (var s in needles)
@@ -197,6 +199,54 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         if (!label.Contains("Konvert", StringComparison.Ordinal) && label != "EPUB")
             failures.Add($"convert-clicked: unexpected label \"{label}\"");
 
+        // Live Read-button click: label must flip without a reload, never leak an
+        // HTML entity, and never get stuck on the "Markiere…" working label - that
+        // would mean the XHR success/failure branch in the layout script never ran.
+        await page.GotoAsync(libUrl);
+        await page.FillAsync("input[name=q]", "The Silent Sea");
+        await page.PressAsync("input[name=q]", "Enter");
+        await page.ClickAsync("a[href^='/item/']:has-text('The Silent Sea')");
+        await page.WaitForSelectorAsync("form.read-form button.read-btn", new() { Timeout = 15000 });
+        var readBtn = page.Locator("form.read-form button.read-btn").First;
+        var readLabelBefore = await readBtn.InnerTextAsync();
+        var urlBeforeRead = page.Url;
+        await readBtn.ClickAsync();
+        await page.WaitForTimeoutAsync(1500); // let the JS swap the label
+        var readLabelAfter = await readBtn.InnerTextAsync();
+        await Shot("read-clicked-de");
+        if (readLabelAfter == readLabelBefore)
+            failures.Add($"read-clicked: label did not change after click (\"{readLabelBefore}\")");
+        if (readLabelAfter.Contains("Markiere", StringComparison.Ordinal))
+            failures.Add($"read-clicked: label stuck on the working state \"{readLabelAfter}\"");
+        if (readLabelAfter.Contains("&#", StringComparison.Ordinal))
+            failures.Add($"read-clicked: HTML entity leaked into JS label: \"{readLabelAfter}\"");
+        if (page.Url != urlBeforeRead)
+            failures.Add($"read-clicked: page navigated from {urlBeforeRead} to {page.Url}");
+
+        // Live Read-button click, XHR FAILS: there is deliberately no error UI, so
+        // the un-flipped label IS the failure signal. That only works if the
+        // script's revert branch actually restores the pre-click label - if it
+        // does not, the button is stuck on "Markiere..." (the working label)
+        // forever, which is the dead-button outcome the design forbids. Scoped to
+        // this page/route pair and unrouted right after so it cannot catch a
+        // later check's request.
+        Func<string, bool> matchReadXhr = url => url.Contains("/read/") && url.Contains("xhr=1");
+        Func<IRoute, Task> failReadXhr = route => route.FulfillAsync(new() { Status = 500 });
+        await page.RouteAsync(matchReadXhr, failReadXhr);
+        var readLabelBeforeFail = await readBtn.InnerTextAsync();
+        var urlBeforeReadFail = page.Url;
+        await readBtn.ClickAsync();
+        await page.WaitForTimeoutAsync(1500); // let the JS revert branch run
+        var readLabelAfterFail = await readBtn.InnerTextAsync();
+        await page.UnrouteAsync(matchReadXhr, failReadXhr);
+        await Shot("read-clicked-fail-de");
+        if (readLabelAfterFail != readLabelBeforeFail)
+            failures.Add($"read-clicked-fail: label did not revert (\"{readLabelBeforeFail}\" -> \"{readLabelAfterFail}\")");
+        if (readLabelAfterFail.Contains("Markiere", StringComparison.Ordinal))
+            failures.Add($"read-clicked-fail: label stuck on the working state \"{readLabelAfterFail}\"");
+        if (page.Url != urlBeforeReadFail)
+            failures.Add($"read-clicked-fail: page navigated from {urlBeforeReadFail} to {page.Url}");
+
         // Failure reasons: each seeded broken comic must land on the German reason
         // page (poll-JS auto-nav on failure) with the right explanation.
         //   Big Comic      → over the run's tiny ceiling → TooLarge
@@ -249,7 +299,7 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         if (convertedHtml.Contains("EPUB &#8595;", StringComparison.Ordinal))
             failures.Add("converted-sorted-de: a download arrow is rendered before anything was downloaded");
 
-        Console.WriteLine("[authed] index / library / item / converted / convert-click / convert-failed (toolarge/badarchive/converterror) / failed-row / converted-sorted captured");
+        Console.WriteLine("[authed] index / library / item / converted / convert-click / read-click / convert-failed (toolarge/badarchive/converterror) / failed-row / converted-sorted captured");
     }
     catch (Exception ex)
     {
@@ -257,6 +307,72 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         try { await Shot("authed-error"); } catch { }
     }
     await ctx.CloseAsync();
+
+    // No-JavaScript round trip. The read-form's whole reason for existing is
+    // that it degrades to a plain POST plus a redirect-with-fragment when JS
+    // is off - that is the justification for allowing any JS in this project
+    // at all - but the maintainer's e-reader has no way to turn JavaScript
+    // off, so this path has never been exercised end to end on real hardware.
+    // Playwright can disable JS where a device can't, which is why this check
+    // exists. It needs its own BrowserContext (JavaScriptEnabled can't be
+    // flipped on an existing one) and, since cookies don't cross contexts,
+    // its own login - hence logging in a second time here.
+    var noJsCtx = await browser.NewContextAsync(new()
+    {
+        ViewportSize = new() { Width = vpW, Height = vpH },
+        JavaScriptEnabled = false,
+    });
+    await noJsCtx.AddCookiesAsync([ new() { Name = "inkshelf_settings", Value = De, Url = baseUrl } ]);
+    var noJsPage = await noJsCtx.NewPageAsync();
+    try
+    {
+        await noJsPage.GotoAsync(baseUrl + "/login");
+        await noJsPage.FillAsync("input[name=Username]", "root");
+        await noJsPage.FillAsync("input[name=Password]", "root");
+        await noJsPage.ClickAsync("button[type=submit]");
+        await noJsPage.WaitForSelectorAsync("text=Bibliotheken", new() { Timeout = 15000 });
+
+        // Act on the LISTING, not the item page: the fragment only means
+        // anything on a page with more than one row, and this is also the
+        // first coverage of the listing's own copy of the read-form (the JS
+        // click test above runs on the item page). "Field Manual" is a
+        // different seeded item from "The Silent Sea" - the only item that
+        // earlier test touches - so the two checks cannot race each other's
+        // read state.
+        await noJsPage.ClickAsync("a[href^='/library/']");
+        await noJsPage.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 15000 });
+        await noJsPage.FillAsync("input[name=q]", "Field Manual");
+        await noJsPage.PressAsync("input[name=q]", "Enter");
+        await noJsPage.WaitForSelectorAsync("form.read-form button.read-btn", new() { Timeout = 15000 });
+
+        var noJsRow = noJsPage.Locator("div.item:has-text('Field Manual')").First;
+        var rowId = await noJsRow.GetAttributeAsync("id"); // "item-<abs item id>"
+        var noJsBtn = noJsRow.Locator("form.read-form button.read-btn").First;
+        var noJsLabelBefore = await noJsBtn.InnerTextAsync();
+
+        // With JS off this is a real native form POST and a real navigation,
+        // not an XHR - Playwright's click auto-waits for it, so just wait for
+        // the resulting page to settle rather than a fixed timeout.
+        await noJsBtn.ClickAsync();
+        await noJsPage.WaitForLoadStateAsync(LoadState.NetworkIdle);
+
+        await Shot("read-nojs-de", noJsPage);
+        if (!noJsPage.Url.EndsWith("#" + rowId, StringComparison.Ordinal))
+            failures.Add($"read-nojs: expected the URL to end with #{rowId}, got {noJsPage.Url}");
+        if (await noJsPage.Locator($"[id='{rowId}']").CountAsync() == 0)
+            failures.Add($"read-nojs: no element with id \"{rowId}\" on the landed page");
+        var noJsLabelAfter = await noJsPage.Locator($"[id='{rowId}'] form.read-form button.read-btn").First.InnerTextAsync();
+        if (noJsLabelAfter == noJsLabelBefore)
+            failures.Add($"read-nojs: label did not change after the no-JS POST (\"{noJsLabelBefore}\")");
+
+        Console.WriteLine("[authed] no-JS read-form round trip captured");
+    }
+    catch (Exception ex)
+    {
+        failures.Add($"no-JS read flow error: {ex.Message}");
+        try { await Shot("read-nojs-error", noJsPage); } catch { }
+    }
+    await noJsCtx.CloseAsync();
 }
 
 Console.WriteLine();

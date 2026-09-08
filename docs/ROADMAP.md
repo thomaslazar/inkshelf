@@ -93,6 +93,12 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Read without a reload** (#66) - marking a book read/unread no longer costs a
+  full page reload. `POST /read/{id}?xhr=1` answers `204 No Content` while a
+  plain post still redirects, the shared read form's `return` field carries a
+  `#item-<id>` anchor so a no-JS reload lands back on the tapped row, and a
+  small ES5 script in `_Layout.cshtml` intercepts the submit and repaints the
+  button in place.
 - **Enlarge small pages** - a per-device setting, default off, that resamples a
   page image up to the screen when the comic's scans are smaller than it. Only
   needed on a reader that ignores the declared fixed-layout viewport (the

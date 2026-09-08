@@ -1,0 +1,21 @@
+@model Inkshelf.Pages.ReadButtonModel
+<form class="read-form" method="post" action="/read/@Model.ItemId">
+    @Html.AntiForgeryToken()
+    @* The ABSOLUTE desired state, not a toggle. That is what makes a retry after
+       a failed request safe: tapping again re-sends the same intent instead of
+       flipping the book back. *@
+    <input type="hidden" name="read" value="@(Model.Read ? "0" : "1")" />
+    @* Anchored HERE, not in the caller's ReturnUrl: that same string feeds the
+       convert links, which must not start carrying a fragment. The fragment has
+       to be in the Location header the POST redirects to, because a 302 whose
+       Location has no fragment does not inherit one from the POST target. *@
+    <input type="hidden" name="return" value="@(Model.ReturnUrl)#item-@Model.ItemId" />
+    @if (Model.Read)
+    {
+        <button type="submit" class="btn read-btn" title="@L["Mark as unread"]">&#10003; @L["Read"]</button>
+    }
+    else
+    {
+        <button type="submit" class="btn read-btn" title="@L["Mark as read"]">@L["Mark read"]</button>
+    }
+</form>

@@ -380,6 +380,27 @@ public class ListingRenderTests
     }
 
     [Fact]
+    public async Task The_listing_read_form_carries_everything_the_no_js_path_needs()
+    {
+        // With JS off this form IS the feature: method, action, the antiforgery
+        // token and the absolute desired state all have to be in the markup.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        var form = Regex.Match(html, "<form class=\"read-form\"[\\s\\S]*?</form>");
+        Assert.True(form.Success, "Expected a read form in the rendered listing.");
+        Assert.Contains("method=\"post\"", form.Value);
+        Assert.Contains($"action=\"/read/{ItemId}\"", form.Value);
+        Assert.Contains("__RequestVerificationToken", form.Value);
+        Assert.Contains("name=\"read\" value=\"1\"", form.Value);
+        Assert.Contains("name=\"return\"", form.Value);
+    }
+
+    [Fact]
     public async Task Read_row_shows_checked_toggle_that_unmarks()
     {
         using var cacheDir = new TempDir();
@@ -658,5 +679,66 @@ public class ListingRenderTests
         var ticket = factory.Services.GetRequiredService<DownloadTickets>().Redeem(handle);
         Assert.NotNull(ticket);
         Assert.Equal("newacc", ticket!.Access);
+    }
+
+    [Fact]
+    public async Task The_listing_row_is_anchorable_and_the_read_form_returns_to_it()
+    {
+        // With JS off, marking read reloads. The fragment is what puts the reader
+        // back on the row they tapped instead of the top of the listing.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        Assert.Contains($"id=\"item-{ItemId}\"", html);
+        var form = Regex.Match(html, "<form class=\"read-form\"[\\s\\S]*?</form>");
+        Assert.True(form.Success, "Expected a read form in the rendered listing.");
+        Assert.Contains($"name=\"return\" value=\"/library/{LibId}#item-{ItemId}\"", form.Value);
+    }
+
+    [Fact]
+    public async Task The_convert_href_does_not_carry_the_row_anchor()
+    {
+        // The anchor belongs to the read form alone. ItemRowModel.ReturnUrl feeds
+        // the convert links too, so appending it there would put a fragment on
+        // every convert href.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        Assert.DoesNotContain("item-", PrimaryConvertAnchor(html));
+    }
+
+    [Fact]
+    public async Task The_layout_ships_the_read_labels_as_json_not_entities()
+    {
+        // Razor HTML-encodes localizer output, so a label assigned via nodeValue
+        // would show "&#x2026;" literally. The I18N object exists to dodge that;
+        // these two strings have to travel through it like the convert ones.
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(MakeStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var html = await (await client.SendAsync(LibraryRequest(factory))).Content.ReadAsStringAsync();
+
+        var i18n = Regex.Match(html, "var I18N = \\{.*\\};");
+        Assert.True(i18n.Success, "Expected the I18N object in the layout.");
+        Assert.Contains("\"marking\":", i18n.Value);
+        Assert.Contains("\"readLabel\":", i18n.Value);
+        Assert.Contains("\"markRead\":", i18n.Value);
+        // Pins the check mark and its single trailing space inside readLabel, so a
+        // regression that drops the glyph or doubles the space isn't silently
+        // uncaught. JsonSerializer writes non-ASCII as an escape sequence, so
+        // that is what shows up on the wire, not the literal character.
+        Assert.Contains("\"readLabel\":\"\\u2713 Read\"", i18n.Value);
+        Assert.DoesNotContain("&#x", i18n.Value);
+        Assert.DoesNotContain("&amp;", i18n.Value);
     }
 }
