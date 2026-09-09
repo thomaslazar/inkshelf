@@ -932,6 +932,26 @@ public class EndpointTests
         Assert.Contains("name=\"perpage\"", html);
     }
 
+    // A Razor `}` that no longer matches an opening `{` is not an error: it falls
+    // into markup context and renders as a literal brace. That shipped once from
+    // an "obviously cosmetic" edit to this page's warning blocks, and every test
+    // here kept passing because they only assert that an element is present.
+    // The form area contains no braces of its own, so the whole rendered page
+    // minus its <script> block is a clean thing to assert on.
+    [Fact]
+    public async Task The_settings_form_renders_no_stray_razor_brace()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+
+        var html = await (await client.GetAsync("/settings")).Content.ReadAsStringAsync();
+
+        var scriptAt = html.IndexOf("<script", StringComparison.Ordinal);
+        var form = scriptAt < 0 ? html : html[..scriptAt];
+        Assert.DoesNotContain("{", form);
+        Assert.DoesNotContain("}", form);
+    }
+
     // The marker is NOT a settings key. If it were added to DeviceSettings.Keys,
     // a redirect carrying only the warning would parse as a settings payload and
     // could overwrite real settings with defaults.
