@@ -120,10 +120,18 @@ step 2. But building rows can move after the sort:
 Step 3 resolves `ConvertRowStateResolver.Resolve` for **all** items, not only the
 page's. This looks like work the slice should have removed, and it is kept on
 purpose: `AnyConverting` drives a 30 second `MetaRefresh` on this page, and
-scoping it to the visible page would silently change when the page auto-refreshes
-(a conversion running on page three would no longer refresh page one). Resolve is
-local file existence and queue lookups with no network call, and running it for
-every item is what the page already does.
+scoping it to the visible page would silently change when the page
+auto-refreshes. Resolve is local file existence and queue lookups with no network
+call, and running it for every item is what the page already does.
+
+How narrow that case actually is, since it is easy to overstate: `ConvertQueue.Status`
+returns `Done` whenever the cache file exists, so an item that reached this page
+by having a cache variant is normally `Cached`. It resolves to `Converting` only
+when its **source file changed** since the conversion, because the state is
+computed from the current size and mtime and so keys a cache path that does not
+exist yet, letting the queue answer instead. The exception is therefore cheap
+insurance for a real but uncommon case, not a hot path. It is kept because
+preserving today's refresh behaviour costs nothing, not because it fires often.
 
 The batch metadata call in step 2 also still covers every converted id, because
 the sort needs it. Paging does not reduce that, and this design does not pretend
