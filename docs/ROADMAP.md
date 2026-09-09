@@ -87,12 +87,20 @@ Settings to add to the per-device settings system:
   screen, no scroll" would be much nicer. Open questions: variable row heights
   (multi-author/series wrap), the first load before the cookie is set, and how
   this interacts with search results. Decide feasibility + approach before
-  committing.
+  committing. A manual "Items per page" setting now exists (#67), so this is no
+  longer about making the count configurable at all, only about deriving it
+  automatically; if it proves out, the derived count becomes another value the
+  setting can take.
 
 ## Done
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Items per page** (#67) - a per-device setting, default 10, range 5 to 50,
+  that sizes both browsable library lists; out of range falls back to the
+  default and says so. The converted page also gained a pager, replacing the
+  single unbroken list of every converted book. Search stays unpaged: it is
+  already capped at 25 mixed hits and is not a browsable list.
 - **Return to the list after a download** (#68) - a per-device setting, default
   off, that sends the browser back to the page a download started from. Works
   around a Tolino behaviour where the reader app taking the foreground kills

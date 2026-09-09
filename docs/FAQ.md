@@ -33,6 +33,12 @@ Settings: it resamples the pages up to the screen instead of leaving them small.
 Files get bigger, which is the trade. Retina must stay on for it to have room to
 work, since the enlargement target is the screen in physical pixels.
 
+## The list shows too many or too few books per screen
+
+Set **Items per page** in Settings to how many rows you want per page, from 5
+to 50 (default 10). It applies to both library lists and the converted page.
+Search results are not affected: they stay capped at 25 and are not paged.
+
 ## I have to log in again whenever I reopen the browser
 
 Some older readers keep no cookies across a browser restart, and the device
