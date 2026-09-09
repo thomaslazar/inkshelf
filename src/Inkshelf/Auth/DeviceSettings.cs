@@ -40,6 +40,11 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // free number with a floor rather than a menu.
     public const int MinScale = 50;
 
+    // Items per page for the browsable lists. A free number with bounds rather
+    // than a menu, matching the page scale's control.
+    public const int MinPerPage = 5;
+    public const int MaxPerPage = 50;
+
     // Resample pages UP to the screen box when the scans are smaller than it. An
     // init property for the same reason as Fav: the existing three-argument
     // construction sites keep compiling.
@@ -59,6 +64,13 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // markup can prevent that; see the spec's spike findings before changing the
     // approach.
     public bool ReturnAfterDownload { get; init; }
+
+    // How many rows a browsable list shows: the library listing and the
+    // converted page. An init property for the same reason as the flags above.
+    //
+    // 10 is the size the library listing was fixed at before this was
+    // configurable, so leaving it alone changes nothing for anyone.
+    public int PerPage { get; init; } = 10;
 
     // A hand-entered screen geometry, used INSTEAD of the "scr" probe when
     // OverrideScreen is set. The numbers are kept even while the override is off,
@@ -95,7 +107,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     public string Serialize() =>
         $"retina={(Retina ? 1 : 0)}&gray={(Grayscale ? 1 : 0)}"
         + $"&lang={SanitizeLang(Lang)}&fav={SanitizeId(Fav)}&did={SanitizeId(Did)}"
-        + $"&spread={Spread.ToString().ToLowerInvariant()}&scale={Scale}&up={(Upscale ? 1 : 0)}&ret={(ReturnAfterDownload ? 1 : 0)}"
+        + $"&spread={Spread.ToString().ToLowerInvariant()}&scale={Scale}&up={(Upscale ? 1 : 0)}&ret={(ReturnAfterDownload ? 1 : 0)}&ipp={PerPage}"
         + $"&ovr={(OverrideScreen ? 1 : 0)}&ovrw={SanitizeDim(OverrideW)}&ovrh={SanitizeDim(OverrideH)}"
         + $"&ovrd={SanitizeDpr(OverrideDpr).ToString(CultureInfo.InvariantCulture)}";
 
@@ -119,7 +131,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // The keys Serialize writes, and nothing else. A query carrying none of them
     // is not a settings payload - `range`/`scalerange` are warning markers.
     private static readonly string[] Keys =
-        ["retina", "gray", "lang", "fav", "did", "spread", "scale", "up", "ret", "ovr", "ovrw", "ovrh", "ovrd"];
+        ["retina", "gray", "lang", "fav", "did", "spread", "scale", "up", "ret", "ipp", "ovr", "ovrw", "ovrh", "ovrd"];
 
     // Settings from a URL query, or null when it carries none of Keys. The cookie
     // and a bookmarked URL are the same wire format, so both go through Parse and
@@ -147,6 +159,7 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
                 ? SanitizeScale(pc) : Default.Scale,
             Upscale = Flag(q, "up", Default.Upscale),
             ReturnAfterDownload = Flag(q, "ret", Default.ReturnAfterDownload),
+            PerPage = SanitizePerPage(Num(q, "ipp", Default.PerPage)),
             OverrideScreen = Flag(q, "ovr", Default.OverrideScreen),
             OverrideW = q.TryGetValue("ovrw", out var ow) && int.TryParse(ow.ToString(), out var owv)
                 ? SanitizeDim(owv) : 0,
@@ -163,6 +176,11 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     private static bool Flag(IQueryCollection q, string key, bool fallback) =>
         q.TryGetValue(key, out var v) && v.Count > 0 ? v[0] == "1" : fallback;
 
+    // v[0], not v.ToString(), for the same reason as Flag: a duplicated key
+    // ("ipp=10&ipp=10") joins to "10,10", which must fall back rather than parse.
+    private static int Num(IQueryCollection q, string key, int fallback) =>
+        q.TryGetValue(key, out var v) && v.Count > 0 && int.TryParse(v[0], out var n) ? n : fallback;
+
     // Two 0/1 flags then an optional language code, e.g. "10de". Anything
     // malformed → Default.
     private static DeviceSettings ReadLegacy(string v) =>
@@ -173,6 +191,12 @@ public sealed record DeviceSettings(bool Retina, bool Grayscale, string Lang)
     // A hand-edited cookie must not mint an absurd page size. Out of range means the
     // documented default, not a clamp: 20 is not a request for 50.
     public static int SanitizeScale(int pct) => pct >= MinScale && pct <= 100 ? pct : Default.Scale;
+
+    // Out of range means the documented default, not a clamp, for the same
+    // reason SanitizeScale gives: 500 is not a request for 50. Zero and negative
+    // are covered by the lower bound, which matters because a page size of 0
+    // would divide by zero in Pager.TotalPages.
+    public static int SanitizePerPage(int n) => n >= MinPerPage && n <= MaxPerPage ? n : Default.PerPage;
 
     // Out of range becomes 0 ("nothing stored") rather than being clamped to the
     // bound: a typo'd 99999 is not a request for 4096, it is a mistake, and

@@ -94,8 +94,8 @@ public class DeviceSettingsTests
     [Fact]
     public void Serialize_emits_keyed_pairs()
     {
-        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=splitleftfirst&scale=100&up=0&ret=0&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, false, "de").Serialize());
-        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=splitleftfirst&scale=100&up=0&ret=0&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, true, "").Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=&did=&spread=splitleftfirst&scale=100&up=0&ret=0&ipp=10&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, false, "de").Serialize());
+        Assert.Equal("retina=1&gray=1&lang=&fav=&did=&spread=splitleftfirst&scale=100&up=0&ret=0&ipp=10&ovr=0&ovrw=0&ovrh=0&ovrd=0", new DeviceSettings(true, true, "").Serialize());
     }
 
     [Fact]
@@ -192,7 +192,7 @@ public class DeviceSettingsTests
     public void Serialize_includes_fav()
     {
         var s = new DeviceSettings(true, false, "de") { Fav = "lib_abc" };
-        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=splitleftfirst&scale=100&up=0&ret=0&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
+        Assert.Equal("retina=1&gray=0&lang=de&fav=lib_abc&did=&spread=splitleftfirst&scale=100&up=0&ret=0&ipp=10&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
     }
 
     [Fact]
@@ -241,7 +241,7 @@ public class DeviceSettingsTests
     public void Fav_is_sanitized_on_the_way_into_the_cookie(string raw, string expected)
     {
         var s = new DeviceSettings(true, false, "") { Fav = raw };
-        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=splitleftfirst&scale=100&up=0&ret=0&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
+        Assert.Equal($"retina=1&gray=0&lang=&fav={expected}&did=&spread=splitleftfirst&scale=100&up=0&ret=0&ipp=10&ovr=0&ovrw=0&ovrh=0&ovrd=0", s.Serialize());
     }
 
     [Fact]
@@ -567,5 +567,59 @@ public class DeviceSettingsTests
     {
         var q = new QueryCollection(QueryHelpers.ParseQuery("ret=1"));
         Assert.True(DeviceSettings.FromQuery(q)!.ReturnAfterDownload);
+    }
+
+    [Fact]
+    public void PerPage_defaults_to_ten()
+    {
+        Assert.Equal(10, DeviceSettings.Default.PerPage);
+    }
+
+    [Fact]
+    public void PerPage_round_trips_through_the_wire_format()
+    {
+        var q = new QueryCollection(QueryHelpers.ParseQuery("retina=1&gray=0&lang=&fav=&ipp=25"));
+        Assert.Equal(25, DeviceSettings.FromQuery(q)!.PerPage);
+    }
+
+    [Fact]
+    public void PerPage_absent_from_an_older_cookie_reads_as_the_default()
+    {
+        var q = new QueryCollection(QueryHelpers.ParseQuery("retina=1&gray=0&lang=&fav="));
+        Assert.Equal(10, DeviceSettings.FromQuery(q)!.PerPage);
+    }
+
+    [Fact]
+    public void PerPage_alone_is_enough_to_recognise_a_settings_query()
+    {
+        var q = new QueryCollection(QueryHelpers.ParseQuery("ipp=15"));
+        Assert.Equal(15, DeviceSettings.FromQuery(q)!.PerPage);
+    }
+
+    // Out of range on EITHER side falls back to the default rather than clamping
+    // to the bound, the same rule SanitizeScale documents: a typo'd 500 is a
+    // mistake, not a request for 50.
+    [Theory]
+    [InlineData(4, 10)]
+    [InlineData(51, 10)]
+    [InlineData(0, 10)]
+    [InlineData(-3, 10)]
+    [InlineData(500, 10)]
+    [InlineData(5, 5)]
+    [InlineData(50, 50)]
+    [InlineData(10, 10)]
+    public void SanitizePerPage_keeps_the_range_and_defaults_outside_it(int given, int expected)
+    {
+        Assert.Equal(expected, DeviceSettings.SanitizePerPage(given));
+    }
+
+    // A garbage value in the cookie must not reach the page size: zero or
+    // negative would mean a division by zero in Pager.TotalPages, which guards
+    // it, but the sanitizer must not lean on that guard.
+    [Fact]
+    public void PerPage_garbage_in_the_cookie_reads_as_the_default()
+    {
+        var q = new QueryCollection(QueryHelpers.ParseQuery("retina=1&gray=0&lang=&fav=&ipp=abc"));
+        Assert.Equal(10, DeviceSettings.FromQuery(q)!.PerPage);
     }
 }
