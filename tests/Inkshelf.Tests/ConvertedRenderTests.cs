@@ -362,6 +362,21 @@ public class ConvertedRenderTests
         Assert.Contains("href=\"/converted?sort=converted&amp;desc=1&amp;page=2\"", html);
     }
 
+    [Fact]
+    public async Task A_row_return_url_carries_the_current_page_and_sort()
+    {
+        // Regression for the read button's #item- anchor going stale under
+        // paging: the row's return URL must be the exact request URL (page and
+        // sort included), not a bare "/converted", or a no-JS read toggle on
+        // page 2 lands back on page 1 with a fragment naming a row that is not
+        // on the page it redirected to.
+        var html = await GetPagedAsync("?sort=title&page=2", perPage: 5);
+
+        Assert.Contains(
+            "name=\"return\" value=\"/converted?sort=title&amp;page=2#item-p6\"",
+            html);
+    }
+
     // Pins the ORDERING of the work, which is the whole point of this task. If
     // rows are built before the slice, all seven rows mint their tickets and the
     // two counts come out equal.

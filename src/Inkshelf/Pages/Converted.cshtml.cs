@@ -141,6 +141,13 @@ public class ConvertedModel : PageModel, IPagedListing
         var zeroPage = Math.Clamp(page - 1, 0, totalPages - 1);
         Pager = new Pager(zeroPage, perPage, sorted.Count);
 
+        // Exact current listing URL (page, sort, everything), not a bare
+        // "/converted": a no-JS convert/read POST redirects back here, and the
+        // #item- anchor _ReadButton appends only lands on the tapped row if the
+        // return URL still names the page it came from. Same pattern as the
+        // library listing's RowFor.
+        var ret = Request.Path + Request.QueryString;
+
         // Rows, and therefore TICKETS, only for what is rendered.
         var access = _tokens.Read()?.Access;
         foreach (var b in sorted.Skip(zeroPage * perPage).Take(perPage))
@@ -161,7 +168,7 @@ public class ConvertedModel : PageModel, IPagedListing
                 ? _tickets.MintRaw(b.It.Id, null, settings.Did, filename, acc)
                 : null;
             Rows.Add(new ItemRowModel(item, links, b.M.Metadata?.Authors, b.M.Metadata?.Series,
-                b.State, "/converted", finished.Contains(b.It.Id), rawDownloaded, epubDownloaded,
+                b.State, ret, finished.Contains(b.It.Id), rawDownloaded, epubDownloaded,
                 rawTicket, epubTicket));
         }
         return Page();
