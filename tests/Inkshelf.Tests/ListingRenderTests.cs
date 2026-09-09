@@ -804,4 +804,26 @@ public class ListingRenderTests
 
         Assert.Contains("inkshelf.dlreturn", html);
     }
+
+    [Fact]
+    public async Task The_listing_asks_abs_for_the_configured_page_size()
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        var seen = new List<string>();
+        var stub = new StubHandler(req =>
+        {
+            seen.Add(req.RequestUri!.ToString());
+            return Respond(req, null);
+        });
+        using var factory = CreateFactory(stub, cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var settings = (DeviceSettings.Default with { PerPage = 25 }).Serialize();
+        await client.SendAsync(LibraryRequest(factory, settings));
+
+        var items = seen.FirstOrDefault(u => u.Contains("/items", StringComparison.Ordinal));
+        Assert.NotNull(items);
+        Assert.Contains("limit=25", items);
+    }
 }

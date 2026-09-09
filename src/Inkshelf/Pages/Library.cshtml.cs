@@ -6,10 +6,10 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Inkshelf.Pages;
 
-public class LibraryModel : PageModel
+public class LibraryModel : PageModel, IPagedListing
 {
-    public const int PageSize = 10;
     public const int SearchLimit = 25;
+    private int _perPage = DeviceSettings.Default.PerPage;
     private readonly AbsApiClient _api;
     private readonly EpubCache _cache;
     private readonly ConvertQueue _queue;
@@ -54,13 +54,14 @@ public class LibraryModel : PageModel
     public string LibraryName { get; private set; } = "Library";
 
     public List<AbsItem> Items { get; private set; } = new();
-    public Pager Pager { get; private set; } = new(0, PageSize, 0);
+    public Pager Pager { get; private set; } = new(0, DeviceSettings.Default.PerPage, 0);
     public AbsSearchResults? SearchResults { get; private set; }
 
     public async Task<IActionResult> OnGetAsync([FromQuery] int page = 1, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(Id)) return NotFound();
         var ds = DeviceSettings.EnsureDid(HttpContext);
+        _perPage = ds.PerPage;
         IsFavorite = ds.Fav == Id;
         _did = ds.Did;
         _markSet = _marks.Read(ds.Did);
@@ -89,14 +90,14 @@ public class LibraryModel : PageModel
 
         var filter = await ResolveFilterAsync(ct);
         var zeroPage = Math.Max(0, page - 1);
-        var result = await _api.GetItemsAsync(Id, zeroPage, PageSize, filter,
+        var result = await _api.GetItemsAsync(Id, zeroPage, _perPage, filter,
             EffectiveSort, EffectiveDesc, ct);
         Items = result.Results;
         _structured = await FetchStructuredAsync(Items, ct);
         RefineFilterLabel();
         ComputeConvertStates(Items);
         _finished = await FetchFinishedAsync(ct);
-        Pager = new Pager(result.Page, result.Limit <= 0 ? PageSize : result.Limit, result.Total);
+        Pager = new Pager(result.Page, result.Limit <= 0 ? _perPage : result.Limit, result.Total);
         return Page();
     }
 
@@ -266,4 +267,9 @@ public class LibraryModel : PageModel
 
     // One shared builder for every library URL (page + row partial).
     public LibraryLinks Links => new(Id, Filter, Author, Series, EffectiveSort, EffectiveDesc);
+
+    // The raw Sort/Desc, not the effective ones: this is what _Pager passed
+    // before it was retyped, and the default view relies on an absent sort
+    // staying absent across pages.
+    public string PageHref(int page) => Links.ListingHref(Sort, Desc, page);
 }
