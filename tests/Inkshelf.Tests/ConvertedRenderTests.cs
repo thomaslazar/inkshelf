@@ -133,7 +133,7 @@ public class ConvertedRenderTests
             .OrderBy(t => html.IndexOf(t, StringComparison.Ordinal))
             .ToList();
 
-    private static async Task<string> GetConvertedAsync(string query, (string Id, DateTime At)[] seed, string? settings = null)
+    private static async Task<string> GetConvertedAsync(string query, params (string Id, DateTime At)[] seed)
     {
         using var cacheDir = new TempDir();
         using var keysDir = new TempDir();
@@ -141,7 +141,7 @@ public class ConvertedRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         var cache = factory.Services.GetRequiredService<EpubCache>();
         foreach (var (id, at) in seed) SeedConverted(cache, id, at);
-        return await (await client.SendAsync(Request(factory, "/converted" + query, settings))).Content.ReadAsStringAsync();
+        return await (await client.SendAsync(Request(factory, "/converted" + query))).Content.ReadAsStringAsync();
     }
 
     // b2 converted most recently, then c3, then a1 - deliberately not the
@@ -343,11 +343,23 @@ public class ConvertedRenderTests
     {
         var html = await GetPagedAsync("?sort=title&desc=1", perPage: 5);
 
-        // The pager is present and its links carry the view's own sort, so
-        // paging does not silently reset the list to the default order.
+        // The pager is present and its next-page link carries the view's own
+        // (explicit) sort and direction, so paging does not silently reset the
+        // list to the default order. Razor HTML-encodes `&` in attribute values.
         Assert.Contains("class=\"pager\"", html);
-        Assert.Contains("sort=title", html);
-        Assert.Contains("desc=1", html);
+        Assert.Contains("href=\"/converted?sort=title&amp;desc=1&amp;page=2\"", html);
+    }
+
+    [Fact]
+    public async Task The_pager_hrefs_carry_the_applied_sort_on_the_default_view()
+    {
+        // No `sort` query param at all: the raw Sort is null and the raw Desc is
+        // false, but the page applies converted/descending. The pager must carry
+        // the APPLIED values, not the raw ones - this is the case where the two
+        // diverge, so it's the only one that would catch a regression to raw.
+        var html = await GetPagedAsync("", perPage: 5);
+
+        Assert.Contains("href=\"/converted?sort=converted&amp;desc=1&amp;page=2\"", html);
     }
 
     // Pins the ORDERING of the work, which is the whole point of this task. If
@@ -373,9 +385,9 @@ public class ConvertedRenderTests
         var five = await LiveAfterAsync(5);
         var ten = await LiveAfterAsync(10);
 
-        Assert.True(five > 0, "Expected the rendered rows to mint tickets.");
-        // Five visible rows must cost strictly fewer tickets than seven.
-        Assert.True(five < ten, $"Expected a 5-row page to mint fewer tickets than a 7-row page, got {five} and {ten}.");
+        // Two tickets per rendered row (EPUB and raw): 5 rows -> 10, 7 rows -> 14.
+        Assert.Equal(10, five);
+        Assert.Equal(14, ten);
     }
 
     // Pins the deliberate exception: convert state is resolved for EVERY item,
