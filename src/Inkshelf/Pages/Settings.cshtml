@@ -84,11 +84,10 @@
             <input type="number" name="perpage" min="@Inkshelf.Auth.DeviceSettings.MinPerPage" max="@Inkshelf.Auth.DeviceSettings.MaxPerPage" step="1"
                    value="@Model.Settings.PerPage" />
         </label>
-    </p>
 @if (Model.PerPageWarning)
 {
-    <p>
         <span class="settings-note">@L["Not used: items per page must be between 5 and 50."]</span>
+}
     </p>
 }
     <p>
