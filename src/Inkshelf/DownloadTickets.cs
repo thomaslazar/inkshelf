@@ -28,8 +28,7 @@ public sealed class DownloadTickets
     private readonly TimeProvider _clock;
 
     // Live tickets, for a test that pins the converted page building rows only
-    // for the page it renders. Cheap on ConcurrentDictionary and useful if a
-    // ticket leak is ever suspected.
+    // for the page it renders. Cheap on ConcurrentDictionary.
     public int LiveCount => _live.Count;
 
     public DownloadTickets(TimeProvider? clock = null) => _clock = clock ?? TimeProvider.System;
