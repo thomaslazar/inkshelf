@@ -51,7 +51,7 @@
   "Percent. Lower this if your reader cuts off the edge of a page.": "Prozent. Den Wert verringern, wenn der Reader den Rand einer Seite abschneidet.",
   "Not used: the page scale must be between 50 and 100.": "Nicht verwendet: Die Seitenskalierung muss zwischen 50 und 100 liegen.",
   "Items per page": "Einträge pro Seite",
-  "Not used: items per page must be between 5 and 50.": "Nicht verwendet: Einträge pro Seite muss zwischen 5 und 50 liegen.",
+  "Not used: items per page must be between 5 and 50.": "Nicht verwendet: Der Wert für Einträge pro Seite muss zwischen 5 und 50 liegen.",
   "Two-page spreads (a wide image holding two pages)": "Doppelseiten (ein breites Bild mit zwei Seiten)",
   "Split into two pages (left half first)": "In zwei Seiten teilen (linke Hälfte zuerst)",
   "Split into two pages (right half first)": "In zwei Seiten teilen (rechte Hälfte zuerst)",
