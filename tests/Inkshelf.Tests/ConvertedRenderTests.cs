@@ -67,6 +67,57 @@ public class ConvertedRenderTests
         return new HttpResponseMessage(HttpStatusCode.NotFound);
     });
 
+    // Seven items, so the minimum page size of 5 splits them 5 + 2. Titles are
+    // zero-padded so an ordinal title sort and a numeric reading agree, which
+    // keeps the expected page contents obvious.
+    // Not `const`: an interpolated raw string with substitutions can't be a
+    // compile-time constant even when every substitution is itself const.
+    private static readonly string PagedBatchJson = $$"""
+        {"libraryItems":[
+          {"id":"p1","libraryId":"{{LibId}}","media":{"metadata":{"title":"Paged 01","authors":[{"id":"pa","name":"Pager Author"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"p1.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } },
+          {"id":"p2","libraryId":"{{LibId}}","media":{"metadata":{"title":"Paged 02","authors":[{"id":"pa","name":"Pager Author"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"p2.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } },
+          {"id":"p3","libraryId":"{{LibId}}","media":{"metadata":{"title":"Paged 03","authors":[{"id":"pa","name":"Pager Author"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"p3.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } },
+          {"id":"p4","libraryId":"{{LibId}}","media":{"metadata":{"title":"Paged 04","authors":[{"id":"pa","name":"Pager Author"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"p4.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } },
+          {"id":"p5","libraryId":"{{LibId}}","media":{"metadata":{"title":"Paged 05","authors":[{"id":"pa","name":"Pager Author"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"p5.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } },
+          {"id":"p6","libraryId":"{{LibId}}","media":{"metadata":{"title":"Paged 06","authors":[{"id":"pa","name":"Pager Author"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"p6.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } },
+          {"id":"p7","libraryId":"{{LibId}}","media":{"metadata":{"title":"Paged 07","authors":[{"id":"pa","name":"Pager Author"}]},"ebookFile":{"ebookFormat":"cbz","metadata":{"filename":"p7.cbz","size":{{Size}},"mtimeMs":{{Mtime}} } } } }
+        ]}
+        """;
+
+    private static StubHandler PagedStub() => new(req =>
+    {
+        var path = req.RequestUri!.AbsolutePath;
+        if (path == "/api/items/batch/get" && req.Method == HttpMethod.Post) return StubHandler.Json(PagedBatchJson);
+        if (path == "/api/me") return StubHandler.Json("""{"mediaProgress":[]}""");
+        if (path == "/api/libraries") return StubHandler.Json(LibrariesJson);
+        return new HttpResponseMessage(HttpStatusCode.NotFound);
+    });
+
+    // Which "Paged NN" titles appear, in the order they appear.
+    private static List<string> PagedOrder(string html) =>
+        Enumerable.Range(1, 7).Select(i => $"Paged {i:00}")
+            .Where(t => html.Contains(t, StringComparison.Ordinal))
+            .OrderBy(t => html.IndexOf(t, StringComparison.Ordinal))
+            .ToList();
+
+    // Seeds all seven with distinct conversion times, oldest first, so the
+    // default newest-first sort is a strict reversal and page boundaries are
+    // unambiguous.
+    private static async Task<string> GetPagedAsync(string query, int perPage,
+        Action<WebApplicationFactory<Program>, EpubCache>? extra = null)
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(PagedStub(), cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        for (var i = 1; i <= 7; i++)
+            SeedConverted(cache, $"p{i}", new DateTime(2026, 1, i, 0, 0, 0, DateTimeKind.Utc));
+        extra?.Invoke(factory, cache);
+        var settings = (DeviceSettings.Default with { PerPage = perPage }).Serialize();
+        return await (await client.SendAsync(Request(factory, "/converted" + query, settings))).Content.ReadAsStringAsync();
+    }
+
     // Seed one cache file per item with an explicit conversion time.
     private static void SeedConverted(EpubCache cache, string itemId, DateTime convertedAtUtc)
     {
@@ -82,7 +133,7 @@ public class ConvertedRenderTests
             .OrderBy(t => html.IndexOf(t, StringComparison.Ordinal))
             .ToList();
 
-    private static async Task<string> GetConvertedAsync(string query, params (string Id, DateTime At)[] seed)
+    private static async Task<string> GetConvertedAsync(string query, (string Id, DateTime At)[] seed, string? settings = null)
     {
         using var cacheDir = new TempDir();
         using var keysDir = new TempDir();
@@ -90,7 +141,7 @@ public class ConvertedRenderTests
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         var cache = factory.Services.GetRequiredService<EpubCache>();
         foreach (var (id, at) in seed) SeedConverted(cache, id, at);
-        return await (await client.SendAsync(Request(factory, "/converted" + query))).Content.ReadAsStringAsync();
+        return await (await client.SendAsync(Request(factory, "/converted" + query, settings))).Content.ReadAsStringAsync();
     }
 
     // b2 converted most recently, then c3, then a1 - deliberately not the
@@ -234,6 +285,157 @@ public class ConvertedRenderTests
         Assert.Equal(new[] { "Middle Road", "Apple Days", "Zebra Tales" }, TitleOrder(html));
     }
 
+    [Fact]
+    public async Task Slices_to_the_configured_page_size()
+    {
+        // Sorted by title so the expected contents of each page are obvious and
+        // independent of conversion times.
+        var page1 = await GetPagedAsync("?sort=title", perPage: 5);
+
+        Assert.Equal(
+            new[] { "Paged 01", "Paged 02", "Paged 03", "Paged 04", "Paged 05" },
+            PagedOrder(page1));
+        Assert.Contains("Page 1 of 2", page1);
+    }
+
+    [Fact]
+    public async Task The_second_page_shows_the_remainder()
+    {
+        var page2 = await GetPagedAsync("?sort=title&page=2", perPage: 5);
+
+        Assert.Equal(new[] { "Paged 06", "Paged 07" }, PagedOrder(page2));
+        Assert.Contains("Page 2 of 2", page2);
+    }
+
+    [Fact]
+    public async Task A_page_beyond_the_end_clamps_to_the_last_page()
+    {
+        // Clamps rather than rendering an empty list: this list is sliced
+        // locally, so an out-of-range page is ours to correct.
+        var far = await GetPagedAsync("?sort=title&page=99", perPage: 5);
+
+        Assert.Equal(new[] { "Paged 06", "Paged 07" }, PagedOrder(far));
+        Assert.Contains("Page 2 of 2", far);
+    }
+
+    [Fact]
+    public async Task A_page_below_one_reads_as_the_first_page()
+    {
+        var low = await GetPagedAsync("?sort=title&page=0", perPage: 5);
+
+        Assert.Equal(
+            new[] { "Paged 01", "Paged 02", "Paged 03", "Paged 04", "Paged 05" },
+            PagedOrder(low));
+        Assert.Contains("Page 1 of 2", low);
+    }
+
+    [Fact]
+    public async Task A_larger_page_size_fits_everything_on_one_page()
+    {
+        var all = await GetPagedAsync("?sort=title", perPage: 10);
+
+        Assert.Equal(7, PagedOrder(all).Count);
+        Assert.Contains("Page 1 of 1", all);
+    }
+
+    [Fact]
+    public async Task The_pager_hrefs_keep_the_active_sort_and_direction()
+    {
+        var html = await GetPagedAsync("?sort=title&desc=1", perPage: 5);
+
+        // The pager is present and its links carry the view's own sort, so
+        // paging does not silently reset the list to the default order.
+        Assert.Contains("class=\"pager\"", html);
+        Assert.Contains("sort=title", html);
+        Assert.Contains("desc=1", html);
+    }
+
+    // Pins the ORDERING of the work, which is the whole point of this task. If
+    // rows are built before the slice, all seven rows mint their tickets and the
+    // two counts come out equal.
+    [Fact]
+    public async Task Mints_tickets_only_for_the_rows_it_renders()
+    {
+        static async Task<int> LiveAfterAsync(int perPage)
+        {
+            using var cacheDir = new TempDir();
+            using var keysDir = new TempDir();
+            using var factory = CreateFactory(PagedStub(), cacheDir.Path, keysDir.Path);
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var cache = factory.Services.GetRequiredService<EpubCache>();
+            for (var i = 1; i <= 7; i++)
+                SeedConverted(cache, $"p{i}", new DateTime(2026, 1, i, 0, 0, 0, DateTimeKind.Utc));
+            var settings = (DeviceSettings.Default with { PerPage = perPage }).Serialize();
+            await client.SendAsync(Request(factory, "/converted?sort=title", settings));
+            return factory.Services.GetRequiredService<DownloadTickets>().LiveCount;
+        }
+
+        var five = await LiveAfterAsync(5);
+        var ten = await LiveAfterAsync(10);
+
+        Assert.True(five > 0, "Expected the rendered rows to mint tickets.");
+        // Five visible rows must cost strictly fewer tickets than seven.
+        Assert.True(five < ten, $"Expected a 5-row page to mint fewer tickets than a 7-row page, got {five} and {ten}.");
+    }
+
+    // Pins the deliberate exception: convert state is resolved for EVERY item,
+    // not just the page's, so a conversion running on page 2 still refreshes
+    // page 1. An item on this page resolves to Converting only when its source
+    // changed since the conversion, because ConvertQueue.Status answers Done
+    // whenever the cache file exists. Deleting the seeded p7 file (the brief's
+    // first idea) does not work here: EpubCache.ListVariants() re-reads the
+    // cache directory on every call, so a deleted p7 drops out of convertedAt
+    // entirely and is never fetched at all - it would not even land on page 2,
+    // so the test would prove nothing. Instead, p7's cache file is seeded at the
+    // size the batch stub reports for every OTHER item (Size), but the stub
+    // reports p7's OWN ebookFile at a different size, simulating its source
+    // having changed since that conversion. The resolver keys off the batch
+    // size, so it looks up a cache path that does not exist, and the queue
+    // entry is enqueued against exactly that path.
+    [Fact]
+    public async Task A_conversion_on_a_later_page_still_refreshes_this_page()
+    {
+        const long ChangedSize = Size + 1;
+        var batchJson = PagedBatchJson.Replace(
+            $"\"filename\":\"p7.cbz\",\"size\":{Size}",
+            $"\"filename\":\"p7.cbz\",\"size\":{ChangedSize}");
+        Assert.NotEqual(PagedBatchJson, batchJson); // the replace actually matched
+
+        var stub = new StubHandler(req =>
+        {
+            var path = req.RequestUri!.AbsolutePath;
+            if (path == "/api/items/batch/get" && req.Method == HttpMethod.Post) return StubHandler.Json(batchJson);
+            if (path == "/api/me") return StubHandler.Json("""{"mediaProgress":[]}""");
+            if (path == "/api/libraries") return StubHandler.Json(LibrariesJson);
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = CreateFactory(stub, cacheDir.Path, keysDir.Path);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var cache = factory.Services.GetRequiredService<EpubCache>();
+        for (var i = 1; i <= 7; i++)
+            SeedConverted(cache, $"p{i}", new DateTime(2026, 1, i, 0, 0, 0, DateTimeKind.Utc));
+
+        // p7 is last by title, so it is on page 2 while we render page 1. The
+        // queue entry targets the path the resolver computes from the batch's
+        // (changed) size, which was never seeded, so Status answers not-Done.
+        var target = DeviceSettings.Default.ToRenderTarget($"{W}x{H}x1");
+        var pending = cache.PathFor("p7", ChangedSize, Mtime, target.MaxW, target.MaxH,
+            target.Grayscale, target.Spread, target.Scale, target.Dpr, target.Upscale);
+        factory.Services.GetRequiredService<ConvertQueue>().Enqueue(new ConvertJob(
+            "p7", "tok", pending, new EbookMeta("T", "A", null, null, "p7"), target));
+
+        var settings = (DeviceSettings.Default with { PerPage = 5 }).Serialize();
+        var page1 = await (await client.SendAsync(Request(factory, "/converted?sort=title", settings))).Content.ReadAsStringAsync();
+
+        // p7 is not on this page...
+        Assert.DoesNotContain("Paged 07", page1);
+        // ...but its conversion still arms the refresh.
+        Assert.Contains("http-equiv=\"refresh\"", page1);
+    }
+
     private static WebApplicationFactory<Program> CreateFactory(StubHandler stub, string cachePath, string keysPath) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
@@ -261,12 +463,14 @@ public class ConvertedRenderTests
         return req;
     }
 
-    private static HttpRequestMessage Request(WebApplicationFactory<Program> factory, string url)
+    private static HttpRequestMessage Request(WebApplicationFactory<Program> factory, string url, string? settings = null)
     {
         var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
         var protector = dp.CreateProtector("inkshelf.session.v1");
         var req = new HttpRequestMessage(HttpMethod.Get, url);
-        req.Headers.Add("Cookie", $"inkshelf_session={Uri.EscapeDataString(protector.Protect("access\nrefresh"))}; scr={W}x{H}x1");
+        var cookie = $"inkshelf_session={Uri.EscapeDataString(protector.Protect("access\nrefresh"))}; scr={W}x{H}x1";
+        if (settings is not null) cookie += $"; inkshelf_settings={settings}";
+        req.Headers.Add("Cookie", cookie);
         return req;
     }
 

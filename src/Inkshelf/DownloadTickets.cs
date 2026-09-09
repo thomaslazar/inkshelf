@@ -27,6 +27,11 @@ public sealed class DownloadTickets
     private readonly ConcurrentDictionary<string, (Ticket T, long Stamp)> _live = new();
     private readonly TimeProvider _clock;
 
+    // Live tickets, for a test that pins the converted page building rows only
+    // for the page it renders. Cheap on ConcurrentDictionary and useful if a
+    // ticket leak is ever suspected.
+    public int LiveCount => _live.Count;
+
     public DownloadTickets(TimeProvider? clock = null) => _clock = clock ?? TimeProvider.System;
 
     public string MintEpub(string itemId, string? fileIno, string did, string downloadName, string filePath) =>
