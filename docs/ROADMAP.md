@@ -80,8 +80,8 @@ Settings to add to the per-device settings system:
   - **The engine may simply have no form-login password manager**, in which case
     there is nothing to fix and the item should be closed as won't-fix.
 - **Screenful pagination (investigation).** Spike whether we can size a page to
-  exactly one screenful instead of a fixed 10. The `scr` cookie already reports
-  the viewport (CSS w×h×dpr), so server-side we could compute
+  exactly one screenful instead of a fixed default of 10. The `scr` cookie
+  already reports the viewport (CSS w×h×dpr), so server-side we could compute
   `pageSize ≈ floor((viewportHeight − chrome) / rowHeight)`. Motivation: a typical
   e-ink reader fits only ~7 rows and scrolling is cumbersome, so "one page = one
   screen, no scroll" would be much nicer. Open questions: variable row heights
