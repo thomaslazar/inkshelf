@@ -3,6 +3,86 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.0.0 - 2026-09-10
+
+First stable release. The settings cookie stays backward compatible, so a
+device that has been running an earlier version keeps its settings and needs no
+attention after the upgrade.
+
+### Highlights
+- Marking a book read or unread no longer reloads the page. Without JavaScript
+  it still works, and now returns to the row you tapped instead of the top of
+  the list.
+- New per-device setting, default off: **Return to the list after a download.**
+  For readers whose browser is killed when their book reader app takes the
+  foreground, which loses the page you were on.
+- New per-device setting, default 10: **Items per page**, from 5 to 50, for
+  both the library listing and the converted page. The converted page also
+  gained a pager, so it no longer renders every converted book in one list.
+- An expired session no longer makes the read button lie. It used to report a
+  book as read when nothing had been saved; it now sends you to the login page.
+
+### Features
+- feat: add an items-per-page setting
+- feat: add a return-to-the-list-after-download setting
+- feat: answer 204 to an xhr read toggle
+- feat: mark read without reloading the page
+- feat: mark the download links that serve a file
+- feat: page the converted list
+- feat: page the library listing at the configured size
+- feat: return to the listing after a download
+- feat: return to the tapped row when marking read
+
+### Fixes
+- fix: agree subject and verb in a German items-per-page string
+- fix: arm data-warm download anchors once ready
+- fix: correct dlreturn uicheck comments and harden replace guard
+- fix: do not redirect an xhr read to the login page
+- fix: fall back to a real post if the read script throws
+- fix: guard dlreturn replace against a protocol-relative path
+- fix: keep the converted page's pager in the row return URL
+- fix: keep the items-per-page warning inside its own paragraph
+- fix: remove a stray razor brace from the settings page
+- fix: restore read label before 401 redirects to login
+
+### Internal
+
+Refactors:
+- refactor: dedupe the read button's tooltip and label strings
+- refactor: extract the read button into one partial
+
+Tests:
+- test: add no-JS round trip check for the read form
+- test: cover the dlreturn arming half and fix wait ordering
+- test: cover the read button's XHR failure-revert path
+- test: exercise the read button's live click path in uicheck
+- test: pin xhr binding and antiforgery on the read endpoint
+- test: strengthen converted pager and ticket-count assertions
+
+Docs:
+- docs: correct the spec's inverted rule for data-warm anchors
+- docs: document the items-per-page setting
+- docs: document the return-after-download setting
+- docs: fix a razor quoting bug in the plan snippet
+- docs: fix stale spec claims and add the missing map entry
+- docs: gate only the script, not the markers
+- docs: list IPagedListing in the Support code map
+- docs: match the file's quote-only convention for a setting name
+- docs: name the two lists the setting sizes, not both
+- docs: note the read button's out-of-order response ceiling
+- docs: plan marking read without a reload
+- docs: plan returning to the list after a download
+- docs: plan the items-per-page setting
+- docs: record the absolute read-state invariant
+- docs: spec a per-device items-per-page setting
+- docs: spec marking read without a reload
+- docs: spec returning to the list after a download
+- docs: stop calling the converted page size fixed
+- docs: trim an unproven claim from the LiveCount comment
+
+Chore:
+- chore: bump version to 1.0.0
+
 ## v0.7.0 - 2026-08-31
 
 ### Highlights
