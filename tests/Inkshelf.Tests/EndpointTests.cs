@@ -1,10 +1,13 @@
 using System.Net;
 using System.Text.RegularExpressions;
 using Inkshelf.Abs;
+using Inkshelf.Auth;
 using Inkshelf.Convert;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 
@@ -881,5 +884,81 @@ public class EndpointTests
 
         var setCookie = res.Headers.TryGetValues("Set-Cookie", out var v) ? string.Join(";", v) : "";
         Assert.DoesNotContain("inkshelf_settings", setCookie);
+    }
+
+    // The brief's test used CreateFactory(keysPath) and no antiforgery token, but
+    // this file's CreateFactory() takes no arguments and /settings still validates
+    // the token even though it is mapped with DisableAntiforgery() (that only skips
+    // the framework's automatic check; the handler calls ValidateRequestAsync
+    // itself). Adapted to the pattern every other settings POST test in this file
+    // already follows.
+    [Fact]
+    public async Task Saving_items_per_page_records_it_and_out_of_range_warns()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var ok = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["perpage"] = "25",
+        }));
+        Assert.Equal(HttpStatusCode.Redirect, ok.StatusCode);
+        Assert.Contains("ipp=25", ok.Headers.Location!.OriginalString);
+        Assert.DoesNotContain("pprange=1", ok.Headers.Location!.OriginalString);
+
+        // Out of range: stored as the default AND flagged, because silently
+        // reverting looks like the field ignoring you.
+        var bad = await client.PostAsync("/settings", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token,
+            ["lang"] = "en",
+            ["perpage"] = "500",
+        }));
+        Assert.Contains("ipp=10", bad.Headers.Location!.OriginalString);
+        Assert.Contains("pprange=1", bad.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
+    public async Task Settings_page_renders_the_items_per_page_input()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+
+        var html = await (await client.GetAsync("/settings")).Content.ReadAsStringAsync();
+
+        Assert.Contains("name=\"perpage\"", html);
+    }
+
+    // A Razor `}` that no longer matches an opening `{` is not an error: it falls
+    // into markup context and renders as a literal brace. That shipped once from
+    // an "obviously cosmetic" edit to this page's warning blocks, and every test
+    // here kept passing because they only assert that an element is present.
+    // The form area contains no braces of its own, so the whole rendered page
+    // minus its <script> block is a clean thing to assert on.
+    [Fact]
+    public async Task The_settings_form_renders_no_stray_razor_brace()
+    {
+        using var factory = CreateFactory();
+        using var client = factory.CreateClient();
+
+        var html = await (await client.GetAsync("/settings")).Content.ReadAsStringAsync();
+
+        var scriptAt = html.IndexOf("<script", StringComparison.Ordinal);
+        var form = scriptAt < 0 ? html : html[..scriptAt];
+        Assert.DoesNotContain("{", form);
+        Assert.DoesNotContain("}", form);
+    }
+
+    // The marker is NOT a settings key. If it were added to DeviceSettings.Keys,
+    // a redirect carrying only the warning would parse as a settings payload and
+    // could overwrite real settings with defaults.
+    [Fact]
+    public void The_per_page_warning_marker_is_not_a_settings_key()
+    {
+        var q = new QueryCollection(QueryHelpers.ParseQuery("pprange=1"));
+        Assert.Null(DeviceSettings.FromQuery(q));
     }
 }

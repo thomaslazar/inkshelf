@@ -30,6 +30,9 @@ public class SettingsModel : PageModel
     // Same idea for the page scale, which is a free number rather than a menu now.
     public bool ScaleWarning { get; private set; }
 
+    // Same idea for items per page, also a free number.
+    public bool PerPageWarning { get; private set; }
+
     // What the override fields show: the stored override when there is one, else
     // whatever the probe reported, else blank. 0 / "" render as an empty field.
     public int PrefillW { get; private set; }
@@ -58,6 +61,7 @@ public class SettingsModel : PageModel
         RangeWarning = Request.Query.ContainsKey("range")
             || (restored is not null && Settings.OverrideScreen && Settings.ActiveOverride is null);
         ScaleWarning = Request.Query.ContainsKey("scalerange");
+        PerPageWarning = Request.Query.ContainsKey("pprange");
         var langs = new List<(string, string)> { ("", _loc["Automatic"]), ("en", "English") };
         foreach (var code in _catalog.Languages.OrderBy(c => c))
             langs.Add((code, _catalog.DisplayName(code)));

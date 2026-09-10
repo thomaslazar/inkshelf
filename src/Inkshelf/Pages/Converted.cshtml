@@ -32,8 +32,10 @@ else if (Model.Rows.Count == 0)
 }
 else
 {
+    <partial name="_Pager" model="Model" />
     foreach (var row in Model.Rows)
     {
         <partial name="_ItemRow" model="row" />
     }
+    <partial name="_Pager" model="Model" />
 }

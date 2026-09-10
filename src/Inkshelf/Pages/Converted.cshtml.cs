@@ -11,7 +11,7 @@ namespace Inkshelf.Pages;
 // record of what's converted; we enumerate it, keep the variants matching this
 // device's RenderTarget, dedupe by item id, then fetch metadata for those ids in
 // one cross-library batch call and render the standard listing row.
-public class ConvertedModel : PageModel
+public class ConvertedModel : PageModel, IPagedListing
 {
     private readonly AbsApiClient _api;
     private readonly EpubCache _cache;
@@ -26,6 +26,13 @@ public class ConvertedModel : PageModel
     public List<ItemRowModel> Rows { get; private set; } = new();
     public bool LoadError { get; private set; }
     public bool AnyConverting { get; private set; }
+
+    public Pager Pager { get; private set; } = new(0, DeviceSettings.Default.PerPage, 0);
+
+    // The APPLIED sort and direction, not the raw query values: the pager must
+    // describe what is on screen, the same rule SortHref's comment gives.
+    public string PageHref(int page) =>
+        $"/converted?sort={ActiveSort}" + (AppliedDesc ? "&desc=1" : "") + (page > 1 ? $"&page={page}" : "");
 
     // desc binds as a STRING on purpose: ABS wants desc=1 and Razor's bool binder
     // rejects "1", so a bool here makes every descending direction unreachable.
@@ -63,7 +70,7 @@ public class ConvertedModel : PageModel
     // direction, not the raw query value, or they lie about what's on screen.
     public bool AppliedDesc => IsRecognised ? Desc : true;
 
-    public async Task<IActionResult> OnGetAsync(CancellationToken ct = default)
+    public async Task<IActionResult> OnGetAsync([FromQuery] int page = 1, CancellationToken ct = default)
     {
         var settings = DeviceSettings.EnsureDid(HttpContext);
         var target = settings.ToRenderTarget(Request.Cookies["scr"]);
@@ -90,55 +97,80 @@ public class ConvertedModel : PageModel
         catch (HttpRequestException) { LoadError = true; return Page(); }
 
         var finished = await FetchFinishedAsync(ct);
-        var access = _tokens.Read()?.Access;
 
-        var built = new List<(ItemRowModel Row, AbsBatchMetadata? Meta)>();
+        // State for EVERY item, not just the page's: AnyConverting drives a 30s
+        // MetaRefresh, and scoping it to the visible page would stop the page
+        // refreshing while something converts on another page. Resolve is local
+        // file and queue checks with no network call.
+        var candidates = new List<(AbsBatchItem It, AbsBatchMedia M, ConvertRowState State, string? CachePath, AbsBatchMetadata? Meta)>();
         foreach (var it in items)
         {
             if (it.Media is null) continue;
             var m = it.Media;
-            // Map the batch shape into the AbsItem the shared row/resolver expect.
-            var item = new AbsItem(it.Id, new AbsMedia(
+            var probe = new AbsItem(it.Id, new AbsMedia(
                 new AbsMetadata(m.Metadata?.Title, null, null), m.CoverPath, null, m.EbookFile));
-            var links = new LibraryLinks(it.LibraryId ?? "", null, null, null, null, false);
-            var (state, cachePath) = ConvertRowStateResolver.Resolve(item, m, target, _cache, _queue);
+            var (state, cachePath) = ConvertRowStateResolver.Resolve(probe, m, target, _cache, _queue);
             if (state == ConvertRowState.Converting) AnyConverting = true;
-            var rawDownloaded = markSet.Contains(DownloadMarks.RawKey(it.Id, null));
-            var epubDownloaded = markSet.Contains(DownloadMarks.EpubKey(it.Id, null));
-            // Both hrefs are re-requested by a cookie-less download manager, so each
-            // gets a ticket standing for exactly the file that row offers.
-            var epubTicket = cachePath is { } path
-                ? _tickets.MintEpub(it.Id, null, settings.Did,
-                    EpubName.For(m.Metadata?.Authors?.FirstOrDefault()?.Name, m.Metadata?.Title), path)
-                : null;
-            var filename = m.EbookFile?.Metadata?.Filename;
-            var rawTicket = filename is not null && access is { } acc
-                ? _tickets.MintRaw(it.Id, null, settings.Did, filename, acc)
-                : null;
-            built.Add((new ItemRowModel(item, links, m.Metadata?.Authors, m.Metadata?.Series,
-                state, "/converted", finished.Contains(it.Id), rawDownloaded, epubDownloaded,
-                rawTicket, epubTicket), m.Metadata));
+            candidates.Add((it, m, state, cachePath, m.Metadata));
         }
 
-        IEnumerable<(ItemRowModel Row, AbsBatchMetadata? Meta)> ordered = ActiveSort switch
+        IEnumerable<(AbsBatchItem It, AbsBatchMedia M, ConvertRowState State, string? CachePath, AbsBatchMetadata? Meta)> ordered = ActiveSort switch
         {
-            "series" => built
+            "series" => candidates
                 .OrderBy(b => HasSeries(b.Meta) ? 0 : 1)
                 .ThenBy(b => SeriesKey(b.Meta), StringComparer.OrdinalIgnoreCase)
                 .ThenBy(b => SeqKey(b.Meta))
-                .ThenBy(b => TitleKey(b), StringComparer.OrdinalIgnoreCase),
-            "title" => built.OrderBy(b => TitleKey(b), StringComparer.OrdinalIgnoreCase),
-            "author" => built
+                .ThenBy(b => TitleKey(b.Meta), StringComparer.OrdinalIgnoreCase),
+            "title" => candidates.OrderBy(b => TitleKey(b.Meta), StringComparer.OrdinalIgnoreCase),
+            "author" => candidates
                 .OrderBy(b => AuthorKey(b.Meta), StringComparer.OrdinalIgnoreCase)
-                .ThenBy(b => TitleKey(b), StringComparer.OrdinalIgnoreCase),
+                .ThenBy(b => TitleKey(b.Meta), StringComparer.OrdinalIgnoreCase),
             // ConvertedAtUtc, not the source mtime in the filename.
-            _ => built
-                .OrderBy(b => convertedAt.TryGetValue(b.Row.Item.Id, out var at) ? at : DateTime.MinValue)
-                .ThenBy(b => TitleKey(b), StringComparer.OrdinalIgnoreCase),
+            _ => candidates
+                .OrderBy(b => convertedAt.TryGetValue(b.It.Id, out var at) ? at : DateTime.MinValue)
+                .ThenBy(b => TitleKey(b.Meta), StringComparer.OrdinalIgnoreCase),
         };
-        var rows = ordered.Select(b => b.Row).ToList();
-        if (AppliedDesc) rows.Reverse();
-        Rows = rows;
+        var sorted = ordered.ToList();
+        if (AppliedDesc) sorted.Reverse();
+
+        // Clamp rather than render an empty list: this list is sliced locally, so
+        // a page past the end is ours to correct, unlike the library listing
+        // where ABS answers an empty result.
+        var perPage = settings.PerPage;
+        var totalPages = Math.Max(1, (sorted.Count + perPage - 1) / perPage);
+        var zeroPage = Math.Clamp(page - 1, 0, totalPages - 1);
+        Pager = new Pager(zeroPage, perPage, sorted.Count);
+
+        // Exact current listing URL (page, sort, everything), not a bare
+        // "/converted": a no-JS convert/read POST redirects back here, and the
+        // #item- anchor _ReadButton appends only lands on the tapped row if the
+        // return URL still names the page it came from. Same pattern as the
+        // library listing's RowFor.
+        var ret = Request.Path + Request.QueryString;
+
+        // Rows, and therefore TICKETS, only for what is rendered.
+        var access = _tokens.Read()?.Access;
+        foreach (var b in sorted.Skip(zeroPage * perPage).Take(perPage))
+        {
+            var item = new AbsItem(b.It.Id, new AbsMedia(
+                new AbsMetadata(b.M.Metadata?.Title, null, null), b.M.CoverPath, null, b.M.EbookFile));
+            var links = new LibraryLinks(b.It.LibraryId ?? "", null, null, null, null, false);
+            var rawDownloaded = markSet.Contains(DownloadMarks.RawKey(b.It.Id, null));
+            var epubDownloaded = markSet.Contains(DownloadMarks.EpubKey(b.It.Id, null));
+            // Both hrefs are re-requested by a cookie-less download manager, so each
+            // gets a ticket standing for exactly the file that row offers.
+            var epubTicket = b.CachePath is { } path
+                ? _tickets.MintEpub(b.It.Id, null, settings.Did,
+                    EpubName.For(b.M.Metadata?.Authors?.FirstOrDefault()?.Name, b.M.Metadata?.Title), path)
+                : null;
+            var filename = b.M.EbookFile?.Metadata?.Filename;
+            var rawTicket = filename is not null && access is { } acc
+                ? _tickets.MintRaw(b.It.Id, null, settings.Did, filename, acc)
+                : null;
+            Rows.Add(new ItemRowModel(item, links, b.M.Metadata?.Authors, b.M.Metadata?.Series,
+                b.State, ret, finished.Contains(b.It.Id), rawDownloaded, epubDownloaded,
+                rawTicket, epubTicket));
+        }
         return Page();
     }
 
@@ -156,8 +188,7 @@ public class ConvertedModel : PageModel
         return double.TryParse(seq, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : double.MaxValue;
     }
 
-    private static string TitleKey((ItemRowModel Row, AbsBatchMetadata? Meta) b) =>
-        b.Row.Item.Media?.Metadata?.Title ?? "";
+    private static string TitleKey(AbsBatchMetadata? m) => m?.Title ?? "";
 
     private static string AuthorKey(AbsBatchMetadata? m) =>
         m?.Authors is { Count: > 0 } a ? a[0].Name : "";

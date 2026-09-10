@@ -57,7 +57,7 @@ src/Inkshelf/
   Pages/                Razor Pages (+ models); Shared/ partials.
     Support/            Non-page helpers: LibraryLinks, ItemRowModel, Pager,
                         SortLinks, ConvertRowStateResolver, ConvertActionModel,
-                        ReadButtonModel.
+                        ReadButtonModel, IPagedListing.
 ```
 
 Tests live in `tests/Inkshelf.Tests/`, roughly one file per unit. `dotnet test`

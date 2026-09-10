@@ -529,6 +529,55 @@ if (Environment.GetEnvironmentVariable("UICHECK_AUTHED") == "1")
         try { await Shot("dlreturn-error", retPage); } catch { }
     }
     await retCtx.CloseAsync();
+
+    // Converted-page pager. Needs its own BrowserContext because the page size
+    // rides in the settings cookie (&ipp=5, the minimum), and its own login
+    // because cookies do not cross contexts - same pattern as dlreturn above.
+    //
+    // The seeded ABS converts at most two comics successfully in this run
+    // (Neon Blade Vol. 1 always; Vol. 2 only when the rar tool is present) -
+    // short of the minimum page size, so a real second page is never reachable
+    // here. This checks what IS true at ipp=5: the pager renders on both sides
+    // of the row list and both buttons are correctly disabled with nothing to
+    // page to. The Next-click / sort-survives-paging behaviour the brief asks
+    // for is exercised instead by the unit tests in ConvertedRenderTests.cs
+    // (GetPagedAsync's seven-item fixture, which does split across pages).
+    var pagerCtx = await browser.NewContextAsync(new() { ViewportSize = new() { Width = vpW, Height = vpH } });
+    await pagerCtx.AddCookiesAsync([ new() { Name = "inkshelf_settings", Value = De + "&ipp=5", Url = baseUrl } ]);
+    var pagerPage = await pagerCtx.NewPageAsync();
+    try
+    {
+        await pagerPage.GotoAsync(baseUrl + "/login");
+        await pagerPage.FillAsync("input[name=Username]", "root");
+        await pagerPage.FillAsync("input[name=Password]", "root");
+        await pagerPage.ClickAsync("button[type=submit]");
+        await pagerPage.WaitForSelectorAsync("text=Bibliotheken", new() { Timeout = 15000 });
+
+        await pagerPage.GotoAsync(baseUrl + "/converted?sort=title");
+        await pagerPage.WaitForSelectorAsync("nav.sortbar", new() { Timeout = 15000 });
+        await Shot("converted-pager-de", pagerPage);
+        var pagerHtml = await pagerPage.ContentAsync();
+
+        var pagerCount = Regex.Matches(pagerHtml, "class=\"pager\"").Count;
+        if (pagerCount != 2)
+            failures.Add($"converted-pager: expected the pager rendered twice (above and below the rows), found {pagerCount}");
+        Expect("converted-pager-de", await pagerPage.InnerTextAsync("body"), "Seite 1 von 1", "Zurück", "Vor");
+        // page.ContentAsync() is the DOM's serialized outerHTML, not the raw server
+        // response - Chromium writes a bare `disabled` attribute back out as
+        // `disabled=""`, so the pattern allows for either form.
+        if (!Regex.IsMatch(pagerHtml, "<button type=\"button\" class=\"btn\" disabled(=\"\")?>[^<]*Zurück"))
+            failures.Add("converted-pager: expected a disabled Prev button (nothing before page 1)");
+        if (!Regex.IsMatch(pagerHtml, "class=\"btn\" disabled(=\"\")?>Vor"))
+            failures.Add("converted-pager: expected a disabled Next button (nothing past page 1)");
+
+        Console.WriteLine("[authed] converted pager (single page at ipp=5) captured");
+    }
+    catch (Exception ex)
+    {
+        failures.Add($"converted-pager: {ex.Message}");
+        try { await Shot("converted-pager-error", pagerPage); } catch { }
+    }
+    await pagerCtx.CloseAsync();
 }
 
 Console.WriteLine();

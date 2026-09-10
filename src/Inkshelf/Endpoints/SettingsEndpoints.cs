@@ -31,6 +31,8 @@ public static class SettingsEndpoints
                     ? sp : DeviceSettings.Default.Spread,
                 Scale = int.TryParse(form["scale"].ToString(), out var pc)
                     ? DeviceSettings.SanitizeScale(pc) : DeviceSettings.Default.Scale,
+                PerPage = int.TryParse(form["perpage"].ToString(), out var pp)
+                    ? DeviceSettings.SanitizePerPage(pp) : DeviceSettings.Default.PerPage,
                 OverrideScreen = form.ContainsKey("ovr"),
                 // Same trap, other direction: the three numbers are disabled while
                 // the override is off, so keep what is stored rather than zeroing
@@ -59,10 +61,17 @@ public static class SettingsEndpoints
             var scaleRejected = !string.IsNullOrWhiteSpace(rawScale)
                 && (!int.TryParse(rawScale, out var typed) || DeviceSettings.SanitizeScale(typed) != typed);
 
+            // Same silent-revert problem as the page scale: an out-of-range
+            // number becomes the default, which looks like the field ignoring you.
+            var rawPerPage = form["perpage"].ToString();
+            var perPageRejected = !string.IsNullOrWhiteSpace(rawPerPage)
+                && (!int.TryParse(rawPerPage, out var typedPp) || DeviceSettings.SanitizePerPage(typedPp) != typedPp);
+
             // PRG back to the page - carrying the saved settings, so the URL in the
             // address bar is one a device can bookmark to restore them. Warning
             // flags ride along as extra params; they are not settings keys.
-            var flags = (unusable ? "&range=1" : "") + (scaleRejected ? "&scalerange=1" : "");
+            var flags = (unusable ? "&range=1" : "") + (scaleRejected ? "&scalerange=1" : "")
+                + (perPageRejected ? "&pprange=1" : "");
             return Results.Redirect($"/settings?{settings.Serialize()}{flags}");
         }).DisableAntiforgery();
     }

@@ -80,6 +80,16 @@
 }
     </p>
     <p>
+        <label class="setting-num">@L["Items per page"]
+            <input type="number" name="perpage" min="@Inkshelf.Auth.DeviceSettings.MinPerPage" max="@Inkshelf.Auth.DeviceSettings.MaxPerPage" step="1"
+                   value="@Model.Settings.PerPage" />
+        </label>
+@if (Model.PerPageWarning)
+{
+        <span class="settings-note">@L["Not used: items per page must be between 5 and 50."]</span>
+}
+    </p>
+    <p>
         <label>
             <input type="checkbox" name="ovr" id="ovr" value="on" @(Model.Settings.OverrideScreen ? "checked" : "") />
             @L["Override screen resolution"]
