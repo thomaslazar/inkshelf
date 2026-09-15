@@ -54,7 +54,12 @@ values are measured on hardware - a spec sheet does not predict them.
     </tr>
     <tr>
       <td colspan="6">
-        <strong>Notes on the shine:</strong> it keeps no cookies across a browser
+        <strong>Notes on the shine:</strong> its TLS stack is too old for a
+        current HTTPS endpoint, so it cannot reach an Inkshelf served over TLS at
+        all. To use it, deploy a second, plain-HTTP instance alongside the HTTPS
+        one and leave <code>FORCE_SECURE_COOKIES</code> unset (<code>false</code>)
+        on that instance, or the session cookie is marked <code>Secure</code> and
+        dropped over HTTP. It keeps no cookies across a browser
         restart, so you log in again each session; a bookmark of the settings page
         brings its values back. Its reader supports less of what a fixed-layout
         book declares, so page scale has no effect there and the override does the
