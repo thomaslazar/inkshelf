@@ -238,6 +238,7 @@ All configuration is via environment variables.
 | `FORCE_SECURE_COOKIES`    | `false`              | Mark cookies `Secure` regardless of the request scheme. Set `true` when behind a TLS-terminating reverse proxy. |
 | `TRUSTED_PROXY`           | *(unset)*            | Comma-separated IPs/CIDRs permitted to set forwarded headers. Unset = trust the immediate hop. |
 | `DIAG_ENABLED`            | `true`               | Whether the unauthenticated `/diag` browser-probe endpoint is exposed. Set `false` to disable it. |
+| `UPDATE_CHECK`            | `true`               | Check GitHub once a day for a newer Inkshelf release and name it beside the version on the libraries page. Set `false` to make no outbound request at all. |
 | `OIDC_ENABLED`            | `false`              | Offer login through the OIDC provider ABS is configured with. Requires whitelisting Inkshelf's callback URL in ABS - see [SSO / OIDC login](#sso--oidc-login-optional). |
 | `OIDC_PROVIDER_NAME`      | *(unset)* = `SSO`    | Provider name on the SSO button - `Acme ID` renders "Log in with Acme ID" (and "Mit Acme ID anmelden" in German). |
 | `LOCALES_PATH`            | `<ContentRoot>/locales` | Baseline directory of shipped `<lang>.json` UI translation files. Don't mount over this - use `LOCALES_OVERRIDE_PATH` instead. |
