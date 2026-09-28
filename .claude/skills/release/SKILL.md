@@ -47,7 +47,6 @@ Determine the version:
 - Propose the next version from conventional commits:
   - any `feat:` since last tag → bump MINOR
   - only `fix:`/`docs:`/`test:`/`ci:`/`chore:`/`refactor:` → bump PATCH
-  - project is pre-1.0; keep the leading `0.` until a deliberate 1.0.
 
 **GATE: show the human the proposed version + commit summary; wait for confirmation.**
 
