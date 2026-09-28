@@ -85,6 +85,23 @@ public class EpubCache
         }
     }
 
+    // Delete entries older than maxAge. The second eviction axis: EnforceCap
+    // bounds how much the cache holds, this bounds how long it holds it, because
+    // a converted EPUB is dead weight once it has reached the reader. Age is the
+    // file's write time, which is conversion time - nothing re-stamps a served
+    // file, so it is the same timestamp EnforceCap orders by. No-op at or below
+    // zero, which is how an operator turns this off. Best-effort (ignores IO races).
+    public void EnforceMaxAge(TimeSpan maxAge)
+    {
+        if (maxAge <= TimeSpan.Zero) return;
+        var cutoff = DateTime.UtcNow - maxAge;
+        foreach (var f in new DirectoryInfo(_dir).GetFiles("*.epub"))
+        {
+            if (f.LastWriteTimeUtc >= cutoff) continue;
+            try { f.Delete(); } catch (IOException) { }
+        }
+    }
+
     // One cached EPUB, decoded back into its cache-key parts. Mirrors PathFor.
     // NOTE two different timestamps live here: MtimeMs is the SOURCE ebook file's
     // mtime in ABS, part of the cache key so a changed source invalidates the

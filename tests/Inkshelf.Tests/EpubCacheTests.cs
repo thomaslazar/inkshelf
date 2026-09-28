@@ -135,6 +135,60 @@ public class EpubCacheTests
     }
 
     [Fact]
+    public void EnforceMaxAge_deletes_entries_past_the_cutoff_and_keeps_the_rest()
+    {
+        var dir = TempDirPath();
+        var cache = new EpubCache(dir);
+        var now = DateTime.UtcNow;
+        var old = Path.Combine(dir, "item0-1-1-10x10.epub");
+        var fresh = Path.Combine(dir, "item1-1-1-10x10.epub");
+        File.WriteAllBytes(old, new byte[100]);
+        File.WriteAllBytes(fresh, new byte[100]);
+        File.SetLastWriteTimeUtc(old, now.AddDays(-31));
+        File.SetLastWriteTimeUtc(fresh, now.AddDays(-29));
+
+        cache.EnforceMaxAge(TimeSpan.FromDays(30));
+
+        Assert.False(File.Exists(old));
+        Assert.True(File.Exists(fresh));
+    }
+
+    [Fact]
+    public void EnforceMaxAge_is_disabled_by_a_non_positive_age()
+    {
+        // Zero is how an operator turns age eviction off, so it must delete
+        // nothing at all rather than meaning "older than now".
+        var dir = TempDirPath();
+        var cache = new EpubCache(dir);
+        var ancient = Path.Combine(dir, "item0-1-1-10x10.epub");
+        File.WriteAllBytes(ancient, new byte[100]);
+        File.SetLastWriteTimeUtc(ancient, DateTime.UtcNow.AddYears(-5));
+
+        cache.EnforceMaxAge(TimeSpan.Zero);
+
+        Assert.True(File.Exists(ancient));
+    }
+
+    [Fact]
+    public void EnforceMaxAge_does_not_touch_a_marks_subdirectory()
+    {
+        // Same reasoning as the EnforceCap version: the glob is extension-scoped,
+        // and a marks file is older than any cutoff the moment its device stops
+        // visiting. Widen "*.epub" to "*" here and this test fails.
+        var dir = TempDirPath();
+        var cache = new EpubCache(dir);
+        var marks = Path.Combine(dir, "marks");
+        Directory.CreateDirectory(marks);
+        var markFile = Path.Combine(marks, "abc123def4560000");
+        File.WriteAllText(markFile, "d:item1\n");
+        File.SetLastWriteTimeUtc(markFile, DateTime.UtcNow.AddYears(-5));
+
+        cache.EnforceMaxAge(TimeSpan.FromDays(30));
+
+        Assert.True(File.Exists(markFile));
+    }
+
+    [Fact]
     public void ListVariants_round_trips_PathFor_including_hyphenated_id_and_grayscale()
     {
         var dir = TempDirPath();
