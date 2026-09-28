@@ -245,6 +245,7 @@ All configuration is via environment variables.
 | `LOCALES_OVERRIDE_PATH`   | *(unset)*            | Optional extra directory of `<lang>.json` files, merged on top of `LOCALES_PATH` (its keys win). Mount custom or extra translations here and restart - the shipped set stays intact; no rebuild. |
 | `MaxArchiveBytes`         | `1073741824` (1 GiB) | Reject ebook archives larger than this before conversion (decompression-bomb guard; spooled to a temp file, so it bounds disk not RAM). Raise for very large comics. |
 | `MaxCacheBytes`           | `5368709120` (5 GiB) | Soft cap on total EPUB cache size; oldest entries are evicted past it. |
+| `MaxCacheAgeDays`         | `30`                 | Delete cached EPUBs older than this many days, swept at startup and once a day. Set `0` to keep them until the size cap evicts them. |
 
 ### Logs
 

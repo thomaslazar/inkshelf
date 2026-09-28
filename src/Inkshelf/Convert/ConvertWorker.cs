@@ -32,10 +32,12 @@ public sealed class ConvertWorker : BackgroundService
     {
         _cache.SweepTemp();          // clear orphan .tmp from a prior crash/shutdown
         _marks.Prune(TimeSpan.FromDays(30));   // forget devices that stopped visiting
+        _cache.EnforceMaxAge(TimeSpan.FromDays(_options.MaxCacheAgeDays));
 
         var loops = Math.Max(1, _options.MaxConcurrentConversions);
-        var tasks = new Task[loops];
+        var tasks = new Task[loops + 1];
         for (var i = 0; i < loops; i++) tasks[i] = ConsumeAsync(stoppingToken);
+        tasks[loops] = SweepAgeAsync(stoppingToken);
         await Task.WhenAll(tasks);
     }
 
@@ -45,6 +47,21 @@ public sealed class ConvertWorker : BackgroundService
         {
             await foreach (var job in _queue.Reader.ReadAllAsync(ct))
                 await ProcessAsync(job, ct);
+        }
+        catch (OperationCanceledException) { /* app shutting down */ }
+    }
+
+    // Entries age while nothing is happening, so this cannot hang off the
+    // conversion trigger EnforceCap uses: a deployment that is not converting is
+    // exactly the one whose disk is being held. EnforceCap stays where it is,
+    // because the cache can only grow by converting.
+    private async Task SweepAgeAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromDays(1));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+                _cache.EnforceMaxAge(TimeSpan.FromDays(_options.MaxCacheAgeDays));
         }
         catch (OperationCanceledException) { /* app shutting down */ }
     }

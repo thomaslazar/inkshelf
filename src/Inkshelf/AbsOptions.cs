@@ -44,6 +44,10 @@ public sealed class AbsOptions
     public string? OidcProviderName { get; set; }
     // Soft cap on total EPUB cache bytes; oldest entries are evicted past it. Default 5 GiB.
     public long MaxCacheBytes { get; set; } = 5_368_709_120;
+    // Delete cached EPUBs older than this many days; 0 or negative disables age
+    // eviction. Default 30. The second axis beside MaxCacheBytes: a converted
+    // EPUB is dead weight once it has been downloaded to the reader.
+    public int MaxCacheAgeDays { get; set; } = 30;
     // Max bytes read from an ebook archive before conversion; larger archives are
     // refused (decompression-bomb guard). Spooled to a temp file, so this bounds
     // disk not RAM. Default 1 GiB - comics are large.

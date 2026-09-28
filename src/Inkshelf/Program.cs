@@ -26,6 +26,11 @@ var absOptions = new AbsOptions
     OidcProviderName = builder.Configuration["OIDC_PROVIDER_NAME"],
     TrustedProxy = builder.Configuration["TRUSTED_PROXY"],
     MaxCacheBytes = long.TryParse(builder.Configuration["MaxCacheBytes"], out var mcb) && mcb > 0 ? mcb : 5_368_709_120,
+    // Parsed differently from its neighbours on purpose: they treat a
+    // non-positive value as "use the default", which would make an explicit 0
+    // mean 30 days here. 0 has to mean "off", so only an unparseable value falls
+    // back to the default.
+    MaxCacheAgeDays = int.TryParse(builder.Configuration["MaxCacheAgeDays"], out var mcad) ? mcad : 30,
     MaxArchiveBytes = long.TryParse(builder.Configuration["MaxArchiveBytes"], out var mab) && mab > 0 ? mab : 1_073_741_824,
     MaxConcurrentConversions = int.TryParse(builder.Configuration["MaxConcurrentConversions"], out var mcc) && mcc > 0 ? mcc : 1,
 };
