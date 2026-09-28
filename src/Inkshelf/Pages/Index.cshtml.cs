@@ -9,11 +9,16 @@ public class IndexModel : PageModel
 {
     private readonly AbsApiClient _api;
     private readonly TokenStore _tokens;
-    public IndexModel(AbsApiClient api, TokenStore tokens) { _api = api; _tokens = tokens; }
+    private readonly UpdateCheck _updates;
+    public IndexModel(AbsApiClient api, TokenStore tokens, UpdateCheck updates) { _api = api; _tokens = tokens; _updates = updates; }
 
     public List<AbsLibrary> Libraries { get; private set; } = new();
 
     public string Version => AppVersion.Current;
+
+    // A newer release, when the last check found one. Poking never blocks: this
+    // render shows the previous result, not the one it may be starting.
+    public string? Newer => _updates.Newer;
 
     // From the session cookie, not ABS: the libraries page already decrypts it, so
     // this costs no request and still shows when ABS is unreachable.
@@ -21,6 +26,7 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnGetAsync([FromQuery] string? all, CancellationToken ct)
     {
+        _updates.Poke();
         Libraries = await _api.GetLibrariesAsync(ct);
         var settings = DeviceSettings.Read(Request);
         var fav = settings.Fav;

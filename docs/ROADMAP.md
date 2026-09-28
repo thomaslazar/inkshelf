@@ -96,6 +96,9 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Update check** - a daily, opt-out (`UPDATE_CHECK`) check against the GitHub
+  releases API; the libraries page shows `(v1.0.1 available)` beside the version
+  when one is newer. Never on the request path, and silent on any failure.
 - **Items per page** (#67) - a per-device setting, default 10, range 5 to 50,
   that sizes the library listing and the converted page; out of range falls
   back to the default and says so. The converted page also gained a pager,

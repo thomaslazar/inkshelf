@@ -2,7 +2,7 @@ namespace Inkshelf;
 
 // Typed view of the app's configuration, bound once at startup so config reads
 // live in one place instead of scattered Configuration["…"] lookups. Config keys:
-// ABS_URL (required), ABS_PUBLIC_URL, CachePath, DataProtectionKeysPath, DIAG_ENABLED, FORCE_SECURE_COOKIES, LOCALES_PATH, LOCALES_OVERRIDE_PATH, OIDC_ENABLED, OIDC_PROVIDER_NAME, TRUSTED_PROXY.
+// ABS_URL (required), ABS_PUBLIC_URL, CachePath, DataProtectionKeysPath, DIAG_ENABLED, FORCE_SECURE_COOKIES, LOCALES_PATH, LOCALES_OVERRIDE_PATH, OIDC_ENABLED, OIDC_PROVIDER_NAME, TRUSTED_PROXY, UPDATE_CHECK.
 public sealed class AbsOptions
 {
     public string AbsUrl { get; set; } = "";
@@ -30,6 +30,9 @@ public sealed class AbsOptions
     public string? TrustedProxy { get; set; }
     // Whether the unauthenticated /diag probe endpoint is mapped. Default true.
     public bool DiagEnabled { get; set; } = true;
+    // Whether to check GitHub daily for a newer release and say so on the
+    // libraries page. Default true; false means no outbound request is ever made.
+    public bool UpdateCheck { get; set; } = true;
     // Offer login through the OIDC provider ABS is configured with. Off by
     // default; when off the /oidc endpoints are not mapped at all. Requires the
     // operator to whitelist our callback URL in ABS - see README.

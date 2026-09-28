@@ -17,7 +17,7 @@ public class EndpointTests
 {
     private static WebApplicationFactory<Program> CreateFactory() =>
         new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(b => b.UseSetting("ABS_URL", "http://localhost:1"));
+            .WithWebHostBuilder(b => { b.UseSetting("ABS_URL", "http://localhost:1"); b.UseSetting("UPDATE_CHECK", "false"); });
 
     // /login is unauthenticated and, like any POST form on the site, gets an
     // auto-injected __RequestVerificationToken hidden field - grab it (and the
@@ -574,6 +574,7 @@ public class EndpointTests
         new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseSetting("ABS_URL", "http://abs.local");
+            b.UseSetting("UPDATE_CHECK", "false");
             b.UseSetting("CachePath", cachePath);
             b.UseSetting("DataProtectionKeysPath", keysPath);
             b.ConfigureTestServices(services =>

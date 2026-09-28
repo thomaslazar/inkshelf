@@ -27,6 +27,7 @@ worker with an on-disk cache rather than in the request.
 src/Inkshelf/
   Program.cs            Bootstrap only: config → DI → middleware → endpoint maps.
   AbsOptions.cs         Typed view of all config, read once at startup.
+  UpdateCheck.cs        Cached daily GitHub release check (singleton, off the request path).
   Abs/                  ABS API access.
     AbsAuthClient.cs      Login + refresh + the two OIDC legs. Handler-FREE typed client.
     AbsApiClient.cs       The data methods. Typed client WITH AbsAuthHandler.
@@ -75,6 +76,10 @@ from the repo root (inside the devcontainer) must stay green, and
   than relying on a per-request cookie, so there is no `HttpContext` token to
   resolve and no session to refresh. Never attach `AbsAuthHandler` to either
   handler-free client, and never put login/refresh on `AbsApiClient`.
+- **The GitHub update check gets its own named client and is never awaited
+  during a render.** An ABS typed client would carry `AbsAuthHandler` and send
+  the session bearer to a third party; awaiting it would put github.com in the
+  critical path of a page load on a device whose browser is already slow.
 - **`AbsAuthClient`'s handler must keep `AllowAutoRedirect = false` and
   `UseCookies = false`.** OIDC leg 1 reads the `Location` off ABS's 302, which
   following the redirect destroys; and the handler is pooled process-wide, so a
