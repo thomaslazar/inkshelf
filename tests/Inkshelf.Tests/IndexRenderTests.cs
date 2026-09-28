@@ -47,6 +47,7 @@ public class IndexRenderTests
         using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseSetting("ABS_URL", "http://abs.local");
+            b.UseSetting("UPDATE_CHECK", "false");
             b.UseSetting("CachePath", cacheDir.Path);
             b.UseSetting("DataProtectionKeysPath", keysDir.Path);
             b.ConfigureTestServices(services =>
@@ -112,5 +113,69 @@ public class IndexRenderTests
         var response = await GetIndexResponse(session: "acc\nref\nalice", lang: "");
 
         Assert.True(response.Headers.CacheControl?.NoStore == true, "Expected Cache-Control: no-store.");
+    }
+
+    // Plants a result rather than driving the fetch: the check itself is tested
+    // in UpdateCheckTests, and this asserts only what the page does with it.
+    private static async Task<string> GetIndexHtmlWithUpdate(string? newer, string lang)
+    {
+        using var cacheDir = new TempDir();
+        using var keysDir = new TempDir();
+        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        {
+            b.UseSetting("ABS_URL", "http://abs.local");
+            b.UseSetting("UPDATE_CHECK", "false");
+            b.UseSetting("CachePath", cacheDir.Path);
+            b.UseSetting("DataProtectionKeysPath", keysDir.Path);
+            b.ConfigureTestServices(services =>
+            {
+                services.Configure<HttpClientFactoryOptions>(nameof(AbsApiClient), o =>
+                    o.HttpMessageHandlerBuilderActions.Add(hb => hb.PrimaryHandler = MakeStub()));
+                var worker = services.FirstOrDefault(s => s.ImplementationType == typeof(ConvertWorker));
+                if (worker is not null) services.Remove(worker);
+                services.AddSingleton<IAntiforgery, SilentAntiforgery>();
+            });
+        });
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        factory.Services.GetRequiredService<UpdateCheck>().Newer = newer;
+
+        var dp = factory.Services.GetRequiredService<IDataProtectionProvider>();
+        var protector = dp.CreateProtector("inkshelf.session.v1");
+        var req = new HttpRequestMessage(HttpMethod.Get, "/");
+        req.Headers.Add("Cookie",
+            $"inkshelf_session={Uri.EscapeDataString(protector.Protect("acc\nref\nalice"))}; "
+            + $"inkshelf_settings=retina=1&gray=0&lang={lang}&fav=");
+
+        return await (await client.SendAsync(req)).Content.ReadAsStringAsync();
+    }
+
+    [Fact]
+    public async Task A_newer_release_is_named_beside_the_version()
+    {
+        var html = await GetIndexHtmlWithUpdate("1.0.1", lang: "");
+
+        Assert.Contains($"Inkshelf v{AppVersion.Current} (v1.0.1 available)", html);
+    }
+
+    [Fact]
+    public async Task The_update_hint_is_localised()
+    {
+        var html = await GetIndexHtmlWithUpdate("1.0.1", lang: "de");
+
+        Assert.Contains("(v1.0.1 verf&#xFC;gbar)", html);   // Razor encodes the umlaut, as elsewhere
+        Assert.DoesNotContain("available", html);
+    }
+
+    [Fact]
+    public async Task No_known_update_leaves_the_version_line_bare()
+    {
+        // The null case is what every deployment shows most of the time, and it
+        // must not leave an empty pair of parentheses behind.
+        var html = await GetIndexHtmlWithUpdate(null, lang: "");
+
+        Assert.Contains($"Inkshelf v{AppVersion.Current} - User: alice", html);
+        Assert.DoesNotContain("available", html);
+        Assert.DoesNotContain($"Inkshelf v{AppVersion.Current} (", html);
     }
 }

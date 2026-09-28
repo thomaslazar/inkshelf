@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Logging.Abstractions;
 using Inkshelf;
 using Inkshelf.Abs;
 using Inkshelf.Auth;
@@ -47,7 +48,9 @@ public class FavoriteLibraryRoutingTests
     {
         var accessor = new HttpContextAccessor();
         var model = WithContext(new IndexModel(api,
-            new TokenStore(new EphemeralDataProtectionProvider(), accessor, new AbsOptions())), favCookie);
+            new TokenStore(new EphemeralDataProtectionProvider(), accessor, new AbsOptions()),
+            // Disabled, so Poke() is a no-op and the client factory is never touched.
+            new UpdateCheck(null!, new AbsOptions { UpdateCheck = false }, NullLogger<UpdateCheck>.Instance)), favCookie);
         accessor.HttpContext = model.PageContext.HttpContext;
         return model;
     }
