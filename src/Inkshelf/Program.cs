@@ -20,6 +20,7 @@ var absOptions = new AbsOptions
     LocalesPath = builder.Configuration["LOCALES_PATH"],
     LocalesOverridePath = builder.Configuration["LOCALES_OVERRIDE_PATH"],
     DiagEnabled = !string.Equals(builder.Configuration["DIAG_ENABLED"], "false", StringComparison.OrdinalIgnoreCase),
+    UpdateCheck = !string.Equals(builder.Configuration["UPDATE_CHECK"], "false", StringComparison.OrdinalIgnoreCase),
     ForceSecureCookies = bool.TryParse(builder.Configuration["FORCE_SECURE_COOKIES"], out var fsc) && fsc,
     OidcEnabled = bool.TryParse(builder.Configuration["OIDC_ENABLED"], out var oidc) && oidc,
     OidcProviderName = builder.Configuration["OIDC_PROVIDER_NAME"],
@@ -81,6 +82,15 @@ builder.Services.AddHttpClient<AbsApiClient>(ConfigureAbs).AddHttpMessageHandler
 // Handler-FREE (no AbsAuthHandler) - the worker supplies the bearer; ConfigureAbs
 // gives it the BaseAddress + required User-Agent. See AbsDownloadClient.
 builder.Services.AddHttpClient<AbsDownloadClient>(ConfigureAbs);
+// Its own client, deliberately not one of the ABS ones: those carry
+// AbsAuthHandler or an ABS BaseAddress, and neither belongs on a third-party
+// call. The User-Agent is reused because GitHub rejects requests without one.
+builder.Services.AddHttpClient("github", c =>
+{
+    c.DefaultRequestHeaders.UserAgent.ParseAdd(absUserAgent);
+    c.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddSingleton<UpdateCheck>();
 builder.Services.AddSingleton(new EpubCache(cachePath));
 // Marks live in a SUBDIRECTORY of the cache dir on purpose: every cache glob is
 // extension-scoped (*.epub, *.tmp) and a valid device id can't contain a dot,
