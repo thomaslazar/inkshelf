@@ -3,6 +3,42 @@
 All notable changes to Inkshelf are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## v1.1.0 - 2026-09-28
+
+### Highlights
+- Inkshelf now tells you when a newer release exists: the libraries page reads
+  `Inkshelf v1.1.0 (v1.2.0 available)` once a day's check finds one. Set
+  `UPDATE_CHECK=false` to make no outbound request at all.
+- The converted-EPUB cache is now bounded by age as well as size.
+  `MaxCacheAgeDays` (default 30, `0` disables) deletes cached books past that
+  age, so an occasionally-used library stops holding disk it is not using.
+  On the first start after upgrading, anything already older than 30 days is
+  swept at once.
+
+### Features
+- feat: check github for a newer release once a day
+- feat: compare the running version against a release tag
+- feat: evict cached epubs past a maximum age
+- feat: name a newer release on the libraries page
+- feat: sweep the epub cache by age at startup and daily
+
+### Internal
+
+Tests:
+- test: cover the update check's fetch and disabled paths
+
+Docs:
+- docs: add cache age eviction implementation plan
+- docs: add cache age eviction spec
+- docs: add update check implementation plan
+- docs: add update check spec
+- docs: document cache age eviction
+- docs: document the update check
+- docs: note the shine needs a plain-HTTP deployment
+
+Chore:
+- chore: bump version to 1.1.0
+
 ## v1.0.0 - 2026-09-10
 
 First stable release. The settings cookie stays backward compatible, so a
