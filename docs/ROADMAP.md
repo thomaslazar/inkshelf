@@ -96,6 +96,10 @@ Settings to add to the per-device settings system:
 
 Shipped; kept as a short record (full detail in git history / the PR).
 
+- **Cache age eviction** - `MaxCacheAgeDays` (default 30, `0` disables) deletes
+  cached EPUBs past that age, swept at startup and daily. The size cap alone let
+  an idle deployment hold its cache forever, and a converted EPUB is dead weight
+  once it has reached the reader.
 - **Update check** - a daily, opt-out (`UPDATE_CHECK`) check against the GitHub
   releases API; the libraries page shows `(v1.0.1 available)` beside the version
   when one is newer. Never on the request path, and silent on any failure.
